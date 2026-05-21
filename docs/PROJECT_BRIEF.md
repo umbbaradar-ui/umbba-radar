@@ -182,14 +182,29 @@ user_event_status
 
 ---
 
-## 10. 다음 작업 (이 문서 다음 단계)
+## 10. 진행 상황 — Phase 1
 
-1. 서비스 이름·도메인 가볍게 결정
-2. Next.js 프로젝트 스캐폴딩 (`create-next-app`)
-3. Supabase 프로젝트 생성 + 환경변수 연결
-4. 데이터 모델대로 테이블 생성
-5. 관리자 페이지부터 만들기 (혼자 쓰는 게 먼저, 사용자 페이지보다 우선)
-6. 첫 카드 5~10개 직접 입력해보고 사용자 페이지 디자인
+### 완료 (2026-05-22 기준)
+- [x] 서비스 이름 확정 → **엄빠레이더 / umbba-radar**
+- [x] Next.js 16 프로젝트 스캐폴딩 + 9개 부서 폴더 구조
+- [x] Supabase 프로젝트 + posts/user_post_status 테이블 + RLS
+- [x] GitHub 레포 + Vercel 자동 배포 파이프라인 (https://umbba-radar.vercel.app)
+- [x] **Content 부서** 가동 — repository / service / PostCard
+- [x] **Discovery 부서** 가동 — filterPosts + FilterBar (pill row UI, URL 검색 파라미터)
+- [x] **Personalization 부서** 가동 — 로컬스토리지 기반 신청함/관심 (Phase 2에서 Supabase auth로 이관 예정)
+- [x] 메인 페이지 (`/`) — 카드 그리드 + 시기·유형 필터
+- [x] 카드 상세 페이지 (`/post/[id]`) — 풀 정보 + 신청함/관심 + 원문 외부 링크
+- [x] 마이 페이지 (`/my`) — 탭으로 관심·신청함 보기
+- [x] (web) 채널 레이아웃 + 상단 네비
+
+### 남은 작업 (우선순위 순)
+1. **003 시드 마이그레이션 실행** — Supabase SQL Editor에서 `supabase/migrations/003_clean_and_richer_seed.sql` 한 번 돌리기 (기존 중복 시드 제거 + 15개 다양한 시드)
+2. **본인이 직접 실데이터 입력** — Supabase Table Editor 또는 Phase 1.5 관리자 페이지에서 인스타 협찬 정보 30개 입력
+3. **관리자 페이지** (`/admin`) — 카드 CRUD UI (Phase 1.5)
+4. **로그인** — Supabase Google OAuth + 로컬스토리지 → DB 이관 (Phase 2 진입 시점)
+5. **PWA 매니페스트** — 홈 화면 설치 가능하게 (앱 아이콘 이미지 필요)
+6. **토스 미니앱 포팅** — `(toss)` 라우트 + 토스 SDK 통합 (Phase 1.5)
+7. **약관·개인정보처리방침** — 출시 직전
 
 ---
 
