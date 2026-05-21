@@ -41,10 +41,12 @@
 - 사용자 기능: 열람 + 필터 + 로그인 + 신청/관심 체크
 
 ### Phase 1.5 — 토스인앱(앱인토스) 포팅 (PWA 안정화 후)
-- **자체 PWA로 콘텐츠·UX 검증 → 동일 백엔드를 그대로 둔 채 토스 미니앱으로 이식**
+- **자체 PWA로 콘텐츠·UX 검증 → 동일 백엔드를 공유하는 별도 Vite 레포로 토스 미니앱 구축**
+- **2026-05-22 발견:** 토스 SDK(`@apps-in-toss/web-framework`)는 **Vite 전용**. Next.js와 한 프로젝트 공존 불가. → 별도 `umbba-radar-toss/` 레포로 분리 필요
 - 토스 정책: 사업자 등록 없이 입점 가능 (2026년 기준), 영업일 2~3일 검수
 - 토스 누적 가입자 ~3,000만 도달 풀, 부모 타겟과 매칭 양호
 - 자체 PWA는 메인 채널로 계속 유지 (브랜드·SEO·실험 자유). 토스는 보조 배포 채널
+- Supabase 백엔드·DB·인증 100% 공유. 코드 공유는 Phase 2에 pnpm workspace로 정리
 - 사업자 필요 기능(토스 페이·인앱 광고 등)은 사업자 등록 시점인 Phase 3에서 활성화
 - 참고 사례: 안전집사(프롭테크 큐레이션) 토스인앱 입점 후 신규 고객 99% 토스 유입, 월 매출 40배
 
@@ -187,24 +189,30 @@ user_event_status
 ### 완료 (2026-05-22 기준)
 - [x] 서비스 이름 확정 → **엄빠레이더 / umbba-radar**
 - [x] Next.js 16 프로젝트 스캐폴딩 + 9개 부서 폴더 구조
-- [x] Supabase 프로젝트 + posts/user_post_status 테이블 + RLS
+- [x] Supabase 프로젝트 + posts/user_post_status 테이블 + RLS + 시드 003 (15개)
 - [x] GitHub 레포 + Vercel 자동 배포 파이프라인 (https://umbba-radar.vercel.app)
-- [x] **Content 부서** 가동 — repository / service / PostCard
-- [x] **Discovery 부서** 가동 — filterPosts + FilterBar (pill row UI, URL 검색 파라미터)
-- [x] **Personalization 부서** 가동 — 로컬스토리지 기반 신청함/관심 (Phase 2에서 Supabase auth로 이관 예정)
-- [x] 메인 페이지 (`/`) — 카드 그리드 + 시기·유형 필터
-- [x] 카드 상세 페이지 (`/post/[id]`) — 풀 정보 + 신청함/관심 + 원문 외부 링크
-- [x] 마이 페이지 (`/my`) — 탭으로 관심·신청함 보기
-- [x] (web) 채널 레이아웃 + 상단 네비
+- [x] **Content 부서** — repository / service / PostCard
+- [x] **Discovery 부서** — filterPosts + FilterBar
+- [x] **Personalization 부서** — 로컬스토리지 (Phase 2에서 DB 이관)
+- [x] **Curation 부서** — 관리자 페이지 `/admin` + 로그인 + CRUD + 쿠키 인증
+- [x] **User 부서** — Supabase Google OAuth 코드 준비 (활성화는 본인 작업 필요)
+- [x] 메인 / 카드 상세 / 마이 / 로그인 / 관리자 (5개 사용자 라우트) + OAuth 콜백
+- [x] PWA 매니페스트 + 동적 아이콘 (icon.tsx, apple-icon.tsx, manifest.ts) — 홈 화면 설치 가능
+
+### 본인 환경 설정 필요 (자동화 불가)
+> 자세한 단계는 `docs/SETUP_AFTER_DEPLOY.md` 참고
+
+1. **`ADMIN_PASSWORD`** env var을 `.env.local` + Vercel에 추가 → `/admin` 사용 가능
+2. (선택) **Google OAuth 활성화** — Google Cloud Console + Supabase Dashboard 2단계 설정. 코드는 다 준비됨
+3. (선택) **사용자 정의 도메인** — Vercel에서 도메인 연결
+4. (선택) **앱 아이콘 본 디자인 적용** — `src/app/icon.tsx`·`apple-icon.tsx` PNG로 교체
 
 ### 남은 작업 (우선순위 순)
-1. **003 시드 마이그레이션 실행** — Supabase SQL Editor에서 `supabase/migrations/003_clean_and_richer_seed.sql` 한 번 돌리기 (기존 중복 시드 제거 + 15개 다양한 시드)
-2. **본인이 직접 실데이터 입력** — Supabase Table Editor 또는 Phase 1.5 관리자 페이지에서 인스타 협찬 정보 30개 입력
-3. **관리자 페이지** (`/admin`) — 카드 CRUD UI (Phase 1.5)
-4. **로그인** — Supabase Google OAuth + 로컬스토리지 → DB 이관 (Phase 2 진입 시점)
-5. **PWA 매니페스트** — 홈 화면 설치 가능하게 (앱 아이콘 이미지 필요)
-6. **토스 미니앱 포팅** — `(toss)` 라우트 + 토스 SDK 통합 (Phase 1.5)
-7. **약관·개인정보처리방침** — 출시 직전
+1. **본인이 직접 실데이터 입력** — `/admin/new` 에서 인스타 협찬 정보 입력
+2. **약관·개인정보처리방침** 페이지 (`/terms`, `/privacy`) — 출시 직전 필수
+3. **Phase 1.5: 토스 미니앱** — 별도 `umbba-radar-toss/` Vite 레포 (1~2일)
+4. **Phase 2: 자동 수집·알림·Personalization DB 이관**
+5. **Phase 3: 광고·공구·사용자 제보·브랜드 정규화**
 
 ---
 

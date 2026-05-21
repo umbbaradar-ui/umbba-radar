@@ -1,0 +1,45 @@
+// ============================================
+// 로그인 페이지 — /login
+// Phase 1.5에서 코드 준비. Supabase Dashboard에서 Google Provider 활성화 필요.
+// ============================================
+
+import Link from "next/link";
+import { GoogleSignInButton } from "@/modules/user/ui/SignInButton";
+
+interface PageProps {
+  searchParams: Promise<{ next?: string }>;
+}
+
+export default async function LoginPage({ searchParams }: PageProps) {
+  const { next } = await searchParams;
+
+  return (
+    <main className="mx-auto max-w-md px-5 py-10">
+      <div className="rounded-2xl bg-white p-6 shadow-sm">
+        <header className="mb-6 space-y-1 text-center">
+          <p className="text-2xl">📡</p>
+          <h1 className="text-lg font-extrabold tracking-tight text-slate-900">
+            엄빠레이더에 로그인
+          </h1>
+          <p className="text-xs text-slate-500">
+            로그인하면 신청함·관심 카드가 모든 기기에서 동기화돼요
+          </p>
+        </header>
+
+        <GoogleSignInButton next={next} />
+
+        <p className="mt-6 text-center text-[11px] text-slate-400">
+          로그인하지 않아도 사이트는 그대로 이용할 수 있어요.
+          <br />
+          체크 기록은 이 기기에만 저장됩니다.
+        </p>
+
+        <div className="mt-4 text-center">
+          <Link href="/" className="text-xs text-slate-500 underline">
+            ← 둘러보기로 돌아가기
+          </Link>
+        </div>
+      </div>
+    </main>
+  );
+}

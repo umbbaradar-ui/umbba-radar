@@ -1,13 +1,17 @@
 // ============================================
-// (web) 채널 레이아웃 — 상단 네비
+// (web) 채널 레이아웃 — 상단 네비 + 로그인 상태
 // 토스 미니앱 채널은 별도의 (toss) 레이아웃을 가짐
 // ============================================
 
 import Link from "next/link";
+import { getCurrentUser } from "@/modules/user/service";
+import { UserMenu } from "@/modules/user/ui/UserMenu";
 
-export default function WebLayout({
+export default async function WebLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
+  const user = await getCurrentUser();
+
   return (
     <>
       <nav className="sticky top-0 z-20 border-b border-amber-100 bg-white/85 backdrop-blur">
@@ -32,6 +36,9 @@ export default function WebLayout({
             >
               내 카드
             </Link>
+            <div className="ml-2">
+              <UserMenu user={user} />
+            </div>
           </div>
         </div>
       </nav>

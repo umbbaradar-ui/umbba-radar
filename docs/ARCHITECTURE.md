@@ -256,10 +256,23 @@ src/
     │       ├── page.tsx      ← Curation 큐 + Content CRUD
     │       └── new/page.tsx
     │
-    └── (toss)/               ← 토스 미니앱 채널 (Phase 1.5)
-        ├── page.tsx          ← 동일 service.ts 호출, 토스 SDK·디자인만 적용
-        ├── post/[id]/page.tsx
-        └── my/page.tsx
+    ├── (toss)/               ← (사용 보류 — README.md만, 별도 Vite 레포로 갈 예정)
+    │   └── README.md
+    │
+    ├── admin/                ← 관리자 영역 (auth + private 라우트 그룹)
+    │   ├── (auth)/login/page.tsx
+    │   └── (private)/
+    │       ├── layout.tsx    ← 쿠키 인증 체크
+    │       ├── page.tsx      ← 카드 목록·CRUD
+    │       ├── new/page.tsx
+    │       └── [id]/edit/page.tsx
+    │
+    ├── auth/callback/        ← OAuth 콜백 라우트
+    │   └── route.ts
+    │
+    ├── icon.tsx              ← PWA 아이콘 (512x512)
+    ├── apple-icon.tsx        ← Apple Touch 아이콘 (180x180)
+    └── manifest.ts           ← PWA manifest
 ```
 
 **강제 규칙:**
@@ -271,27 +284,27 @@ src/
 
 ---
 
-### 6.1 듀얼 채널 — PWA + 토스인앱 (Phase 1.5에서 활성)
+### 6.1 채널 전략 — PWA(이 레포) + 토스 미니앱(별도 Vite 레포)
 
-배포 채널이 두 개여도 백엔드(`modules/`)는 **완전 공유**한다. UI만 두 갈래로 분기.
+> **2026-05-22 갱신:** 원래 `app/(web)` + `app/(toss)` 듀얼 라우트 그룹을 계획했으나, 토스 SDK(`@apps-in-toss/web-framework`)가 **Vite 전용**임이 확인됐다. Next.js와 한 프로젝트에서 공존 불가. 따라서 채널 분리 전략을 다음과 같이 수정한다.
 
-| 채널 | 폴더 | 역할 | 활성 |
+| 채널 | 위치 | 스택 | 활성 |
 |------|------|------|------|
-| 자체 PWA | `app/(web)/` | 메인 채널. 브랜드·SEO·실험 자유 | Phase 1 |
-| 토스 미니앱 | `app/(toss)/` | 보조 배포. 토스 SDK·디자인 가이드 적용 | Phase 1.5 |
+| 자체 PWA | `umbba-radar/` (이 레포) | Next.js 16 + React Server Components | Phase 1 ✅ |
+| 토스 미니앱 | `umbba-radar-toss/` (별도 레포) | Vite + React + `@apps-in-toss/web-framework` | Phase 1.5 |
 
-**핵심 규칙:**
-- `app/(web)/page.tsx` 와 `app/(toss)/page.tsx` 는 **같은 `modules/*/service.ts` 를 호출**한다
-- 데이터·비즈니스 로직 100% 일치, 차이는 오직 UI/디자인/플랫폼 SDK
-- 토스 SDK 종속 코드는 **반드시 `app/(toss)/` 내부에만 존재** — 다른 부서로 새지 않게
-- 공유 가능한 디자인 컴포넌트는 `modules/*/ui/` 에, 채널 전용 컴포넌트는 각 `app/(channel)/_components/` 에
+**공유하는 것:**
+- **Supabase 백엔드** 100% 동일 (DB, RLS, 인증, 정책)
+- 타입 정의(`Post`, `StageCategory`, 라벨) — 처음엔 수동 복사, Phase 2부터 pnpm workspace 패키지로 공유
+- 디자인 토큰(컬러·간격) — Tailwind config 복사
 
-**Phase 1 동안엔 `(toss)` 폴더는 비워둔다.** PWA로 UX 검증 후 Phase 1.5에서 이식.
+**왜 이 분리가 여전히 옳은가:**
+- 토스 정책 변경이 PWA에 무영향
+- 토스 SDK가 망가져도 자체 PWA는 살아 있음
+- 백엔드는 단일 진실원천 (Supabase)
+- 사용자 가입·체크 데이터는 동일 DB 사용 → 양쪽 모두에서 동기화
 
-**왜 이 분리가 중요한가:**
-- 토스 정책이 바뀌어도 PWA 채널은 무영향
-- 토스 SDK 버전 업데이트가 백엔드를 건드리지 않음
-- 새 채널(예: 카카오 미니앱) 추가 시 `app/(kakao)/` 하나 더 만들면 끝
+`app/(toss)/` 폴더는 빈 상태로 두고 `README.md` 만 둠 — 의도 보존용 표식.
 
 ---
 
@@ -314,10 +327,21 @@ src/
 
 | Phase | 활성 부서 | 채널 | 비고 |
 |-------|-----------|------|------|
-| **Phase 1 출시** | Content, Brand, User, Personalization, Curation, Discovery | 자체 PWA | Curation은 관리자(본인) 수동 입력만 |
-| **Phase 1.5** | (동일, 부서 무변경) | + 토스인앱 | `app/(toss)/` 폴더 추가, 백엔드 무수정 |
-| **Phase 2** | + Ingestion (화이트리스트 자동수집), Notification (D-1 알림) | 양 채널 공통 | Ingestion의 출력은 Curation 큐로 |
-| **Phase 3** | + Monetization (광고·공구), 사용자 제보 (Ingestion 확장) | 양 채널 공통 | 사업자 등록 필요해지는 시점 |
+| **Phase 1 (현재)** | Content ✅, Personalization ✅ (localStorage), Curation ✅, Discovery ✅, User ✅ (코드 준비, Supabase OAuth 활성화 대기) | 자체 PWA (Vercel) | `/admin` 보호: `ADMIN_PASSWORD` env var |
+| **Phase 1.5** | (동일, 부서 무변경) | + 토스 미니앱 | **별도 Vite 레포** (`umbba-radar-toss/`) 신설. Next.js 통합 불가 |
+| **Phase 2** | + Ingestion (화이트리스트 자동수집), Notification (D-1 알림), Personalization 이관 (localStorage → DB) | 양 채널 공통 | Ingestion 출력은 Curation 큐로 |
+| **Phase 3** | + Monetization (광고·공구), 사용자 제보 (Ingestion 확장), Brand (정규화) | 양 채널 공통 | 사업자 등록 필요해지는 시점 |
+
+**부서별 현재 상태 (2026-05-22):**
+- ✅ **Content** — repository / service / PostCard
+- ⬜ **Brand** — Phase 3 정규화 시 가동 (현재 `posts.brand_name` 필드로 처리)
+- ✅ **User** — service / actions / SignInButton / UserMenu (Supabase Google OAuth 활성화 대기)
+- ✅ **Personalization** — localStorage 기반 (Phase 2에 DB 이관)
+- ✅ **Curation** — 관리자 페이지 + CRUD 완료. 승인 큐는 Phase 2에 추가
+- ✅ **Discovery** — filterPosts + FilterBar
+- ⬜ **Ingestion** — Phase 2 시작 시 가동
+- ⬜ **Notification** — Phase 2 시작 시 가동
+- ⬜ **Monetization** — Phase 3 시작 시 가동
 
 **시사점:** 9개 부서가 모두 등장한 뒤에도, **Content·Brand·User의 코드는 거의 안 바뀐다.** 가장자리만 늘어난다. 이게 좋은 설계의 증거다.
 

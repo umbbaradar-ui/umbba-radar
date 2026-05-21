@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
@@ -18,6 +18,18 @@ export const metadata: Metadata = {
     "임신·출산·육아 협찬과 체험단, 후기를 한곳에 모아 보여드려요. 부모님 대신 스캔 중.",
   applicationName: "엄빠레이더",
   keywords: ["육아", "협찬", "체험단", "리그램", "추첨", "무료체험", "육아 혜택"],
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "엄빠레이더",
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#FB7185",
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 5,
 };
 
 export default function RootLayout({
