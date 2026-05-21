@@ -1,0 +1,144 @@
+// ============================================
+// 카드 상세 페이지 — /post/[id]
+// ============================================
+
+import Link from "next/link";
+import { notFound } from "next/navigation";
+import { getPost } from "@/modules/content/service";
+import { StatusButtons } from "@/modules/personalization/ui/StatusButtons";
+import { STAGE_LABELS, TYPE_LABELS } from "@/shared/types/post";
+
+export const revalidate = 60;
+
+interface PageProps {
+  params: Promise<{ id: string }>;
+}
+
+function calcDDay(deadline: string | null): string | null {
+  if (!deadline) return null;
+  const diffMs = new Date(deadline).getTime() - Date.now();
+  const days = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+  if (days < 0) return "마감";
+  if (days === 0) return "D-Day";
+  return `D-${days}`;
+}
+
+export default async function PostDetailPage({ params }: PageProps) {
+  const { id } = await params;
+  const post = await getPost(id);
+
+  if (!post) {
+    notFound();
+  }
+
+  const dday = calcDDay(post.deadline);
+  const isReview = post.kind === "review";
+
+  return (
+    <main className="mx-auto max-w-2xl px-5 py-4">
+      <Link
+        href="/"
+        className="mb-4 inline-flex items-center gap-1 text-sm text-slate-500 transition hover:text-slate-900"
+      >
+        ← 목록으로
+      </Link>
+
+      <article className="overflow-hidden rounded-2xl bg-white shadow-sm">
+        <div className="relative aspect-[4/3] w-full overflow-hidden bg-gray-100 sm:aspect-square">
+          {post.thumbnail_url && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={post.thumbnail_url}
+              alt={post.title}
+              className="h-full w-full object-cover"
+            />
+          )}
+          {dday && (
+            <span
+              className={`absolute left-4 top-4 rounded-full px-4 py-1.5 text-sm font-bold text-white ${
+                dday !== "마감" &&
+                Number.parseInt(dday.replace("D-", ""), 10) <= 3
+                  ? "bg-rose-500"
+                  : "bg-slate-700/80"
+              }`}
+            >
+              {dday}
+            </span>
+          )}
+          {isReview && (
+            <span className="absolute right-4 top-4 rounded-full bg-amber-400 px-4 py-1.5 text-sm font-bold text-slate-900">
+              후기
+            </span>
+          )}
+        </div>
+
+        <div className="space-y-5 p-6">
+          {post.brand_name && (
+            <p className="text-sm font-medium text-slate-500">
+              {post.brand_name}
+            </p>
+          )}
+          <h1 className="text-xl font-extrabold leading-tight text-slate-900 sm:text-2xl">
+            {post.title}
+          </h1>
+
+          <div className="flex flex-wrap gap-1.5">
+            {post.stage_categories.map((s) => (
+              <span
+                key={s}
+                className="rounded-full bg-rose-50 px-3 py-1 text-xs font-medium text-rose-700"
+              >
+                {STAGE_LABELS[s] ?? s}
+              </span>
+            ))}
+            {post.type_tags.map((t) => (
+              <span
+                key={t}
+                className="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600"
+              >
+                {TYPE_LABELS[t] ?? t}
+              </span>
+            ))}
+          </div>
+
+          {post.body && (
+            <div className="rounded-xl bg-amber-50/60 p-4">
+              <p className="text-[11px] font-bold uppercase tracking-wider text-amber-700">
+                {isReview ? "후기 요약" : "신청 방법"}
+              </p>
+              <p className="mt-2 whitespace-pre-line text-sm leading-relaxed text-slate-700">
+                {post.body}
+              </p>
+            </div>
+          )}
+
+          {post.deadline && (
+            <p className="text-xs text-slate-500">
+              마감: {new Date(post.deadline).toLocaleString("ko-KR", {
+                year: "numeric",
+                month: "long",
+                day: "numeric",
+                hour: "2-digit",
+                minute: "2-digit",
+              })}
+            </p>
+          )}
+
+          <StatusButtons postId={post.id} />
+
+          <a
+            href={post.source_url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="block w-full rounded-xl bg-slate-900 px-4 py-4 text-center text-sm font-bold text-white transition hover:bg-slate-800"
+          >
+            원문 보러 가기 →
+          </a>
+          <p className="text-center text-[11px] text-slate-400">
+            * 신청·체험은 외부 인스타·블로그 페이지에서 진행됩니다
+          </p>
+        </div>
+      </article>
+    </main>
+  );
+}
