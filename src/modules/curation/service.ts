@@ -7,9 +7,11 @@ import "server-only";
 import {
   selectAllPosts,
   selectPostByIdAdmin,
+  selectPendingPosts,
+  selectStatusCounts,
   type PostInsertInput,
 } from "./repository";
-import type { Post } from "@/shared/types/post";
+import type { Post, SourceType } from "@/shared/types/post";
 
 export async function listAllPosts(): Promise<Post[]> {
   return selectAllPosts();
@@ -17,6 +19,14 @@ export async function listAllPosts(): Promise<Post[]> {
 
 export async function getPostForAdmin(id: string): Promise<Post | null> {
   return selectPostByIdAdmin(id);
+}
+
+export async function listPendingPosts(filter?: SourceType): Promise<Post[]> {
+  return selectPendingPosts(filter);
+}
+
+export async function getCounts() {
+  return selectStatusCounts();
 }
 
 export type { PostInsertInput };

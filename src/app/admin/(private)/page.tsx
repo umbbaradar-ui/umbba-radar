@@ -4,9 +4,13 @@
 // ============================================
 
 import Link from "next/link";
-import { listAllPosts } from "@/modules/curation/service";
+import { listAllPosts, getCounts } from "@/modules/curation/service";
 import { deletePostAction } from "@/modules/curation/actions";
-import { STAGE_LABELS, TYPE_LABELS } from "@/shared/types/post";
+import {
+  STAGE_LABELS,
+  TYPE_LABELS,
+  SOURCE_TYPE_LABELS,
+} from "@/shared/types/post";
 import type { PostStatus } from "@/shared/types/post";
 
 interface PageProps {
@@ -31,15 +35,7 @@ export const dynamic = "force-dynamic";
 
 export default async function AdminDashboard({ searchParams }: PageProps) {
   const { ok } = await searchParams;
-  const posts = await listAllPosts();
-
-  const counts = posts.reduce<Record<PostStatus, number>>(
-    (acc, p) => {
-      acc[p.status] = (acc[p.status] ?? 0) + 1;
-      return acc;
-    },
-    { draft: 0, pending: 0, published: 0, expired: 0 }
-  );
+  const [posts, counts] = await Promise.all([listAllPosts(), getCounts()]);
 
   const okMessage =
     ok === "created"
@@ -64,16 +60,32 @@ export default async function AdminDashboard({ searchParams }: PageProps) {
             카드 관리
           </h1>
           <p className="mt-1 text-xs text-slate-500">
-            전체 {posts.length}건 · 발행 {counts.published} · 초안 {counts.draft}{" "}
-            · 승인대기 {counts.pending} · 마감 {counts.expired}
+            전체 {posts.length}건 · 발행 {counts.byStatus.published} · 초안{" "}
+            {counts.byStatus.draft} · 승인대기 {counts.byStatus.pending} · 마감{" "}
+            {counts.byStatus.expired}
+          </p>
+          <p className="mt-0.5 text-xs text-slate-400">
+            채널별: {SOURCE_TYPE_LABELS.admin} {counts.bySource.admin} ·{" "}
+            {SOURCE_TYPE_LABELS.ingestion} {counts.bySource.ingestion} ·{" "}
+            {SOURCE_TYPE_LABELS.submission} {counts.bySource.submission}
           </p>
         </div>
-        <Link
-          href="/admin/new"
-          className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-bold text-white transition hover:bg-slate-800"
-        >
-          + 새 카드
-        </Link>
+        <div className="flex gap-2">
+          {counts.byStatus.pending > 0 && (
+            <Link
+              href="/admin/queue"
+              className="rounded-xl bg-amber-100 px-4 py-2 text-sm font-bold text-amber-800 transition hover:bg-amber-200"
+            >
+              승인 대기 {counts.byStatus.pending} →
+            </Link>
+          )}
+          <Link
+            href="/admin/new"
+            className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-bold text-white transition hover:bg-slate-800"
+          >
+            + 새 카드
+          </Link>
+        </div>
       </header>
 
       <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">

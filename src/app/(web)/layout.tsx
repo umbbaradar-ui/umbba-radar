@@ -37,6 +37,12 @@ export default async function WebLayout({
             >
               내 카드
             </Link>
+            <Link
+              href="/submit"
+              className="rounded-full bg-rose-50 px-3 py-1.5 font-medium text-rose-700 transition hover:bg-rose-100"
+            >
+              제보하기
+            </Link>
             <div className="ml-2">
               <UserMenu user={user} />
             </div>
@@ -67,6 +73,10 @@ export default async function WebLayout({
       <footer className="mx-auto hidden max-w-5xl px-5 py-10 text-center text-xs text-slate-400 md:block">
         <p>엄빠레이더 · 부모님 대신 스캔 중</p>
         <p className="mt-2 space-x-3">
+          <Link href="/submit" className="hover:text-slate-600 hover:underline">
+            혜택 제보하기
+          </Link>
+          <span aria-hidden="true">·</span>
           <Link href="/terms" className="hover:text-slate-600 hover:underline">
             이용약관
           </Link>

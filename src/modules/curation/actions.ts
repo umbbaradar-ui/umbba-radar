@@ -12,8 +12,10 @@ import {
   insertPost,
   updatePost,
   deletePost,
+  approvePost,
   type PostInsertInput,
 } from "./repository";
+import { getServerSupabase } from "@/shared/db/supabase-ssr";
 import type { PostStatus } from "@/shared/types/post";
 
 const ADMIN_COOKIE = "umbba-admin";
@@ -100,10 +102,57 @@ export async function createPostAction(formData: FormData): Promise<void> {
   if (!input.title || !input.source_url) {
     redirect("/admin/new?error=required");
   }
-  await insertPost(input);
+  await insertPost({ ...input, source_type: "admin" });
   revalidatePath("/");
   revalidatePath("/admin");
   redirect("/admin?ok=created");
+}
+
+// ============================================
+// 승인 (pending → published)
+// ============================================
+export async function approvePostAction(id: string): Promise<void> {
+  await ensureAdmin();
+  await approvePost(id);
+  revalidatePath("/");
+  revalidatePath("/admin");
+  revalidatePath("/admin/queue");
+  redirect("/admin/queue?ok=approved");
+}
+
+// ============================================
+// 사용자 제보 (공개 — 인증 없음)
+// 항상 status='pending', source_type='submission'
+// ============================================
+export async function submitPostAction(formData: FormData): Promise<void> {
+  const input = parseFormToPost(formData);
+  if (!input.title || !input.source_url) {
+    redirect("/submit?error=required");
+  }
+
+  // 로그인 사용자라면 user_id 함께
+  let submitterUserId: string | null = null;
+  try {
+    const supabase = await getServerSupabase();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    submitterUserId = user?.id ?? null;
+  } catch {
+    // 로그인 안 됨 — 익명 제보로 진행
+  }
+
+  const handle = formData.get("submitter_handle")?.toString().trim() || null;
+
+  await insertPost({
+    ...input,
+    status: "pending", // 강제
+    source_type: "submission", // 강제
+    submitter_handle: handle,
+    submitter_user_id: submitterUserId,
+  });
+  revalidatePath("/admin/queue");
+  redirect("/submit/thanks");
 }
 
 export async function updatePostAction(

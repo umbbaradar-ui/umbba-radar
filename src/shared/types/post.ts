@@ -7,6 +7,14 @@ export type PostKind = 'recruiting' | 'review' | 'group_buy' | 'sponsored_ad'
 
 export type PostStatus = 'draft' | 'pending' | 'published' | 'expired'
 
+export type SourceType = 'admin' | 'ingestion' | 'submission'
+
+export const SOURCE_TYPE_LABELS: Record<SourceType, string> = {
+  admin: '관리자',
+  ingestion: '자동수집',
+  submission: '제보',
+}
+
 export type StageCategory =
   | 'pregnancy'
   | 'newborn'
@@ -39,6 +47,9 @@ export interface Post {
   pinned_until: string | null
   status: PostStatus
   application_mode: 'external' | 'internal'
+  source_type: SourceType
+  submitter_handle: string | null
+  submitter_user_id: string | null
   created_at: string
   updated_at: string
 }

@@ -42,6 +42,12 @@ export default async function AdminPrivateLayout({
               카드 목록
             </Link>
             <Link
+              href="/admin/queue"
+              className="rounded-full px-3 py-1 text-xs font-medium text-slate-600 hover:bg-slate-100"
+            >
+              승인 대기함
+            </Link>
+            <Link
               href="/admin/new"
               className="rounded-full px-3 py-1 text-xs font-medium text-slate-600 hover:bg-slate-100"
             >
