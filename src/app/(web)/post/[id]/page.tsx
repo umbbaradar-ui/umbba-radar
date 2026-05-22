@@ -10,6 +10,7 @@ import { getPost } from "@/modules/content/service";
 import { StatusButtons } from "@/modules/personalization/ui/StatusButtons";
 import { CardClickTracker } from "@/modules/analytics/ui/CardClickTracker";
 import { ExternalLinkButton } from "@/modules/analytics/ui/ExternalLinkButton";
+import { AdSlot } from "@/modules/advertising/ui/AdSlot";
 import { STAGE_LABELS, TYPE_LABELS } from "@/shared/types/post";
 
 export const revalidate = 60;
@@ -145,6 +146,11 @@ export default async function PostDetailPage({ params }: PageProps) {
           </p>
         </div>
       </article>
+
+      {/* 광고: 상세 페이지 하단 (Phase 3 활성) */}
+      <div className="mt-6">
+        <AdSlot id="detail_bottom" context={{ post_id: post.id }} />
+      </div>
     </main>
   );
 }

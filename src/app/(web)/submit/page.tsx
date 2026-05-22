@@ -5,6 +5,7 @@
 // ============================================
 
 import { submitPostAction } from "@/modules/curation/actions";
+import { AdSlot } from "@/modules/advertising/ui/AdSlot";
 import { STAGE_LABELS, TYPE_LABELS } from "@/shared/types/post";
 
 interface PageProps {
@@ -18,6 +19,7 @@ export default async function SubmitPage({ searchParams }: PageProps) {
 
   return (
     <main className="mx-auto max-w-2xl px-5 py-6">
+      <AdSlot id="submit_top" />
       <header className="mb-6">
         <h1 className="text-xl font-extrabold tracking-tight text-slate-900">
           혜택 제보하기

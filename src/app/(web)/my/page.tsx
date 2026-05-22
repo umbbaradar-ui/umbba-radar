@@ -5,10 +5,18 @@
 
 import { listPosts } from "@/modules/content/service";
 import { MyPostsList } from "@/modules/personalization/ui/MyPostsList";
+import { AdSlot } from "@/modules/advertising/ui/AdSlot";
 
 export const revalidate = 60;
 
 export default async function MyPage() {
   const allPosts = await listPosts();
-  return <MyPostsList posts={allPosts} />;
+  return (
+    <>
+      <div className="mx-auto max-w-5xl px-5 pt-6">
+        <AdSlot id="my_top" />
+      </div>
+      <MyPostsList posts={allPosts} />
+    </>
+  );
 }
