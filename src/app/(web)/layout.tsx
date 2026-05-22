@@ -1,11 +1,11 @@
 // ============================================
-// (web) 채널 레이아웃 — 상단 네비 + 로그인 상태
-// 토스 미니앱 채널은 별도의 (toss) 레이아웃을 가짐
+// (web) 채널 레이아웃 — 데스크탑 상단 네비 + 모바일 하단 탭 네비
 // ============================================
 
 import Link from "next/link";
 import { getCurrentUser } from "@/modules/user/service";
 import { UserMenu } from "@/modules/user/ui/UserMenu";
+import { BottomTabNav } from "./_components/BottomTabNav";
 
 export default async function WebLayout({
   children,
@@ -14,7 +14,8 @@ export default async function WebLayout({
 
   return (
     <>
-      <nav className="sticky top-0 z-20 border-b border-amber-100 bg-white/85 backdrop-blur">
+      {/* 데스크탑 상단 네비 (md+에서만 보임) */}
+      <nav className="sticky top-0 z-20 hidden border-b border-amber-100 bg-white/85 backdrop-blur md:block">
         <div className="mx-auto flex max-w-5xl items-center justify-between px-5 py-3.5">
           <Link
             href="/"
@@ -42,10 +43,33 @@ export default async function WebLayout({
           </div>
         </div>
       </nav>
-      {children}
-      <footer className="mx-auto max-w-5xl px-5 py-10 text-center text-xs text-slate-400">
+
+      {/* 모바일 상단 미니 헤더 (md 미만에서만) */}
+      <div className="pt-safe sticky top-0 z-20 border-b border-amber-100 bg-white/85 backdrop-blur md:hidden">
+        <div className="flex items-center justify-between px-4 py-3">
+          <Link
+            href="/"
+            className="flex items-center gap-1.5 text-sm font-extrabold tracking-tight text-slate-900"
+          >
+            <span aria-hidden="true">📡</span>
+            <span>엄빠레이더</span>
+          </Link>
+          <span className="text-[10px] text-slate-400">
+            놓치는 혜택은 없게
+          </span>
+        </div>
+      </div>
+
+      {/* 본문 — 모바일은 하단 탭에 가려지지 않게 pb-20 */}
+      <div className="pb-20 md:pb-0">{children}</div>
+
+      {/* 데스크탑 푸터 (모바일에선 하단 탭이 푸터 역할) */}
+      <footer className="mx-auto hidden max-w-5xl px-5 py-10 text-center text-xs text-slate-400 md:block">
         엄빠레이더 · 부모님 대신 스캔 중
       </footer>
+
+      {/* 모바일 하단 탭 네비 */}
+      <BottomTabNav user={user} />
     </>
   );
 }

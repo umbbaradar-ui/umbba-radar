@@ -1,9 +1,11 @@
 // ============================================
 // PostCard — 카드 1개를 그리드에 그리는 컴포넌트
 // 클릭 시 외부 링크가 아닌 내부 상세 페이지로 이동
+// 썸네일은 ViewTransition으로 상세 페이지로 모핑
 // ============================================
 
 import Link from "next/link";
+import { ViewTransition } from "react";
 import type { Post } from "@/shared/types/post";
 import { STAGE_LABELS, TYPE_LABELS } from "@/shared/types/post";
 
@@ -31,30 +33,32 @@ export function PostCard({ post }: Props) {
       href={`/post/${post.id}`}
       className="group flex flex-col overflow-hidden rounded-2xl bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
     >
-      <div className="relative aspect-square w-full overflow-hidden bg-gray-100">
-        {post.thumbnail_url && (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={post.thumbnail_url}
-            alt={post.title}
-            className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
-          />
-        )}
-        {dday && (
-          <span
-            className={`absolute left-3 top-3 rounded-full px-3 py-1 text-xs font-bold text-white ${
-              dday.urgent ? "bg-rose-500" : "bg-slate-700/80"
-            }`}
-          >
-            {dday.label}
-          </span>
-        )}
-        {isReview && (
-          <span className="absolute right-3 top-3 rounded-full bg-amber-400 px-3 py-1 text-xs font-bold text-slate-900">
-            후기
-          </span>
-        )}
-      </div>
+      <ViewTransition name={`post-thumb-${post.id}`}>
+        <div className="relative aspect-square w-full overflow-hidden bg-gray-100">
+          {post.thumbnail_url && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={post.thumbnail_url}
+              alt={post.title}
+              className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
+            />
+          )}
+          {dday && (
+            <span
+              className={`absolute left-3 top-3 rounded-full px-3 py-1 text-xs font-bold text-white ${
+                dday.urgent ? "bg-rose-500" : "bg-slate-700/80"
+              }`}
+            >
+              {dday.label}
+            </span>
+          )}
+          {isReview && (
+            <span className="absolute right-3 top-3 rounded-full bg-amber-400 px-3 py-1 text-xs font-bold text-slate-900">
+              후기
+            </span>
+          )}
+        </div>
+      </ViewTransition>
 
       <div className="flex flex-1 flex-col gap-2 p-4">
         {post.brand_name && (

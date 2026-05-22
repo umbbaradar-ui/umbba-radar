@@ -1,8 +1,10 @@
 // ============================================
 // 카드 상세 페이지 — /post/[id]
+// 메인의 썸네일이 hero 이미지로 모핑되는 ViewTransition
 // ============================================
 
 import Link from "next/link";
+import { ViewTransition } from "react";
 import { notFound } from "next/navigation";
 import { getPost } from "@/modules/content/service";
 import { StatusButtons } from "@/modules/personalization/ui/StatusButtons";
@@ -44,33 +46,35 @@ export default async function PostDetailPage({ params }: PageProps) {
       </Link>
 
       <article className="overflow-hidden rounded-2xl bg-white shadow-sm">
-        <div className="relative aspect-[4/3] w-full overflow-hidden bg-gray-100 sm:aspect-square">
-          {post.thumbnail_url && (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={post.thumbnail_url}
-              alt={post.title}
-              className="h-full w-full object-cover"
-            />
-          )}
-          {dday && (
-            <span
-              className={`absolute left-4 top-4 rounded-full px-4 py-1.5 text-sm font-bold text-white ${
-                dday !== "마감" &&
-                Number.parseInt(dday.replace("D-", ""), 10) <= 3
-                  ? "bg-rose-500"
-                  : "bg-slate-700/80"
-              }`}
-            >
-              {dday}
-            </span>
-          )}
-          {isReview && (
-            <span className="absolute right-4 top-4 rounded-full bg-amber-400 px-4 py-1.5 text-sm font-bold text-slate-900">
-              후기
-            </span>
-          )}
-        </div>
+        <ViewTransition name={`post-thumb-${post.id}`}>
+          <div className="relative aspect-[4/3] w-full overflow-hidden bg-gray-100 sm:aspect-square">
+            {post.thumbnail_url && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={post.thumbnail_url}
+                alt={post.title}
+                className="h-full w-full object-cover"
+              />
+            )}
+            {dday && (
+              <span
+                className={`absolute left-4 top-4 rounded-full px-4 py-1.5 text-sm font-bold text-white ${
+                  dday !== "마감" &&
+                  Number.parseInt(dday.replace("D-", ""), 10) <= 3
+                    ? "bg-rose-500"
+                    : "bg-slate-700/80"
+                }`}
+              >
+                {dday}
+              </span>
+            )}
+            {isReview && (
+              <span className="absolute right-4 top-4 rounded-full bg-amber-400 px-4 py-1.5 text-sm font-bold text-slate-900">
+                후기
+              </span>
+            )}
+          </div>
+        </ViewTransition>
 
         <div className="space-y-5 p-6">
           {post.brand_name && (

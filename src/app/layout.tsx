@@ -30,6 +30,7 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   maximumScale: 5,
+  viewportFit: "cover", // iOS 노치 영역까지 사용 (Safe Area는 globals.css에서 처리)
 };
 
 export default function RootLayout({
