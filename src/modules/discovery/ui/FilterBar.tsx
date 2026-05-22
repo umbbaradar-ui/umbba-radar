@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { STAGE_LABELS, TYPE_LABELS } from "@/shared/types/post";
+import { track } from "@/modules/analytics/service";
 
 interface Props {
   stage: string;
@@ -17,6 +18,12 @@ export function FilterBar({ stage, type }: Props) {
     if (current.stage && current.stage !== "all") params.set("stage", current.stage);
     if (current.type && current.type !== "all") params.set("type", current.type);
     const qs = params.toString();
+    track("filter_change", {
+      key,
+      value,
+      stage: current.stage,
+      type: current.type,
+    });
     router.push(qs ? `/?${qs}` : "/");
   }
 

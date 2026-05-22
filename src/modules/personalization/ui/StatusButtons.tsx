@@ -9,6 +9,7 @@ import {
   subscribe,
   type UserPostStatusValue,
 } from "../service";
+import { track } from "@/modules/analytics/service";
 
 interface Props {
   postId: string;
@@ -29,10 +30,12 @@ export function StatusButtons({ postId }: Props) {
     if (status === target) {
       unmark(postId);
       setStatus(null);
+      track("status_unmark", { post_id: postId, previous: target });
     } else {
       if (target === "applied") markApplied(postId);
       else markInterested(postId);
       setStatus(target);
+      track("status_mark", { post_id: postId, status: target });
     }
   }
 

@@ -65,7 +65,16 @@ export default async function WebLayout({
 
       {/* 데스크탑 푸터 (모바일에선 하단 탭이 푸터 역할) */}
       <footer className="mx-auto hidden max-w-5xl px-5 py-10 text-center text-xs text-slate-400 md:block">
-        엄빠레이더 · 부모님 대신 스캔 중
+        <p>엄빠레이더 · 부모님 대신 스캔 중</p>
+        <p className="mt-2 space-x-3">
+          <Link href="/terms" className="hover:text-slate-600 hover:underline">
+            이용약관
+          </Link>
+          <span aria-hidden="true">·</span>
+          <Link href="/privacy" className="hover:text-slate-600 hover:underline">
+            개인정보처리방침
+          </Link>
+        </p>
       </footer>
 
       {/* 모바일 하단 탭 네비 */}

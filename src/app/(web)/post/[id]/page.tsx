@@ -8,6 +8,8 @@ import { ViewTransition } from "react";
 import { notFound } from "next/navigation";
 import { getPost } from "@/modules/content/service";
 import { StatusButtons } from "@/modules/personalization/ui/StatusButtons";
+import { CardClickTracker } from "@/modules/analytics/ui/CardClickTracker";
+import { ExternalLinkButton } from "@/modules/analytics/ui/ExternalLinkButton";
 import { STAGE_LABELS, TYPE_LABELS } from "@/shared/types/post";
 
 export const revalidate = 60;
@@ -38,6 +40,7 @@ export default async function PostDetailPage({ params }: PageProps) {
 
   return (
     <main className="mx-auto max-w-2xl px-5 py-4">
+      <CardClickTracker postId={post.id} />
       <Link
         href="/"
         className="mb-4 inline-flex items-center gap-1 text-sm text-slate-500 transition hover:text-slate-900"
@@ -130,14 +133,13 @@ export default async function PostDetailPage({ params }: PageProps) {
 
           <StatusButtons postId={post.id} />
 
-          <a
-            href={post.source_url}
-            target="_blank"
-            rel="noopener noreferrer"
+          <ExternalLinkButton
+            postId={post.id}
+            sourceUrl={post.source_url}
             className="block w-full rounded-xl bg-slate-900 px-4 py-4 text-center text-sm font-bold text-white transition hover:bg-slate-800"
           >
             원문 보러 가기 →
-          </a>
+          </ExternalLinkButton>
           <p className="text-center text-[11px] text-slate-400">
             * 신청·체험은 외부 인스타·블로그 페이지에서 진행됩니다
           </p>

@@ -2,11 +2,13 @@
 
 import { useState } from "react";
 import { getBrowserSupabase } from "@/shared/db/supabase-browser";
+import { track } from "@/modules/analytics/service";
 
 export function GoogleSignInButton({ next }: { next?: string }) {
   const [loading, setLoading] = useState(false);
 
   async function handleClick() {
+    track("login_attempt", { provider: "google" });
     setLoading(true);
     const supabase = getBrowserSupabase();
     const redirectTo = `${window.location.origin}/auth/callback${
@@ -18,6 +20,7 @@ export function GoogleSignInButton({ next }: { next?: string }) {
     });
     if (error) {
       setLoading(false);
+      track("login_error", { provider: "google", message: error.message });
       alert(`로그인에 실패했어요: ${error.message}`);
     }
   }
