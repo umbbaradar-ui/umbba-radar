@@ -14,9 +14,9 @@ export default async function AdminLoginPage({ searchParams }: PageProps) {
 
   const errorMessage =
     error === "invalid"
-      ? "비밀번호가 맞지 않아요."
+      ? "아이디 또는 비밀번호가 맞지 않아요."
       : error === "notconfigured"
-        ? "ADMIN_PASSWORD 환경변수가 설정되지 않았어요. .env.local과 Vercel에 추가하세요."
+        ? "ADMIN_ID·ADMIN_PASSWORD 환경변수가 설정되지 않았어요. .env.local과 Vercel에 추가하세요."
         : null;
 
   return (
@@ -30,15 +30,25 @@ export default async function AdminLoginPage({ searchParams }: PageProps) {
           <h1 className="text-lg font-extrabold tracking-tight text-slate-900">
             엄빠레이더 관리자
           </h1>
-          <p className="text-xs text-slate-500">비밀번호를 입력하세요</p>
+          <p className="text-xs text-slate-500">아이디와 비밀번호를 입력하세요</p>
         </header>
+
+        <input
+          type="text"
+          name="id"
+          required
+          autoFocus
+          autoComplete="username"
+          placeholder="아이디"
+          className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-rose-400"
+        />
 
         <input
           type="password"
           name="password"
           required
-          autoFocus
-          placeholder="관리자 비밀번호"
+          autoComplete="current-password"
+          placeholder="비밀번호"
           className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-rose-400"
         />
 

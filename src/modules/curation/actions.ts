@@ -61,19 +61,21 @@ function parseFormToPost(formData: FormData): PostInsertInput {
 }
 
 // ============================================
-// 로그인
+// 로그인 — 아이디 + 비밀번호
 // ============================================
 export async function loginAction(formData: FormData): Promise<void> {
-  const expected = process.env.ADMIN_PASSWORD;
-  if (!expected) {
+  const expectedId = process.env.ADMIN_ID;
+  const expectedPassword = process.env.ADMIN_PASSWORD;
+  if (!expectedId || !expectedPassword) {
     redirect("/admin/login?error=notconfigured");
   }
+  const id = formData.get("id")?.toString();
   const password = formData.get("password")?.toString();
-  if (password !== expected) {
+  if (id !== expectedId || password !== expectedPassword) {
     redirect("/admin/login?error=invalid");
   }
   const cookieStore = await cookies();
-  cookieStore.set(ADMIN_COOKIE, expected, {
+  cookieStore.set(ADMIN_COOKIE, expectedPassword, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",

@@ -4,26 +4,30 @@
 
 ---
 
-## 1. 관리자 비밀번호 설정 (Track A — 필수)
+## 1. 관리자 아이디·비밀번호 설정 (Track A — 필수)
 
-`/admin` 페이지에 접근하려면 환경변수 한 개를 더 설정해야 해요.
+`/admin` 페이지는 **아이디 + 비밀번호** 2단 인증입니다.
 
-### 로컬 (.env.local)
-프로젝트 루트의 `.env.local` 파일을 열고 한 줄 추가:
+### 로컬 (.env.local) — 이미 설정됨
+다음 두 줄이 이미 `.env.local` 끝에 추가돼 있어요:
 ```
-ADMIN_PASSWORD=원하는강력한비밀번호
+ADMIN_ID=admin
+ADMIN_PASSWORD=1234
 ```
 
-### Vercel
+> ⚠️ `1234`는 **임시값**. 출시 전에 반드시 강한 값으로 교체하세요 (예: 16자 이상 영문·숫자·특수문자).
+
+### Vercel (배포본에 적용하려면 필수)
 1. https://vercel.com/dashboard → `umbba-radar` 프로젝트 → **Settings** → **Environment Variables**
-2. **Add New**
-   - Key: `ADMIN_PASSWORD`
-   - Value: 위에서 정한 비밀번호 (같은 값)
-   - Environments: Production, Preview, Development 전부 체크
+2. **Add New** 를 두 번 반복해서 두 개 추가:
+   - Key: `ADMIN_ID` / Value: `admin` / Environments: Production·Preview·Development 모두 체크
+   - Key: `ADMIN_PASSWORD` / Value: `1234` / 동일하게 모두 체크
 3. Save
 4. 좌측 **Deployments** → 최신 배포 옆 점 3개 → **Redeploy** (env 변경은 재배포 필요)
 
-확인: `https://umbba-radar.vercel.app/admin/login` 접속 → 비밀번호 입력 → 카드 관리 페이지로 이동되면 성공.
+### 확인
+- 로컬: `npm run dev` 재시작 후 `http://localhost:3000/admin/login` → 아이디 `admin` / 비밀번호 `1234` 입력 → 대시보드 이동
+- 배포본: Vercel env 등록 + Redeploy 후 `https://umbba-radar.vercel.app/admin/login` 동일
 
 ---
 
