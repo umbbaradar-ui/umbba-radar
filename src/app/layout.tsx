@@ -14,6 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://umbba-radar.vercel.app"),
   title: "엄빠레이더 — 놓치는 혜택은 없게",
   description:
     "임신·출산·육아 협찬과 체험단, 후기를 한곳에 모아 보여드려요. 부모님 대신 스캔 중.",
@@ -23,6 +24,21 @@ export const metadata: Metadata = {
     capable: true,
     statusBarStyle: "default",
     title: "엄빠레이더",
+  },
+  openGraph: {
+    title: "엄빠레이더 — 놓치는 혜택은 없게",
+    description:
+      "임신·출산·육아 협찬과 체험단, 후기를 한곳에 모아 보여드려요.",
+    url: "https://umbba-radar.vercel.app",
+    siteName: "엄빠레이더",
+    locale: "ko_KR",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "엄빠레이더 — 놓치는 혜택은 없게",
+    description:
+      "임신·출산·육아 협찬과 체험단, 후기를 한곳에 모아 보여드려요.",
   },
 };
 

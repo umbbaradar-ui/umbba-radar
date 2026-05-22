@@ -1,16 +1,15 @@
 // ============================================
-// PostCard 스켈레톤 — 데이터 로딩 중 표시
+// PostCard 스켈레톤 — 새 카드 디자인(이미지 도미넌트 4:5)에 맞춤
 // ============================================
 
 export function PostCardSkeleton() {
   return (
-    <div className="flex flex-col overflow-hidden rounded-2xl bg-white shadow-sm">
-      <div className="skeleton aspect-square w-full" />
-      <div className="flex flex-1 flex-col gap-2 p-4">
-        <div className="skeleton h-3 w-16 rounded" />
-        <div className="skeleton h-4 w-full rounded" />
-        <div className="skeleton h-4 w-3/4 rounded" />
-        <div className="mt-2 flex gap-1.5">
+    <div className="flex flex-col overflow-hidden rounded-3xl bg-white shadow-[0_2px_12px_rgba(15,23,42,0.06)]">
+      <div className="skeleton aspect-[4/5] w-full" />
+      <div className="flex flex-1 flex-col gap-2 px-4 py-3">
+        <div className="skeleton h-3 w-full rounded" />
+        <div className="skeleton h-3 w-2/3 rounded" />
+        <div className="mt-1 flex gap-1">
           <div className="skeleton h-4 w-10 rounded-full" />
           <div className="skeleton h-4 w-12 rounded-full" />
         </div>

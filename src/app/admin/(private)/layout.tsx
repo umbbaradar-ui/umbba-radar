@@ -7,6 +7,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { logoutAction } from "@/modules/curation/actions";
+import { Logo } from "@/shared/ui/Logo";
 
 const ADMIN_COOKIE = "umbba-admin";
 
@@ -32,7 +33,7 @@ export default async function AdminPrivateLayout({
               href="/admin"
               className="flex items-center gap-2 text-sm font-extrabold tracking-tight text-slate-900"
             >
-              <span aria-hidden="true">📡</span>
+              <Logo size={20} className="text-rose-500" />
               <span>엄빠레이더 · 관리자</span>
             </Link>
             <Link

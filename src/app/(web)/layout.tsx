@@ -5,6 +5,7 @@
 import Link from "next/link";
 import { getCurrentUser } from "@/modules/user/service";
 import { UserMenu } from "@/modules/user/ui/UserMenu";
+import { Logo } from "@/shared/ui/Logo";
 import { BottomTabNav } from "./_components/BottomTabNav";
 
 export default async function WebLayout({
@@ -21,7 +22,7 @@ export default async function WebLayout({
             href="/"
             className="flex items-center gap-2 text-base font-extrabold tracking-tight text-slate-900"
           >
-            <span aria-hidden="true">📡</span>
+            <Logo size={22} className="text-rose-500" />
             <span>엄빠레이더</span>
           </Link>
           <div className="flex items-center gap-1 text-sm">
@@ -57,7 +58,7 @@ export default async function WebLayout({
             href="/"
             className="flex items-center gap-1.5 text-sm font-extrabold tracking-tight text-slate-900"
           >
-            <span aria-hidden="true">📡</span>
+            <Logo size={22} className="text-rose-500" />
             <span>엄빠레이더</span>
           </Link>
           <span className="text-[10px] text-slate-400">

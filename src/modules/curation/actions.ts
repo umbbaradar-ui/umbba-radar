@@ -16,6 +16,7 @@ import {
   type PostInsertInput,
 } from "./repository";
 import { getServerSupabase } from "@/shared/db/supabase-ssr";
+import { supabaseServer } from "@/shared/db/supabase-server";
 import type { PostStatus } from "@/shared/types/post";
 
 const ADMIN_COOKIE = "umbba-admin";
@@ -177,4 +178,59 @@ export async function deletePostAction(id: string): Promise<void> {
   revalidatePath("/");
   revalidatePath("/admin");
   redirect("/admin?ok=deleted");
+}
+
+// ============================================
+// 이미지 업로드 — Supabase Storage 'card-images' 버킷
+// 관리자 인증 필수. 5MB 이하 이미지 한 장 업로드 → public URL 반환
+// ============================================
+
+export type UploadImageResult =
+  | { ok: true; url: string }
+  | { ok: false; error: string };
+
+export async function uploadImageAction(
+  formData: FormData
+): Promise<UploadImageResult> {
+  try {
+    await ensureAdmin();
+  } catch {
+    return { ok: false, error: "관리자 인증이 필요해요." };
+  }
+
+  const file = formData.get("image");
+  if (!file || !(file instanceof File)) {
+    return { ok: false, error: "이미지 파일이 없어요." };
+  }
+  if (file.size > 5 * 1024 * 1024) {
+    return { ok: false, error: "5MB 이하 이미지만 업로드 가능해요." };
+  }
+  if (!file.type.startsWith("image/")) {
+    return { ok: false, error: "이미지 형식이 아니에요." };
+  }
+
+  const ext = (file.name.split(".").pop() ?? "jpg").toLowerCase();
+  const safeExt = ["jpg", "jpeg", "png", "webp", "gif"].includes(ext)
+    ? ext
+    : "jpg";
+  const filename = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${safeExt}`;
+
+  const buffer = Buffer.from(await file.arrayBuffer());
+
+  const { error: uploadError } = await supabaseServer.storage
+    .from("card-images")
+    .upload(filename, buffer, {
+      contentType: file.type,
+      cacheControl: "31536000", // 1년
+    });
+
+  if (uploadError) {
+    return { ok: false, error: `업로드 실패: ${uploadError.message}` };
+  }
+
+  const {
+    data: { publicUrl },
+  } = supabaseServer.storage.from("card-images").getPublicUrl(filename);
+
+  return { ok: true, url: publicUrl };
 }

@@ -5,6 +5,7 @@
 
 import Link from "next/link";
 import { GoogleSignInButton } from "@/modules/user/ui/SignInButton";
+import { Logo } from "@/shared/ui/Logo";
 
 interface PageProps {
   searchParams: Promise<{ next?: string }>;
@@ -17,7 +18,9 @@ export default async function LoginPage({ searchParams }: PageProps) {
     <main className="mx-auto max-w-md px-5 py-10">
       <div className="rounded-2xl bg-white p-6 shadow-sm">
         <header className="mb-6 space-y-1 text-center">
-          <p className="text-2xl">📡</p>
+          <div className="flex justify-center">
+            <Logo size={36} className="text-rose-500" />
+          </div>
           <h1 className="text-lg font-extrabold tracking-tight text-slate-900">
             엄빠레이더에 로그인
           </h1>

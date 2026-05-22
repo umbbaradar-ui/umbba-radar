@@ -5,6 +5,7 @@
 
 import type { Post } from "@/shared/types/post";
 import { STAGE_LABELS, TYPE_LABELS } from "@/shared/types/post";
+import { ImageUploadField } from "./ImageUploadField";
 
 interface Props {
   post?: Post; // 수정 시 prefill
@@ -67,13 +68,10 @@ export function PostForm({ post, action, submitLabel, errorMessage }: Props) {
       </Section>
 
       <Section title="이미지·링크">
-        <Field label="썸네일 URL">
-          <input
-            type="url"
+        <Field label="썸네일 이미지">
+          <ImageUploadField
             name="thumbnail_url"
-            defaultValue={post?.thumbnail_url ?? ""}
-            placeholder="https://..."
-            className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+            defaultValue={post?.thumbnail_url}
           />
         </Field>
 

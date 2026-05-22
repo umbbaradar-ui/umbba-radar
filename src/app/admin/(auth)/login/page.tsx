@@ -4,6 +4,7 @@
 // ============================================
 
 import { loginAction } from "@/modules/curation/actions";
+import { Logo } from "@/shared/ui/Logo";
 
 interface PageProps {
   searchParams: Promise<{ error?: string }>;
@@ -26,7 +27,9 @@ export default async function AdminLoginPage({ searchParams }: PageProps) {
         className="w-full max-w-sm space-y-4 rounded-2xl bg-white p-6 shadow-sm"
       >
         <header className="space-y-1 text-center">
-          <p className="text-2xl">📡</p>
+          <div className="flex justify-center">
+            <Logo size={36} className="text-rose-500" />
+          </div>
           <h1 className="text-lg font-extrabold tracking-tight text-slate-900">
             엄빠레이더 관리자
           </h1>
