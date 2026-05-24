@@ -37,7 +37,7 @@ export default async function PostDetailPage({ params }: PageProps) {
   const isReview = post.kind === "review";
 
   return (
-    <main className="mx-auto max-w-2xl px-5 py-4">
+    <main className="mx-auto max-w-3xl px-4 py-4">
       <CardClickTracker postId={post.id} />
       <ViewGate postId={post.id} loggedIn={Boolean(user)} />
       <Link
@@ -49,7 +49,7 @@ export default async function PostDetailPage({ params }: PageProps) {
 
       <article className="overflow-hidden rounded-2xl bg-white shadow-sm">
         <ViewTransition name={`post-thumb-${post.id}`}>
-          <div className="relative aspect-square w-full overflow-hidden bg-gray-100">
+          <div className="relative aspect-[4/5] w-full overflow-hidden bg-gray-100">
             {post.thumbnail_url && (
               // eslint-disable-next-line @next/next/no-img-element
               <img

@@ -7,7 +7,7 @@ import { PostCardSkeletonGrid } from "@/modules/content/ui/PostCardSkeleton";
 
 export default function HomeLoading() {
   return (
-    <main className="mx-auto max-w-5xl px-5 py-6">
+    <main className="mx-auto max-w-6xl px-4 py-6">
       <header className="mb-5">
         <div className="skeleton h-5 w-40 rounded" />
         <div className="skeleton mt-2 h-3 w-56 rounded" />

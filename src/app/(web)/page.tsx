@@ -40,7 +40,7 @@ export default async function HomePage({ searchParams }: PageProps) {
   const filterActive = stage !== "all" || type !== "all";
 
   return (
-    <main className="mx-auto max-w-5xl px-5 py-6">
+    <main className="mx-auto max-w-6xl px-4 py-6">
       <header className="mb-5">
         <h1 className="text-xl font-extrabold tracking-tight text-slate-900">
           놓치는 혜택은 없게

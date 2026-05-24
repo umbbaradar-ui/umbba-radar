@@ -5,7 +5,7 @@
 export function PostCardSkeleton() {
   return (
     <div className="flex flex-col overflow-hidden rounded-3xl bg-white shadow-[0_2px_12px_rgba(15,23,42,0.06)]">
-      <div className="skeleton aspect-square w-full" />
+      <div className="skeleton aspect-[4/5] w-full" />
       <div className="flex flex-1 flex-col gap-2 px-4 py-3">
         <div className="skeleton h-3 w-full rounded" />
         <div className="skeleton h-3 w-2/3 rounded" />

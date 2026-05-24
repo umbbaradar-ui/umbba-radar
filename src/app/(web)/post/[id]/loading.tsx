@@ -4,11 +4,11 @@
 
 export default function PostDetailLoading() {
   return (
-    <main className="mx-auto max-w-2xl px-5 py-4">
+    <main className="mx-auto max-w-3xl px-4 py-4">
       <div className="skeleton mb-4 h-4 w-20 rounded" />
 
       <article className="overflow-hidden rounded-2xl bg-white shadow-sm">
-        <div className="skeleton aspect-square w-full" />
+        <div className="skeleton aspect-[4/5] w-full" />
         <div className="space-y-5 p-6">
           <div className="skeleton h-3 w-24 rounded" />
           <div className="space-y-2">

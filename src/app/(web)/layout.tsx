@@ -27,7 +27,7 @@ export default async function WebLayout({
 
       {/* 데스크탑 상단 네비 (md+에서만 보임) */}
       <nav className="sticky top-0 z-20 hidden border-b border-amber-100 bg-white/85 backdrop-blur md:block">
-        <div className="mx-auto flex max-w-5xl items-center justify-between px-5 py-3.5">
+        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3.5">
           <Link
             href="/"
             className="flex items-center gap-2 text-base font-extrabold tracking-tight text-slate-900"
@@ -83,7 +83,7 @@ export default async function WebLayout({
       <div className="pb-20 md:pb-0">{children}</div>
 
       {/* 데스크탑 푸터 (모바일에선 하단 탭이 푸터 역할) */}
-      <footer className="mx-auto hidden max-w-5xl px-5 py-10 text-center text-xs text-slate-400 md:block">
+      <footer className="mx-auto hidden max-w-6xl px-4 py-10 text-center text-xs text-slate-400 md:block">
         <p>엄빠레이더 · 부모님 대신 스캔 중</p>
         <p className="mt-2 space-x-3">
           <Link href="/submit" className="hover:text-slate-600 hover:underline">

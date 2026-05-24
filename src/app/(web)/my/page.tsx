@@ -21,7 +21,7 @@ export default async function MyPage() {
 
   return (
     <>
-      <div className="mx-auto max-w-5xl px-5 pt-6">
+      <div className="mx-auto max-w-6xl px-4 pt-6">
         <AdSlot id="my_top" />
       </div>
       <MyPostsList

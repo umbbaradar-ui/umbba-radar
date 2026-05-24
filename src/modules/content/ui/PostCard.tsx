@@ -29,7 +29,7 @@ export function PostCard({ post }: Props) {
     >
       {/* 이미지 영역 — 깔끔하게 이미지만 (배지만 오버레이) */}
       <ViewTransition name={`post-thumb-${post.id}`}>
-        <div className="relative aspect-square w-full overflow-hidden bg-slate-100">
+        <div className="relative aspect-[4/5] w-full overflow-hidden bg-slate-100">
           {post.thumbnail_url ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
