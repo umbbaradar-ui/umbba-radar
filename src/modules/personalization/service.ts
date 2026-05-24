@@ -70,6 +70,17 @@ export function listUserPostStatuses(): StatusMap {
   return readMap();
 }
 
+/** 마이그레이션 후 localStorage 전체 삭제 (로그인 → DB 이관 시 사용) */
+export function clearAllLocal(): void {
+  if (!isBrowser()) return;
+  try {
+    window.localStorage.removeItem(STORAGE_KEY);
+    window.dispatchEvent(new CustomEvent("umbba-radar:status-change"));
+  } catch {
+    // 무시
+  }
+}
+
 /** 상태 변경 구독 (같은 탭 내 동기화) */
 export function subscribe(listener: () => void): () => void {
   if (!isBrowser()) return () => {};

@@ -8,6 +8,8 @@ import { ViewTransition } from "react";
 import { notFound } from "next/navigation";
 import { getPost } from "@/modules/content/service";
 import { StatusButtons } from "@/modules/personalization/ui/StatusButtons";
+import { getUserStatusForPost } from "@/modules/personalization/service-server";
+import { getCurrentUser } from "@/modules/user/service";
 import { CardClickTracker } from "@/modules/analytics/ui/CardClickTracker";
 import { ExternalLinkButton } from "@/modules/analytics/ui/ExternalLinkButton";
 import { AdSlot } from "@/modules/advertising/ui/AdSlot";
@@ -30,11 +32,13 @@ function calcDDay(deadline: string | null): string | null {
 
 export default async function PostDetailPage({ params }: PageProps) {
   const { id } = await params;
-  const post = await getPost(id);
+  const [post, user] = await Promise.all([getPost(id), getCurrentUser()]);
 
   if (!post) {
     notFound();
   }
+
+  const initialStatus = user ? await getUserStatusForPost(post.id) : null;
 
   const dday = calcDDay(post.deadline);
   const isReview = post.kind === "review";
@@ -132,7 +136,11 @@ export default async function PostDetailPage({ params }: PageProps) {
             </p>
           )}
 
-          <StatusButtons postId={post.id} />
+          <StatusButtons
+            postId={post.id}
+            loggedIn={Boolean(user)}
+            initialStatus={initialStatus}
+          />
 
           <ExternalLinkButton
             postId={post.id}

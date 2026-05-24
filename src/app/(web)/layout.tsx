@@ -8,6 +8,7 @@ import { UserMenu } from "@/modules/user/ui/UserMenu";
 import { Logo } from "@/shared/ui/Logo";
 import { BottomTabNav } from "./_components/BottomTabNav";
 import { SplashScreen } from "./_components/SplashScreen";
+import { MigrationOnLogin } from "@/modules/personalization/ui/MigrationOnLogin";
 
 export default async function WebLayout({
   children,
@@ -17,6 +18,7 @@ export default async function WebLayout({
   return (
     <>
       <SplashScreen />
+      {user && <MigrationOnLogin userId={user.id} />}
 
       {/* 데스크탑 상단 네비 (md+에서만 보임) */}
       <nav className="sticky top-0 z-20 hidden border-b border-amber-100 bg-white/85 backdrop-blur md:block">

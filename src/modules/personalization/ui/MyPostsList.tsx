@@ -3,33 +3,51 @@
 import { useEffect, useMemo, useState } from "react";
 import type { Post } from "@/shared/types/post";
 import { PostCard } from "@/modules/content/ui/PostCard";
-import { listUserPostStatuses, subscribe, type UserPostStatusValue } from "../service";
+import {
+  listUserPostStatuses,
+  subscribe,
+  type UserPostStatusValue,
+} from "../service";
 
 interface Props {
   posts: Post[];
+  /** 로그인 사용자면 서버에서 DB로 조회한 statusMap을 prop으로 전달 */
+  loggedIn?: boolean;
+  initialStatusMap?: Record<string, UserPostStatusValue>;
 }
 
 type Tab = UserPostStatusValue;
 
-export function MyPostsList({ posts }: Props) {
+export function MyPostsList({ posts, loggedIn, initialStatusMap }: Props) {
   const [tab, setTab] = useState<Tab>("interested");
-  const [statusMap, setStatusMap] = useState<Record<string, UserPostStatusValue>>({});
-  const [hydrated, setHydrated] = useState(false);
+  const [statusMap, setStatusMap] = useState<
+    Record<string, UserPostStatusValue>
+  >(initialStatusMap ?? {});
+  const [hydrated, setHydrated] = useState(Boolean(loggedIn));
 
   useEffect(() => {
+    if (loggedIn) {
+      // 서버에서 prop으로 받음
+      setHydrated(true);
+      return;
+    }
     setStatusMap(listUserPostStatuses());
     setHydrated(true);
     const unsub = subscribe(() => setStatusMap(listUserPostStatuses()));
     return unsub;
-  }, []);
+  }, [loggedIn]);
 
   const filteredPosts = useMemo(
     () => posts.filter((p) => statusMap[p.id] === tab),
     [posts, statusMap, tab]
   );
 
-  const interestedCount = Object.values(statusMap).filter((s) => s === "interested").length;
-  const appliedCount = Object.values(statusMap).filter((s) => s === "applied").length;
+  const interestedCount = Object.values(statusMap).filter(
+    (s) => s === "interested"
+  ).length;
+  const appliedCount = Object.values(statusMap).filter(
+    (s) => s === "applied"
+  ).length;
 
   return (
     <main className="mx-auto max-w-5xl px-5 py-6">
@@ -38,7 +56,9 @@ export function MyPostsList({ posts }: Props) {
           내가 챙긴 카드
         </h1>
         <p className="mt-1 text-xs text-slate-500">
-          이 기기에 저장돼요. 로그인 기능은 곧 추가됩니다.
+          {loggedIn
+            ? "계정에 저장돼요. 다른 기기에서도 동일하게 보입니다."
+            : "이 기기에만 저장돼요. 로그인하면 모든 기기에서 동기화됩니다."}
         </p>
       </header>
 

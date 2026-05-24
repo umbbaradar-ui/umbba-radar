@@ -2,44 +2,81 @@
 
 import { useEffect, useState } from "react";
 import {
-  getStatus,
-  markApplied,
-  markInterested,
-  unmark,
+  getStatus as getLocalStatus,
+  markApplied as markLocalApplied,
+  markInterested as markLocalInterested,
+  unmark as unmarkLocal,
   subscribe,
   type UserPostStatusValue,
 } from "../service";
+import { markStatusAction, unmarkStatusAction } from "../actions";
 import { track } from "@/modules/analytics/service";
 
 interface Props {
   postId: string;
+  /** 로그인 사용자면 true. 서버 컴포넌트에서 결정해서 prop으로 전달 */
+  loggedIn?: boolean;
+  /** 로그인 사용자면 서버에서 DB 조회 후 초기값 */
+  initialStatus?: UserPostStatusValue | null;
 }
 
-export function StatusButtons({ postId }: Props) {
-  const [status, setStatus] = useState<UserPostStatusValue | null>(null);
-  const [hydrated, setHydrated] = useState(false);
+export function StatusButtons({ postId, loggedIn, initialStatus }: Props) {
+  const [status, setStatus] = useState<UserPostStatusValue | null>(
+    initialStatus ?? null
+  );
+  const [hydrated, setHydrated] = useState(Boolean(loggedIn));
+  const [pending, setPending] = useState(false);
 
   useEffect(() => {
-    setStatus(getStatus(postId));
+    if (loggedIn) {
+      // 서버에서 prop으로 initialStatus 받음. 별도 hydration 불필요
+      setHydrated(true);
+      return;
+    }
+    // 로그아웃 모드 — localStorage
+    setStatus(getLocalStatus(postId));
     setHydrated(true);
-    const unsub = subscribe(() => setStatus(getStatus(postId)));
+    const unsub = subscribe(() => setStatus(getLocalStatus(postId)));
     return unsub;
-  }, [postId]);
+  }, [postId, loggedIn]);
 
-  function toggle(target: UserPostStatusValue) {
-    if (status === target) {
-      unmark(postId);
-      setStatus(null);
+  async function toggle(target: UserPostStatusValue) {
+    const isUnmark = status === target;
+
+    if (loggedIn) {
+      setPending(true);
+      try {
+        const prev = status;
+        // 낙관적 업데이트
+        setStatus(isUnmark ? null : target);
+        const result = isUnmark
+          ? await unmarkStatusAction(postId)
+          : await markStatusAction(postId, target);
+        if (!result.ok) {
+          // 롤백
+          setStatus(prev);
+        }
+      } finally {
+        setPending(false);
+      }
+    } else {
+      if (isUnmark) {
+        unmarkLocal(postId);
+        setStatus(null);
+      } else {
+        if (target === "applied") markLocalApplied(postId);
+        else markLocalInterested(postId);
+        setStatus(target);
+      }
+    }
+
+    if (isUnmark) {
       track("status_unmark", { post_id: postId, previous: target });
     } else {
-      if (target === "applied") markApplied(postId);
-      else markInterested(postId);
-      setStatus(target);
       track("status_mark", { post_id: postId, status: target });
     }
   }
 
-  // 하이드레이션 전엔 비활성 상태로 출력 (서버/클라 불일치 방지)
   const appliedActive = hydrated && status === "applied";
   const interestedActive = hydrated && status === "interested";
 
@@ -48,8 +85,9 @@ export function StatusButtons({ postId }: Props) {
       <button
         type="button"
         onClick={() => toggle("interested")}
+        disabled={pending}
         aria-pressed={interestedActive}
-        className={`flex-1 rounded-xl border px-4 py-3 text-sm font-bold transition ${
+        className={`flex-1 rounded-xl border px-4 py-3 text-sm font-bold transition disabled:opacity-60 ${
           interestedActive
             ? "border-amber-400 bg-amber-100 text-amber-900"
             : "border-slate-200 bg-white text-slate-700 hover:border-amber-300 hover:bg-amber-50"
@@ -60,8 +98,9 @@ export function StatusButtons({ postId }: Props) {
       <button
         type="button"
         onClick={() => toggle("applied")}
+        disabled={pending}
         aria-pressed={appliedActive}
-        className={`flex-1 rounded-xl border px-4 py-3 text-sm font-bold transition ${
+        className={`flex-1 rounded-xl border px-4 py-3 text-sm font-bold transition disabled:opacity-60 ${
           appliedActive
             ? "border-rose-400 bg-rose-100 text-rose-900"
             : "border-slate-200 bg-white text-slate-700 hover:border-rose-300 hover:bg-rose-50"
