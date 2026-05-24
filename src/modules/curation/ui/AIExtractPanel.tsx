@@ -164,14 +164,13 @@ export function AIExtractPanel({
       )}
 
       {error && (
-        <p className="rounded-lg bg-rose-100 px-3 py-2 text-xs text-rose-800">
-          ⚠️ {error}
-        </p>
+        <div className="rounded-lg bg-rose-100 px-3 py-2.5 text-xs text-rose-800 whitespace-pre-line leading-relaxed">
+          {error}
+        </div>
       )}
 
       <p className="text-[10px] leading-relaxed text-slate-400">
-        💡 URL 추출이 실패하면 (인스타 차단 시) → 스크린샷 업로드 사용. 추출
-        결과는 자동 입력되며 검토·수정 후 발행하세요.
+        💡 <strong>인스타 URL은 거의 차단됨</strong> → 스크린샷 업로드를 기본으로 사용하세요. 추출 결과는 자동 입력되며 검토·수정 후 발행. HEIC·JPG·PNG·WEBP 모두 지원 (변환 불필요).
       </p>
     </section>
   );

@@ -10,6 +10,10 @@ import {
   extractFromUrlAction,
 } from "@/modules/curation/ai-extract-actions";
 
+// Gemini Vision API는 이미지 1장당 5~20초 걸리는 경우 있음.
+// Vercel 기본 10초 함수 타임아웃이면 self-fail. Hobby plan은 60초까지 가능.
+export const maxDuration = 60;
+
 interface PageProps {
   searchParams: Promise<{ error?: string }>;
 }
