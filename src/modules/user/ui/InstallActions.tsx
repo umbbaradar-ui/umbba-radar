@@ -2,32 +2,33 @@
 
 // ============================================
 // PWA 설치 진입점 — 더보기 시트 + GNB 두 곳에서 사용
-// useInstallPrompt 훅 + 두 가지 변형(SheetEntry, NavChip)
 //
-// 동작:
-// - 이미 PWA로 설치되어 있으면(standalone) 모든 진입점 숨김
-// - Android/Desktop Chrome: beforeinstallprompt 이벤트로 네이티브 설치 다이얼로그 호출
-// - iOS Safari: 이벤트 없으므로 "공유 → 홈 화면에 추가" 가이드 모달 표시
-// - 미지원 환경(KakaoTalk in-app 등): 모든 진입점 숨김
+// 동작 원칙:
+// - 이미 설치(standalone)면 모든 진입점 숨김
+// - 아니면 항상 노출 (브라우저가 PWA 지원하든 안 하든, 사용자한테 결정권을 줌)
+// - 클릭 시 최선책 시도: 네이티브 prompt → iOS 가이드 → 일반 브라우저 메뉴 안내
+//
+// 이전 버전의 2.5초 timeout 로직 제거:
+//   Chrome은 'beforeinstallprompt'를 참여도 휴리스틱(엔게이지먼트) 후에 쏘는 경우가 많아
+//   첫 방문에서 이벤트를 못 받는 일이 흔함. 그래서 타임아웃으로 숨기면 평생 못 봄.
 // ============================================
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
   userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
 }
 
-type InstallState =
-  | { kind: "loading" }
-  | { kind: "standalone" } // 이미 PWA로 실행 중
-  | { kind: "available"; prompt: () => Promise<void> } // Android/Desktop Chrome
-  | { kind: "ios" } // iOS Safari (가이드 모달)
-  | { kind: "unsupported" }; // KakaoTalk in-app browser 등
+type InstallState = "loading" | "installed" | "visible";
 
 function detectIOS(): boolean {
   if (typeof window === "undefined") return false;
-  return /iPhone|iPad|iPod/i.test(navigator.userAgent);
+  const ua = navigator.userAgent;
+  if (/iPhone|iPad|iPod/i.test(ua)) return true;
+  // iPadOS 13+ 는 데스크탑 UA 보내지만 터치 디바이스 → 보조 판별
+  if (/Mac/i.test(ua) && (navigator.maxTouchPoints ?? 0) > 1) return true;
+  return false;
 }
 
 function detectStandalone(): boolean {
@@ -37,70 +38,49 @@ function detectStandalone(): boolean {
   return nav.standalone === true;
 }
 
-function useInstallPrompt(): InstallState {
-  const [state, setState] = useState<InstallState>({ kind: "loading" });
+function useInstall() {
+  const [state, setState] = useState<InstallState>("loading");
+  const promptRef = useRef<BeforeInstallPromptEvent | null>(null);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
 
     if (detectStandalone()) {
-      setState({ kind: "standalone" });
+      setState("installed");
       return;
     }
 
-    if (detectIOS()) {
-      setState({ kind: "ios" });
-      return;
-    }
+    // 설치 안 됐으면 일단 노출 시작 (이벤트 기다림 X)
+    setState("visible");
 
-    let installEvent: BeforeInstallPromptEvent | null = null;
     const onBefore = (e: Event) => {
       e.preventDefault();
-      installEvent = e as BeforeInstallPromptEvent;
-      setState({
-        kind: "available",
-        prompt: async () => {
-          if (!installEvent) return;
-          await installEvent.prompt();
-          const choice = await installEvent.userChoice;
-          if (choice.outcome === "accepted") {
-            // appinstalled 이벤트가 곧 fire 됨
-            setState({ kind: "standalone" });
-          }
-        },
-      });
+      promptRef.current = e as BeforeInstallPromptEvent;
     };
     window.addEventListener("beforeinstallprompt", onBefore);
 
-    const onInstalled = () => setState({ kind: "standalone" });
+    const onInstalled = () => {
+      promptRef.current = null;
+      setState("installed");
+    };
     window.addEventListener("appinstalled", onInstalled);
-
-    // 2.5초 안에 beforeinstallprompt 안 오면 미지원 환경으로 판정
-    const t = setTimeout(() => {
-      if (!installEvent) setState({ kind: "unsupported" });
-    }, 2500);
 
     return () => {
       window.removeEventListener("beforeinstallprompt", onBefore);
       window.removeEventListener("appinstalled", onInstalled);
-      clearTimeout(t);
     };
   }, []);
 
-  return state;
+  return { state, promptRef };
 }
 
 // ============================================
-// iOS 가이드 모달 (공유 버튼 → 홈 화면에 추가 안내)
+// 모달 1: iOS Safari 가이드
 // ============================================
 function IOSGuideModal({ onClose }: { onClose: () => void }) {
   return (
     <>
-      <div
-        className="fixed inset-0 z-[60] bg-black/50"
-        onClick={onClose}
-        aria-hidden="true"
-      />
+      <div className="fixed inset-0 z-[60] bg-black/50" onClick={onClose} aria-hidden="true" />
       <div className="pb-safe fixed inset-x-3 bottom-3 z-[61] rounded-2xl bg-white p-5 shadow-2xl sm:left-1/2 sm:right-auto sm:bottom-1/2 sm:-translate-x-1/2 sm:translate-y-1/2 sm:max-w-sm">
         <div className="flex items-start gap-3">
           <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-rose-100 to-amber-100 text-2xl">
@@ -108,7 +88,7 @@ function IOSGuideModal({ onClose }: { onClose: () => void }) {
           </div>
           <div className="flex-1">
             <h3 className="text-base font-extrabold tracking-tight text-slate-900">
-              홈 화면에 추가하기
+              iOS Safari에서 홈 화면에 추가
             </h3>
             <p className="mt-1 text-xs leading-relaxed text-slate-600">
               Safari 하단의{" "}
@@ -119,13 +99,11 @@ function IOSGuideModal({ onClose }: { onClose: () => void }) {
             </p>
             <p className="mt-2 text-xs leading-relaxed text-slate-600">
               메뉴에서{" "}
-              <span className="font-bold text-slate-900">
-                &quot;홈 화면에 추가&quot;
-              </span>
-              를 선택하면 끝!
+              <span className="font-bold text-slate-900">&quot;홈 화면에 추가&quot;</span>를
+              선택하면 끝!
             </p>
             <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-[11px] leading-relaxed text-amber-800">
-              💡 홈 화면 아이콘으로 들어오면 일반 앱처럼 빠르고 깔끔하게 사용할 수 있어요.
+              💡 일반 앱처럼 홈 화면 아이콘에서 바로 들어올 수 있어요.
             </p>
           </div>
         </div>
@@ -142,39 +120,116 @@ function IOSGuideModal({ onClose }: { onClose: () => void }) {
 }
 
 // ============================================
-// 더보기 시트 안에 들어가는 메뉴 항목 (full width row)
+// 모달 2: Android/Desktop 일반 가이드 (네이티브 prompt 이벤트 못 받은 경우)
+// ============================================
+function ManualGuideModal({ onClose }: { onClose: () => void }) {
+  return (
+    <>
+      <div className="fixed inset-0 z-[60] bg-black/50" onClick={onClose} aria-hidden="true" />
+      <div className="pb-safe fixed inset-x-3 bottom-3 z-[61] rounded-2xl bg-white p-5 shadow-2xl sm:left-1/2 sm:right-auto sm:bottom-1/2 sm:-translate-x-1/2 sm:translate-y-1/2 sm:max-w-sm">
+        <div className="flex items-start gap-3">
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-rose-100 to-amber-100 text-2xl">
+            📲
+          </div>
+          <div className="flex-1">
+            <h3 className="text-base font-extrabold tracking-tight text-slate-900">
+              앱처럼 홈 화면에 추가
+            </h3>
+            <p className="mt-1 text-xs leading-relaxed text-slate-600">
+              브라우저 우측 상단{" "}
+              <span className="inline-block rounded bg-slate-100 px-1.5 py-0.5 font-bold text-slate-700">
+                ⋮ 메뉴
+              </span>{" "}
+              를 눌러주세요.
+            </p>
+            <p className="mt-2 text-xs leading-relaxed text-slate-600">
+              <span className="font-bold text-slate-900">
+                &quot;앱 설치&quot;
+              </span>{" "}
+              또는{" "}
+              <span className="font-bold text-slate-900">
+                &quot;홈 화면에 추가&quot;
+              </span>{" "}
+              항목 선택.
+            </p>
+            <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-[11px] leading-relaxed text-amber-800">
+              💡 Chrome·Samsung Internet·Edge 등에서 같은 메뉴를 찾을 수 있어요. 일부 브라우저(Firefox 모바일)는 지원 안 함.
+            </p>
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={onClose}
+          className="mt-4 w-full rounded-xl bg-slate-900 px-4 py-3 text-sm font-bold text-white hover:bg-slate-800"
+        >
+          확인
+        </button>
+      </div>
+    </>
+  );
+}
+
+// ============================================
+// 공통 클릭 핸들러 hook
+// ============================================
+function useInstallHandler() {
+  const { state, promptRef } = useInstall();
+  const [iosOpen, setIosOpen] = useState(false);
+  const [manualOpen, setManualOpen] = useState(false);
+
+  const handleClick = async () => {
+    // 1. 네이티브 prompt 가능하면 우선 시도 (Android Chrome 정상 케이스)
+    if (promptRef.current) {
+      try {
+        await promptRef.current.prompt();
+        return;
+      } catch (err) {
+        console.warn("[install] prompt failed:", err);
+      }
+    }
+    // 2. iOS면 iOS 가이드
+    if (detectIOS()) {
+      setIosOpen(true);
+      return;
+    }
+    // 3. 그 외 (Android Chrome 이벤트 못 받음 + Firefox 등)
+    setManualOpen(true);
+  };
+
+  return {
+    state,
+    handleClick,
+    modal: (
+      <>
+        {iosOpen && <IOSGuideModal onClose={() => setIosOpen(false)} />}
+        {manualOpen && <ManualGuideModal onClose={() => setManualOpen(false)} />}
+      </>
+    ),
+  };
+}
+
+// ============================================
+// 더보기 시트 안에 들어가는 메뉴 항목
 // ============================================
 interface SheetEntryProps {
   onClick?: () => void;
 }
 
 export function InstallSheetEntry({ onClick }: SheetEntryProps) {
-  const state = useInstallPrompt();
-  const [iosOpen, setIosOpen] = useState(false);
+  const { state, handleClick, modal } = useInstallHandler();
 
-  // 이미 설치됨 / 미지원 / 로딩 중 → 숨김
-  if (state.kind === "standalone" || state.kind === "unsupported" || state.kind === "loading") {
-    return null;
-  }
+  if (state === "installed" || state === "loading") return null;
 
-  const handleClick = async () => {
-    if (state.kind === "available") {
-      onClick?.();
-      try {
-        await state.prompt();
-      } catch (err) {
-        console.warn("[install] prompt failed:", err);
-      }
-    } else if (state.kind === "ios") {
-      setIosOpen(true);
-    }
+  const onPress = () => {
+    onClick?.();
+    handleClick();
   };
 
   return (
     <>
       <button
         type="button"
-        onClick={handleClick}
+        onClick={onPress}
         className="flex w-full items-center gap-3 rounded-xl bg-gradient-to-r from-rose-50 to-amber-50 px-3 py-3 text-left text-sm font-semibold text-rose-900 transition hover:from-rose-100 hover:to-amber-100"
       >
         <span aria-hidden="true" className="text-base">
@@ -190,37 +245,22 @@ export function InstallSheetEntry({ onClick }: SheetEntryProps) {
           →
         </span>
       </button>
-      {iosOpen && <IOSGuideModal onClose={() => setIosOpen(false)} />}
+      {modal}
     </>
   );
 }
 
 // ============================================
-// GNB(상단 네비)용 작은 칩 — 데스크탑 + 모바일 헤더에 배치
+// GNB용 작은 칩 (데스크탑·모바일 variant)
 // ============================================
 interface NavChipProps {
   variant?: "desktop" | "mobile";
 }
 
 export function InstallNavChip({ variant = "desktop" }: NavChipProps) {
-  const state = useInstallPrompt();
-  const [iosOpen, setIosOpen] = useState(false);
+  const { state, handleClick, modal } = useInstallHandler();
 
-  if (state.kind === "standalone" || state.kind === "unsupported" || state.kind === "loading") {
-    return null;
-  }
-
-  const handleClick = async () => {
-    if (state.kind === "available") {
-      try {
-        await state.prompt();
-      } catch (err) {
-        console.warn("[install] prompt failed:", err);
-      }
-    } else if (state.kind === "ios") {
-      setIosOpen(true);
-    }
-  };
+  if (state === "installed" || state === "loading") return null;
 
   if (variant === "mobile") {
     return (
@@ -234,12 +274,11 @@ export function InstallNavChip({ variant = "desktop" }: NavChipProps) {
           <span aria-hidden="true">📲</span>
           <span>앱 설치</span>
         </button>
-        {iosOpen && <IOSGuideModal onClose={() => setIosOpen(false)} />}
+        {modal}
       </>
     );
   }
 
-  // desktop
   return (
     <>
       <button
@@ -250,7 +289,7 @@ export function InstallNavChip({ variant = "desktop" }: NavChipProps) {
         <span aria-hidden="true">📲</span>
         <span>앱 설치하기</span>
       </button>
-      {iosOpen && <IOSGuideModal onClose={() => setIosOpen(false)} />}
+      {modal}
     </>
   );
 }
