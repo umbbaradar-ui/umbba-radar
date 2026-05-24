@@ -28,6 +28,10 @@ export type SaveProfileResult =
   | {
       ok: false;
       error: "required" | "invalid" | "auth_required" | "save_failed";
+      /** save_failed일 때 Postgres/Supabase 에러 코드 (예: 42P01 = 테이블 없음) */
+      code?: string;
+      /** save_failed일 때 어느 단계에서 실패했는지 */
+      stage?: "profile_upsert" | "children_delete" | "children_insert";
     };
 
 /**
@@ -72,8 +76,19 @@ export async function saveProfileAndChildrenAction(
       { onConflict: "user_id" }
     );
   if (profileError) {
-    console.error("[saveProfile] failed:", profileError.message);
-    return { ok: false, error: "save_failed" };
+    console.error("[saveProfile] failed:", {
+      message: profileError.message,
+      code: profileError.code,
+      details: profileError.details,
+      hint: profileError.hint,
+      user_id: user.id,
+    });
+    return {
+      ok: false,
+      error: "save_failed",
+      code: profileError.code,
+      stage: "profile_upsert",
+    };
   }
 
   // 2) 기존 자녀 삭제 + 새로 입력
@@ -82,8 +97,19 @@ export async function saveProfileAndChildrenAction(
     .delete()
     .eq("user_id", user.id);
   if (deleteError) {
-    console.error("[saveChildren delete] failed:", deleteError.message);
-    return { ok: false, error: "save_failed" };
+    console.error("[saveChildren delete] failed:", {
+      message: deleteError.message,
+      code: deleteError.code,
+      details: deleteError.details,
+      hint: deleteError.hint,
+      user_id: user.id,
+    });
+    return {
+      ok: false,
+      error: "save_failed",
+      code: deleteError.code,
+      stage: "children_delete",
+    };
   }
 
   const rows = children.map((c) => ({
@@ -95,8 +121,20 @@ export async function saveProfileAndChildrenAction(
 
   const { error: childrenError } = await supabase.from("children").insert(rows);
   if (childrenError) {
-    console.error("[saveChildren insert] failed:", childrenError.message);
-    return { ok: false, error: "save_failed" };
+    console.error("[saveChildren insert] failed:", {
+      message: childrenError.message,
+      code: childrenError.code,
+      details: childrenError.details,
+      hint: childrenError.hint,
+      user_id: user.id,
+      rows_count: rows.length,
+    });
+    return {
+      ok: false,
+      error: "save_failed",
+      code: childrenError.code,
+      stage: "children_insert",
+    };
   }
 
   revalidatePath("/", "layout");

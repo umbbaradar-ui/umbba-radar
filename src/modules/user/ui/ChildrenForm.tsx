@@ -111,7 +111,13 @@ export function ChildrenForm({
           return;
         }
         setSubmitting(false);
-        setClientError(ERROR_MESSAGES[result.error]);
+        // save_failed인 경우 stage와 code도 같이 노출 (진단용)
+        const base = ERROR_MESSAGES[result.error];
+        const detail =
+          result.error === "save_failed" && (result.stage || result.code)
+            ? ` [${result.stage ?? "?"}${result.code ? ` · ${result.code}` : ""}]`
+            : "";
+        setClientError(base + detail);
       }
     } catch (err) {
       console.error("[ChildrenForm] save failed:", err);
