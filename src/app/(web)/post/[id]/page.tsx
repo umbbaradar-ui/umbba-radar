@@ -49,14 +49,24 @@ export default async function PostDetailPage({ params }: PageProps) {
 
       <article className="overflow-hidden rounded-2xl bg-white shadow-sm">
         <ViewTransition name={`post-thumb-${post.id}`}>
-          <div className="relative aspect-[4/5] w-full overflow-hidden bg-gray-100">
+          {/* 1:1 프레임 + 블러 백드롭 — 어떤 비율 이미지도 잘리지 않게 */}
+          <div className="relative aspect-square w-full overflow-hidden bg-gray-100">
             {post.thumbnail_url && (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={post.thumbnail_url}
-                alt={post.title}
-                className="h-full w-full object-cover"
-              />
+              <>
+                {/* 블러 백드롭 */}
+                <div
+                  className="absolute inset-0 scale-110 bg-cover bg-center opacity-80 blur-2xl"
+                  style={{ backgroundImage: `url(${post.thumbnail_url})` }}
+                  aria-hidden="true"
+                />
+                {/* 전경 이미지 (잘림 없이 contain) */}
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={post.thumbnail_url}
+                  alt={post.title}
+                  className="relative h-full w-full object-contain"
+                />
+              </>
             )}
             {dday && (
               <span

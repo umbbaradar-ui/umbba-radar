@@ -27,17 +27,28 @@ export function PostCard({ post }: Props) {
       href={`/post/${post.id}`}
       className="group flex flex-col overflow-hidden rounded-2xl bg-white shadow-[0_2px_12px_rgba(15,23,42,0.06)] transition duration-200 hover:-translate-y-0.5 hover:shadow-[0_8px_24px_rgba(15,23,42,0.10)]"
     >
-      {/* 이미지 영역 — 깔끔하게 이미지만 (배지만 오버레이) */}
+      {/* 이미지 영역 — 1:1 프레임 + 블러 백드롭으로 잘림 방지
+          포트레이트(4:5)·정사각(1:1)·랜드스케이프 모두 잘리지 않고 표시.
+          비는 공간은 같은 이미지를 강하게 블러한 색감으로 자연스럽게 채움. */}
       <ViewTransition name={`post-thumb-${post.id}`}>
-        <div className="relative aspect-[4/5] w-full overflow-hidden bg-slate-100">
+        <div className="relative aspect-square w-full overflow-hidden bg-slate-100">
           {post.thumbnail_url ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={post.thumbnail_url}
-              alt={post.title}
-              loading="lazy"
-              className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
-            />
+            <>
+              {/* 블러 백드롭 (같은 이미지) */}
+              <div
+                className="absolute inset-0 scale-110 bg-cover bg-center opacity-80 blur-2xl"
+                style={{ backgroundImage: `url(${post.thumbnail_url})` }}
+                aria-hidden="true"
+              />
+              {/* 전경 이미지 — 잘림 없이 contain */}
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={post.thumbnail_url}
+                alt={post.title}
+                loading="lazy"
+                className="relative h-full w-full object-contain transition duration-500 group-hover:scale-[1.03]"
+              />
+            </>
           ) : (
             <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-rose-100 to-amber-100 text-3xl">
               📡
