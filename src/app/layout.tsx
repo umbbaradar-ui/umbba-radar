@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://umbba-radar.vercel.app"),
+  metadataBase: new URL("https://umbba-radar.com"),
   title: "엄빠레이더 — 놓치는 혜택은 없게",
   description:
     "임신·출산·육아 협찬과 체험단, 후기를 한곳에 모아 보여드려요. 부모님 대신 스캔 중.",
@@ -29,7 +29,7 @@ export const metadata: Metadata = {
     title: "엄빠레이더 — 놓치는 혜택은 없게",
     description:
       "임신·출산·육아 협찬과 체험단, 후기를 한곳에 모아 보여드려요.",
-    url: "https://umbba-radar.vercel.app",
+    url: "https://umbba-radar.com",
     siteName: "엄빠레이더",
     locale: "ko_KR",
     type: "website",
