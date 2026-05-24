@@ -49,7 +49,7 @@ export default async function PostDetailPage({ params }: PageProps) {
 
       <article className="overflow-hidden rounded-2xl bg-white shadow-sm">
         <ViewTransition name={`post-thumb-${post.id}`}>
-          <div className="relative aspect-[4/3] w-full overflow-hidden bg-gray-100 sm:aspect-square">
+          <div className="relative aspect-square w-full overflow-hidden bg-gray-100">
             {post.thumbnail_url && (
               // eslint-disable-next-line @next/next/no-img-element
               <img

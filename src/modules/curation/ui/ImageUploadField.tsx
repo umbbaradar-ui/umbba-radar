@@ -130,6 +130,9 @@ export function ImageUploadField({
             <span className="text-[11px] text-slate-400">
               클릭 · 드래그&드롭 · Ctrl+V로 스샷 붙여넣기
             </span>
+            <span className="mt-1 rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-medium text-amber-700">
+              💡 1:1 정사각형 이미지 권장 (인스타 첫 사진 그대로 OK)
+            </span>
           </button>
         )}
 

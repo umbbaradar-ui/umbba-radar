@@ -24,7 +24,7 @@ export function PostCard({ post }: Props) {
       className="group flex flex-col overflow-hidden rounded-3xl bg-white shadow-[0_2px_12px_rgba(15,23,42,0.06)] transition duration-200 hover:-translate-y-0.5 hover:shadow-[0_8px_24px_rgba(15,23,42,0.10)]"
     >
       <ViewTransition name={`post-thumb-${post.id}`}>
-        <div className="relative aspect-[4/5] w-full overflow-hidden bg-slate-100">
+        <div className="relative aspect-square w-full overflow-hidden bg-slate-100">
           {post.thumbnail_url ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
