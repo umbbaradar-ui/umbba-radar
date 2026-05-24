@@ -30,15 +30,20 @@ export const ACTIVE_TOPIC_CATEGORIES: readonly TopicCategory[] = [
   'living',
 ] as const
 
+// 2026-05 분류 체계 간소화 (migration 013 참조)
+// 6개로 통합: preschool→toddler, elementary_lower+upper→elementary
+// 옛 값은 마이그레이션 직후 사라지지만 배포 타이밍 보호용으로 union에 임시 포함.
 export type StageCategory =
-  | 'pregnancy'
-  | 'newborn'
-  | 'infant'
-  | 'toddler'
+  | 'pregnancy'   // 임신중
+  | 'newborn'     // 신생아 (옛 라벨 "출산 직후")
+  | 'infant'      // 영아
+  | 'toddler'     // 유아 (preschool 흡수)
+  | 'elementary'  // 초등생 (저학년 + 고학년 통합, 신규 키)
+  | 'all_ages'    // 전연령
+  // ↓ deprecated — 마이그레이션 013 실행 후 DB에서 사라짐. 다음 PR에서 제거.
   | 'preschool'
   | 'elementary_lower'
   | 'elementary_upper'
-  | 'all_ages'
 
 // 2026-05 분류 체계 간소화 (migration 011 참조)
 // 옛 값(follow/lottery/free_trial/experience_group/sponsored/gov_support)은
@@ -83,15 +88,28 @@ export interface Post {
 
 // 화면 표시용 라벨
 export const STAGE_LABELS: Record<StageCategory, string> = {
+  // 신규 6종
   pregnancy: '임신중',
-  newborn: '출산 직후',
+  newborn: '신생아',
   infant: '영아',
   toddler: '유아',
-  preschool: '유치원',
-  elementary_lower: '초등 저학년',
-  elementary_upper: '초등 고학년',
+  elementary: '초등생',
   all_ages: '전연령',
+  // ↓ deprecated — 마이그레이션 013 잔여물 보호용
+  preschool: '유아',
+  elementary_lower: '초등생',
+  elementary_upper: '초등생',
 }
+
+// 필터·관리자 폼·AI 프롬프트가 사용할 "현재 살아있는" 6개만 노출
+export const ACTIVE_STAGE_CATEGORIES: readonly StageCategory[] = [
+  'pregnancy',
+  'newborn',
+  'infant',
+  'toddler',
+  'elementary',
+  'all_ages',
+] as const
 
 export const TYPE_LABELS: Record<TypeTag, string> = {
   // 신규 (관리자 입력 + AI 추출이 사용하는 정식 4종)

@@ -8,6 +8,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import {
   STAGE_LABELS,
+  ACTIVE_STAGE_CATEGORIES,
   TYPE_LABELS,
   ACTIVE_TYPE_TAGS,
   TOPIC_LABELS,
@@ -126,9 +127,9 @@ export function FilterBar({
             💛 내 아이
           </Pill>
         )}
-        {Object.entries(STAGE_LABELS).map(([k, v]) => (
+        {ACTIVE_STAGE_CATEGORIES.map((k) => (
           <Pill key={k} active={stage === k} onClick={() => update("stage", k)}>
-            {v}
+            {STAGE_LABELS[k]}
           </Pill>
         ))}
       </PillRow>

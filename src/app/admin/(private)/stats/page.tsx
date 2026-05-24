@@ -7,6 +7,7 @@ import Link from "next/link";
 import { getAdminStats } from "@/modules/curation/service";
 import {
   STAGE_LABELS,
+  ACTIVE_STAGE_CATEGORIES,
   TYPE_LABELS,
   ACTIVE_TYPE_TAGS,
   SOURCE_TYPE_LABELS,
@@ -128,10 +129,10 @@ export default async function AdminStatsPage({ searchParams }: PageProps) {
         <section className="rounded-2xl bg-white p-5 shadow-sm">
           <h2 className="mb-3 text-sm font-bold text-slate-900">발행 카드 — 시기 분포</h2>
           <div className="space-y-2">
-            {Object.entries(STAGE_LABELS).map(([k, v]) => (
+            {ACTIVE_STAGE_CATEGORIES.map((k) => (
               <ProgressBar
                 key={k}
-                label={v}
+                label={STAGE_LABELS[k]}
                 value={stats.byStage[k] ?? 0}
                 total={stats.totals.published || 1}
               />

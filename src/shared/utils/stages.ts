@@ -16,22 +16,20 @@ interface StageRange {
  * 음수 = 출산 전 (예정일 기준).
  * 인접 시기와 겹치는 부분 = 자연스러운 전환 영역.
  *
- * 코어 범위 + 버퍼:
- *   - 출산직후: 0~3개월 + ±3개월
+ * 6종 통합 후 코어 범위 + 버퍼:
+ *   - 임신중: 출산 전
+ *   - 신생아: 0~3개월 + ±3개월
  *   - 영아: 3~12개월 + ±3개월
- *   - 유아: 1~5세 + ±6개월
- *   - 유치원: 3~7세 + ±6개월
- *   - 초등 저학년: 6~10세 + ±12개월
- *   - 초등 고학년: 9~13세 + ±12개월
+ *   - 유아: 1~7세 (preschool 흡수) + ±6개월
+ *   - 초등생: 7~13세 (저+고학년 통합) + ±12개월
+ *   - 전연령: 별도 (월령 매칭 X)
  */
 export const STAGE_RANGES: StageRange[] = [
   { stage: "pregnancy", minMonths: -10, maxMonths: 0 }, // 임신 ~ 출산 당일
   { stage: "newborn", minMonths: -3, maxMonths: 6 }, // 출산 3개월 전 ~ 6개월
   { stage: "infant", minMonths: 3, maxMonths: 15 }, // 3개월 ~ 1년 3개월
-  { stage: "toddler", minMonths: 12, maxMonths: 66 }, // 1세 ~ 5세 6개월
-  { stage: "preschool", minMonths: 30, maxMonths: 90 }, // 2세 6개월 ~ 7세 6개월
-  { stage: "elementary_lower", minMonths: 60, maxMonths: 132 }, // 5세 ~ 11세
-  { stage: "elementary_upper", minMonths: 108, maxMonths: 168 }, // 9세 ~ 14세
+  { stage: "toddler", minMonths: 12, maxMonths: 90 }, // 1세 ~ 7세 6개월 (preschool 흡수)
+  { stage: "elementary", minMonths: 72, maxMonths: 168 }, // 6세 ~ 14세 (저+고학년 통합)
 ];
 
 /**

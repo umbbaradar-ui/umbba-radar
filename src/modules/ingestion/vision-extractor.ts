@@ -38,7 +38,7 @@ const VISION_SYSTEM_PROMPT = `당신은 한국 육아 정보 큐레이션 사이
   "brand_name": string | null,              // 브랜드명. 명확히 보이는 경우만, 아니면 null
   "body": string,                           // 한 줄 요약 (예: "댓글 + 친구 태그 → 30명 추첨")
   "kind": "recruiting" | "review" | "group_buy",
-  "stage_categories": Array<"pregnancy"|"newborn"|"infant"|"toddler"|"preschool"|"elementary_lower"|"elementary_upper"|"all_ages">,
+  "stage_categories": Array<"pregnancy"|"newborn"|"infant"|"toddler"|"elementary"|"all_ages">,
   "type_tags": Array<"regram"|"experience"|"kids_model"|"supporters">,
   "topic": "parenting" | "living",          // 콘텐츠 주제 (필수)
   "deadline": string | null                 // ISO 8601 with +09:00. 명확히 적혀있을 때만, 아니면 null
@@ -63,12 +63,10 @@ const VISION_SYSTEM_PROMPT = `당신은 한국 육아 정보 큐레이션 사이
 
 # stage_categories
 - pregnancy: 임신중
-- newborn: 출산 직후 (~3개월)
+- newborn: 신생아 (~3개월)
 - infant: 영아 (~12개월)
-- toddler: 유아 (1~5세)
-- preschool: 유치원
-- elementary_lower: 초등 저학년
-- elementary_upper: 초등 고학년
+- toddler: 유아 (1~7세, 유치원 포함)
+- elementary: 초등생 (8~13세)
 - all_ages: 전연령 (특정 시기 무관, 식탁세트·청소기·가전·식품 등 가족 단위 제품. 이미지에서 시기 단서가 없으면 이걸 단독 선택)
 
 한국어 출력. JSON만 반환. 마크다운 백틱 금지.`;

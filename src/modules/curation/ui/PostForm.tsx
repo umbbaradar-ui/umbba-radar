@@ -9,6 +9,7 @@
 import type { Post } from "@/shared/types/post";
 import {
   STAGE_LABELS,
+  ACTIVE_STAGE_CATEGORIES,
   TYPE_LABELS,
   ACTIVE_TYPE_TAGS,
   TOPIC_LABELS,
@@ -185,13 +186,13 @@ export function PostForm({ post, defaults, action, submitLabel, errorMessage }: 
       </Section>
 
       <Section title="시기 카테고리">
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-          {Object.entries(STAGE_LABELS).map(([k, l]) => (
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+          {ACTIVE_STAGE_CATEGORIES.map((k) => (
             <Checkbox
               key={k}
               name="stage_categories"
               value={k}
-              label={l}
+              label={STAGE_LABELS[k]}
               defaultChecked={v.stage_categories.includes(k)}
             />
           ))}
