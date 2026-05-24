@@ -122,13 +122,30 @@ export async function approvePostAction(id: string): Promise<void> {
 }
 
 // ============================================
-// 사용자 제보 (공개 — 인증 없음)
+// 사용자 제보 — 최소 입력 (URL + 한 줄 설명)
+// 카테고리·시기·유형은 관리자가 큐에서 정리. 사용자 부담 ↓
 // 항상 status='pending', source_type='submission'
 // ============================================
+function isValidUrl(s: string): boolean {
+  try {
+    const u = new URL(s);
+    return u.protocol === "http:" || u.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
 export async function submitPostAction(formData: FormData): Promise<void> {
-  const input = parseFormToPost(formData);
-  if (!input.title || !input.source_url) {
+  const source_url = formData.get("source_url")?.toString().trim() ?? "";
+  const description = formData.get("description")?.toString().trim() ?? "";
+  const handle =
+    formData.get("submitter_handle")?.toString().trim() || null;
+
+  if (!source_url || !description) {
     redirect("/submit?error=required");
+  }
+  if (!isValidUrl(source_url)) {
+    redirect("/submit?error=invalid_url");
   }
 
   // 로그인 사용자라면 user_id 함께
@@ -143,14 +160,23 @@ export async function submitPostAction(formData: FormData): Promise<void> {
     // 로그인 안 됨 — 익명 제보로 진행
   }
 
-  const handle = formData.get("submitter_handle")?.toString().trim() || null;
-
+  // 최소 정보만 저장. title 은 description 앞부분 사용 (관리자가 큐에서 정제)
   await insertPost({
-    ...input,
-    status: "pending", // 강제
-    source_type: "submission", // 강제
+    title: description.slice(0, 100),
+    brand_name: null,
+    thumbnail_url: null,
+    source_url,
+    body: description,
+    deadline: null,
+    reviewer_handle: null,
+    stage_categories: [],
+    type_tags: [],
+    is_sponsored: false,
+    status: "pending",
+    source_type: "submission",
     submitter_handle: handle,
     submitter_user_id: submitterUserId,
+    kind: "recruiting", // 기본값 — 관리자가 큐에서 review/group_buy로 변경 가능
   });
   revalidatePath("/admin/queue");
   redirect("/submit/thanks");

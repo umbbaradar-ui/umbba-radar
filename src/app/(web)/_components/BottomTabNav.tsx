@@ -110,14 +110,8 @@ export function BottomTabNav({ user }: Props) {
             )}
           </div>
 
-          {/* 메뉴 */}
+          {/* 메뉴 — 관리자는 URL로 직접 접속, 공개 메뉴에서 노출 X */}
           <nav className="px-2 py-2">
-            <SheetLink
-              href="/admin"
-              icon="🔒"
-              label="관리자"
-              onClick={() => setMoreOpen(false)}
-            />
             <SheetLink
               href="/terms"
               icon="📄"
