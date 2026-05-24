@@ -19,6 +19,20 @@ export async function selectPublishedPosts(): Promise<Post[]> {
   return (data ?? []) as Post[]
 }
 
+export async function selectExpiredPosts(): Promise<Post[]> {
+  const { data, error } = await supabase
+    .from("posts")
+    .select("*")
+    .eq("status", "expired")
+    .order("deadline", { ascending: false }) // 최근 마감 먼저
+    .limit(100);
+
+  if (error) {
+    throw new Error(`Failed to fetch expired posts: ${error.message}`);
+  }
+  return (data ?? []) as Post[];
+}
+
 export async function selectPostById(id: string): Promise<Post | null> {
   const { data, error } = await supabase
     .from('posts')

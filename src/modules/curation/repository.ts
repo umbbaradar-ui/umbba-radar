@@ -69,6 +69,20 @@ export async function approvePost(id: string): Promise<void> {
   if (error) throw new Error(`approvePost: ${error.message}`);
 }
 
+/** 마감일 지난 published 카드를 일괄 expired 처리 */
+export async function expireOverduePosts(): Promise<number> {
+  const nowIso = new Date().toISOString();
+  const { data, error } = await supabaseServer
+    .from("posts")
+    .update({ status: "expired" })
+    .eq("status", "published")
+    .lt("deadline", nowIso)
+    .not("deadline", "is", null)
+    .select("id");
+  if (error) throw new Error(`expireOverduePosts: ${error.message}`);
+  return data?.length ?? 0;
+}
+
 export async function selectStatusCounts(): Promise<{
   byStatus: Record<PostStatus, number>;
   bySource: Record<SourceType, number>;

@@ -83,6 +83,10 @@ export default async function WebLayout({
             혜택 제보하기
           </Link>
           <span aria-hidden="true">·</span>
+          <Link href="/archive" className="hover:text-slate-600 hover:underline">
+            지난 이벤트
+          </Link>
+          <span aria-hidden="true">·</span>
           <Link href="/terms" className="hover:text-slate-600 hover:underline">
             이용약관
           </Link>
