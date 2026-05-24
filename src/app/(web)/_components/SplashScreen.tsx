@@ -7,7 +7,6 @@
 // ============================================
 
 import { useEffect, useState } from "react";
-import { Logo } from "@/shared/ui/Logo";
 
 const STORAGE_KEY = "umbba-splash-shown";
 const HOLD_MS = 900;
@@ -62,19 +61,27 @@ export function SplashScreen() {
 
   return (
     <div
-      className={`pt-safe pb-safe fixed inset-0 z-[100] flex flex-col items-center justify-center gap-5 bg-gradient-to-br from-amber-50 via-amber-50 to-rose-50 transition-opacity ${
+      className={`pt-safe pb-safe fixed inset-0 z-[100] flex flex-col items-center justify-center gap-5 bg-gradient-to-br from-pink-50 via-pink-50 to-rose-100 transition-opacity ${
         phase === "in" ? "opacity-100" : "opacity-0"
       }`}
       style={{ transitionDuration: `${FADE_MS}ms` }}
       aria-hidden="true"
     >
-      <Logo size={84} className="text-rose-500 drop-shadow-sm" />
+      {/* 마스코트 아이콘 (PNG fallback로 자동 PWA 아이콘 사용) */}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src="/icon"
+        alt=""
+        width={120}
+        height={120}
+        className="rounded-3xl drop-shadow-md"
+      />
       <div className="text-center">
         <h1 className="text-3xl font-extrabold tracking-tight text-slate-900">
           엄빠레이더
         </h1>
-        <p className="mt-2.5 text-sm font-medium text-slate-600">
-          자녀 키우면서 놓치는 혜택 없게!
+        <p className="mt-2.5 text-sm font-medium text-rose-700">
+          엄빠 대신 매일 혜택 스캔 중 ♥
         </p>
       </div>
     </div>

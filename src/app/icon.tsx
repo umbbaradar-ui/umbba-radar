@@ -1,7 +1,6 @@
 // ============================================
-// 앱 아이콘 (PWA 512x512)
-// 레이더 컨셉: 다중 동심원 + 가운데 하트
-// 깊이감을 위해 그라데이션 배경 + 외곽 glow + 그림자 + 하이라이트
+// 앱 아이콘 (PWA 512x512) — '엄빠레이더' 마스코트 (안테나 곰)
+// 컨셉: 안테나 끝에 하트가 달린 조그마한 곰 — 부모님 대신 매일 혜택 스캔 중 ♥
 // ============================================
 
 import { ImageResponse } from "next/og";
@@ -17,104 +16,221 @@ export default function Icon() {
           width: "100%",
           height: "100%",
           background:
-            "linear-gradient(135deg, #FFF7ED 0%, #FFEDD5 45%, #FECDD3 100%)",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
+            "linear-gradient(135deg, #FFF5F8 0%, #FFE4ED 50%, #FFD0DE 100%)",
           position: "relative",
+          display: "flex",
         }}
       >
-        {/* 외곽 soft glow — 부드러운 빛 번짐 */}
+        {/* 안테나 라인 */}
         <div
           style={{
-            width: 500,
-            height: 500,
-            borderRadius: 500,
-            background:
-              "radial-gradient(circle, rgba(251,113,133,0.12) 0%, rgba(251,113,133,0) 65%)",
             position: "absolute",
+            top: 95,
+            left: 252,
+            width: 8,
+            height: 50,
+            background: "#9B6B7C",
+            borderRadius: 4,
             display: "flex",
           }}
         />
-        {/* 가장 바깥 동심원 — 매우 옅게 */}
+
+        {/* 안테나 위 하트 */}
         <div
           style={{
-            width: 440,
-            height: 440,
-            borderRadius: 440,
-            border: "8px solid #FB7185",
-            opacity: 0.15,
             position: "absolute",
+            top: 30,
+            left: 218,
+            fontSize: 88,
+            color: "#FB7185",
+            fontWeight: 900,
+            lineHeight: 1,
+            textShadow: "0 5px 14px rgba(225, 29, 72, 0.35)",
             display: "flex",
-          }}
-        />
-        {/* 두 번째 동심원 */}
-        <div
-          style={{
-            width: 340,
-            height: 340,
-            borderRadius: 340,
-            border: "10px solid #FB7185",
-            opacity: 0.3,
-            position: "absolute",
-            display: "flex",
-          }}
-        />
-        {/* 세 번째 동심원 — 강조색 (rose-600) */}
-        <div
-          style={{
-            width: 240,
-            height: 240,
-            borderRadius: 240,
-            border: "12px solid #F43F5E",
-            opacity: 0.55,
-            position: "absolute",
-            display: "flex",
-          }}
-        />
-        {/* 가운데 채워진 원 — 그라데이션 + 그림자 */}
-        <div
-          style={{
-            width: 160,
-            height: 160,
-            borderRadius: 160,
-            background: "linear-gradient(135deg, #FB7185 0%, #E11D48 100%)",
-            boxShadow:
-              "0 14px 32px rgba(225, 29, 72, 0.35), 0 4px 12px rgba(225, 29, 72, 0.25)",
-            position: "absolute",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
           }}
         >
-          {/* 좌측 상단 라이트 반사 */}
-          <div
-            style={{
-              width: 44,
-              height: 44,
-              borderRadius: 44,
-              background:
-                "radial-gradient(circle, rgba(255,255,255,0.55) 0%, rgba(255,255,255,0) 70%)",
-              position: "absolute",
-              top: 16,
-              left: 26,
-              display: "flex",
-            }}
-          />
-          {/* 하트 */}
-          <div
-            style={{
-              color: "white",
-              fontSize: 100,
-              fontWeight: 900,
-              lineHeight: 1,
-              display: "flex",
-              textShadow: "0 2px 4px rgba(0,0,0,0.18)",
-            }}
-          >
-            ♥
-          </div>
+          ♥
         </div>
+
+        {/* 곰 귀 외곽 (좌) */}
+        <div
+          style={{
+            position: "absolute",
+            top: 138,
+            left: 118,
+            width: 110,
+            height: 110,
+            background: "#B89472",
+            borderRadius: "50%",
+            display: "flex",
+          }}
+        />
+        {/* 곰 귀 외곽 (우) */}
+        <div
+          style={{
+            position: "absolute",
+            top: 138,
+            left: 284,
+            width: 110,
+            height: 110,
+            background: "#B89472",
+            borderRadius: "50%",
+            display: "flex",
+          }}
+        />
+
+        {/* 곰 머리 (메인) */}
+        <div
+          style={{
+            position: "absolute",
+            top: 175,
+            left: 106,
+            width: 300,
+            height: 270,
+            background: "#E5C6A6",
+            borderRadius: 150,
+            boxShadow: "0 6px 16px rgba(155, 107, 124, 0.18)",
+            display: "flex",
+          }}
+        />
+
+        {/* 곰 귀 내부 (좌) — 머리 위에 그려야 함 */}
+        <div
+          style={{
+            position: "absolute",
+            top: 160,
+            left: 140,
+            width: 64,
+            height: 64,
+            background: "#F4B89A",
+            borderRadius: "50%",
+            display: "flex",
+          }}
+        />
+        {/* 곰 귀 내부 (우) */}
+        <div
+          style={{
+            position: "absolute",
+            top: 160,
+            left: 308,
+            width: 64,
+            height: 64,
+            background: "#F4B89A",
+            borderRadius: "50%",
+            display: "flex",
+          }}
+        />
+
+        {/* 주둥이 (밝은 영역) */}
+        <div
+          style={{
+            position: "absolute",
+            top: 310,
+            left: 196,
+            width: 120,
+            height: 90,
+            background: "#F8E4CC",
+            borderRadius: 60,
+            display: "flex",
+          }}
+        />
+
+        {/* 볼터치 (좌) */}
+        <div
+          style={{
+            position: "absolute",
+            top: 310,
+            left: 128,
+            width: 38,
+            height: 28,
+            background: "#FFB1C8",
+            borderRadius: 19,
+            opacity: 0.75,
+            display: "flex",
+          }}
+        />
+        {/* 볼터치 (우) */}
+        <div
+          style={{
+            position: "absolute",
+            top: 310,
+            left: 346,
+            width: 38,
+            height: 28,
+            background: "#FFB1C8",
+            borderRadius: 19,
+            opacity: 0.75,
+            display: "flex",
+          }}
+        />
+
+        {/* 눈 (좌) */}
+        <div
+          style={{
+            position: "absolute",
+            top: 262,
+            left: 178,
+            width: 34,
+            height: 34,
+            background: "#2D1810",
+            borderRadius: "50%",
+            display: "flex",
+          }}
+        />
+        {/* 눈 (우) */}
+        <div
+          style={{
+            position: "absolute",
+            top: 262,
+            left: 300,
+            width: 34,
+            height: 34,
+            background: "#2D1810",
+            borderRadius: "50%",
+            display: "flex",
+          }}
+        />
+
+        {/* 눈동자 반사 (좌) */}
+        <div
+          style={{
+            position: "absolute",
+            top: 268,
+            left: 196,
+            width: 12,
+            height: 12,
+            background: "white",
+            borderRadius: "50%",
+            display: "flex",
+          }}
+        />
+        {/* 눈동자 반사 (우) */}
+        <div
+          style={{
+            position: "absolute",
+            top: 268,
+            left: 318,
+            width: 12,
+            height: 12,
+            background: "white",
+            borderRadius: "50%",
+            display: "flex",
+          }}
+        />
+
+        {/* 코 */}
+        <div
+          style={{
+            position: "absolute",
+            top: 326,
+            left: 240,
+            width: 32,
+            height: 22,
+            background: "#2D1810",
+            borderRadius: 12,
+            display: "flex",
+          }}
+        />
       </div>
     ),
     { ...size }

@@ -1,14 +1,14 @@
 // ============================================
-// Apple Touch Icon (iOS 홈 화면 추가 시 사용) — 180x180
-// icon.tsx와 동일한 마스코트(안테나 곰)를 비례 축소
+// 토스 콘솔 업로드용 앱 로고 — 600x600 (라이트 모드)
+// 토스 콘솔 → 기본 정보 → "앱 로고" 슬롯에 업로드
+// 브라우저에서 /toss-icon 방문 → 이미지 우클릭 → 저장
 // ============================================
 
 import { ImageResponse } from "next/og";
 
-export const size = { width: 180, height: 180 };
-export const contentType = "image/png";
+export const runtime = "edge";
 
-export default function AppleIcon() {
+export async function GET() {
   return new ImageResponse(
     (
       <div
@@ -25,12 +25,12 @@ export default function AppleIcon() {
         <div
           style={{
             position: "absolute",
-            top: 33,
-            left: 88,
-            width: 3,
-            height: 18,
+            top: 112,
+            left: 296,
+            width: 9,
+            height: 58,
             background: "#9B6B7C",
-            borderRadius: 2,
+            borderRadius: 4,
             display: "flex",
           }}
         />
@@ -39,12 +39,13 @@ export default function AppleIcon() {
         <div
           style={{
             position: "absolute",
-            top: 10,
-            left: 75,
-            fontSize: 31,
+            top: 35,
+            left: 255,
+            fontSize: 104,
             color: "#FB7185",
             fontWeight: 900,
             lineHeight: 1,
+            textShadow: "0 6px 16px rgba(225, 29, 72, 0.35)",
             display: "flex",
           }}
         >
@@ -55,10 +56,10 @@ export default function AppleIcon() {
         <div
           style={{
             position: "absolute",
-            top: 49,
-            left: 41,
-            width: 39,
-            height: 39,
+            top: 162,
+            left: 138,
+            width: 128,
+            height: 128,
             background: "#B89472",
             borderRadius: "50%",
             display: "flex",
@@ -67,10 +68,10 @@ export default function AppleIcon() {
         <div
           style={{
             position: "absolute",
-            top: 49,
-            left: 100,
-            width: 39,
-            height: 39,
+            top: 162,
+            left: 334,
+            width: 128,
+            height: 128,
             background: "#B89472",
             borderRadius: "50%",
             display: "flex",
@@ -81,12 +82,13 @@ export default function AppleIcon() {
         <div
           style={{
             position: "absolute",
-            top: 62,
-            left: 37,
-            width: 106,
-            height: 95,
+            top: 205,
+            left: 125,
+            width: 350,
+            height: 315,
             background: "#E5C6A6",
-            borderRadius: 53,
+            borderRadius: 175,
+            boxShadow: "0 8px 20px rgba(155, 107, 124, 0.18)",
             display: "flex",
           }}
         />
@@ -95,10 +97,10 @@ export default function AppleIcon() {
         <div
           style={{
             position: "absolute",
-            top: 57,
-            left: 49,
-            width: 22,
-            height: 22,
+            top: 188,
+            left: 164,
+            width: 76,
+            height: 76,
             background: "#F4B89A",
             borderRadius: "50%",
             display: "flex",
@@ -107,10 +109,10 @@ export default function AppleIcon() {
         <div
           style={{
             position: "absolute",
-            top: 57,
-            left: 109,
-            width: 22,
-            height: 22,
+            top: 188,
+            left: 360,
+            width: 76,
+            height: 76,
             background: "#F4B89A",
             borderRadius: "50%",
             display: "flex",
@@ -121,12 +123,12 @@ export default function AppleIcon() {
         <div
           style={{
             position: "absolute",
-            top: 110,
-            left: 69,
-            width: 42,
-            height: 32,
+            top: 362,
+            left: 230,
+            width: 140,
+            height: 105,
             background: "#F8E4CC",
-            borderRadius: 21,
+            borderRadius: 70,
             display: "flex",
           }}
         />
@@ -135,12 +137,12 @@ export default function AppleIcon() {
         <div
           style={{
             position: "absolute",
-            top: 110,
-            left: 45,
-            width: 14,
-            height: 10,
+            top: 362,
+            left: 150,
+            width: 45,
+            height: 32,
             background: "#FFB1C8",
-            borderRadius: 7,
+            borderRadius: 22,
             opacity: 0.75,
             display: "flex",
           }}
@@ -148,12 +150,12 @@ export default function AppleIcon() {
         <div
           style={{
             position: "absolute",
-            top: 110,
-            left: 121,
-            width: 14,
-            height: 10,
+            top: 362,
+            left: 405,
+            width: 45,
+            height: 32,
             background: "#FFB1C8",
-            borderRadius: 7,
+            borderRadius: 22,
             opacity: 0.75,
             display: "flex",
           }}
@@ -163,10 +165,10 @@ export default function AppleIcon() {
         <div
           style={{
             position: "absolute",
-            top: 92,
-            left: 62,
-            width: 12,
-            height: 12,
+            top: 306,
+            left: 208,
+            width: 40,
+            height: 40,
             background: "#2D1810",
             borderRadius: "50%",
             display: "flex",
@@ -175,23 +177,22 @@ export default function AppleIcon() {
         <div
           style={{
             position: "absolute",
-            top: 92,
-            left: 106,
-            width: 12,
-            height: 12,
+            top: 306,
+            left: 352,
+            width: 40,
+            height: 40,
             background: "#2D1810",
             borderRadius: "50%",
             display: "flex",
           }}
         />
-        {/* 눈동자 반사 */}
         <div
           style={{
             position: "absolute",
-            top: 94,
-            left: 68,
-            width: 4,
-            height: 4,
+            top: 313,
+            left: 229,
+            width: 14,
+            height: 14,
             background: "white",
             borderRadius: "50%",
             display: "flex",
@@ -200,10 +201,10 @@ export default function AppleIcon() {
         <div
           style={{
             position: "absolute",
-            top: 94,
-            left: 112,
-            width: 4,
-            height: 4,
+            top: 313,
+            left: 373,
+            width: 14,
+            height: 14,
             background: "white",
             borderRadius: "50%",
             display: "flex",
@@ -214,17 +215,17 @@ export default function AppleIcon() {
         <div
           style={{
             position: "absolute",
-            top: 116,
-            left: 84,
-            width: 12,
-            height: 8,
+            top: 381,
+            left: 282,
+            width: 38,
+            height: 26,
             background: "#2D1810",
-            borderRadius: 4,
+            borderRadius: 14,
             display: "flex",
           }}
         />
       </div>
     ),
-    { ...size }
+    { width: 600, height: 600 }
   );
 }
