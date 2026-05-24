@@ -8,6 +8,7 @@ import { getAdminStats } from "@/modules/curation/service";
 import {
   STAGE_LABELS,
   TYPE_LABELS,
+  ACTIVE_TYPE_TAGS,
   SOURCE_TYPE_LABELS,
   type SourceType,
 } from "@/shared/types/post";
@@ -142,10 +143,10 @@ export default async function AdminStatsPage({ searchParams }: PageProps) {
         <section className="rounded-2xl bg-white p-5 shadow-sm">
           <h2 className="mb-3 text-sm font-bold text-slate-900">발행 카드 — 유형 분포</h2>
           <div className="space-y-2">
-            {Object.entries(TYPE_LABELS).map(([k, v]) => (
+            {ACTIVE_TYPE_TAGS.map((k) => (
               <ProgressBar
                 key={k}
-                label={v}
+                label={TYPE_LABELS[k]}
                 value={stats.byType[k] ?? 0}
                 total={stats.totals.published || 1}
               />

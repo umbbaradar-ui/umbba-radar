@@ -25,9 +25,17 @@ export type StageCategory =
   | 'elementary_upper'
   | 'all_ages'
 
+// 2026-05 분류 체계 간소화 (migration 011 참조)
+// 옛 값(follow/lottery/free_trial/experience_group/sponsored/gov_support)은
+// DB 마이그레이션 직후 사라지지만, 배포 시점 timing 이슈로 1~2분 잔존 가능 →
+// 잔여 카드 깨지지 않도록 union에 legacy 값도 임시 포함, 다음 정리 회차에 제거.
 export type TypeTag =
+  | 'regram'        // 리그램 (필수/옵션 구분 있어 의미 큰 카테고리)
+  | 'experience'   // 체험단 (free_trial + experience_group + sponsored 통합)
+  | 'kids_model'   // 키즈모델 (촬영·모델 활동, 신규)
+  | 'supporters'   // 서포터즈 (장기 SNS 활동, 신규)
+  // ↓ deprecated — 마이그레이션 011 실행 후 DB에서 사라짐. 다음 PR에서 제거.
   | 'follow'
-  | 'regram'
   | 'lottery'
   | 'free_trial'
   | 'experience_group'
@@ -70,11 +78,25 @@ export const STAGE_LABELS: Record<StageCategory, string> = {
 }
 
 export const TYPE_LABELS: Record<TypeTag, string> = {
-  follow: '팔로우',
+  // 신규 (관리자 입력 + AI 추출이 사용하는 정식 4종)
   regram: '리그램',
+  experience: '체험단',
+  kids_model: '키즈모델',
+  supporters: '서포터즈',
+  // ↓ deprecated — 마이그레이션 011 잔여물 보호용. 사용자 보기엔 무해.
+  follow: '팔로우',
   lottery: '추첨',
-  free_trial: '무료체험',
+  free_trial: '체험단',
   experience_group: '체험단',
-  sponsored: '협찬',
+  sponsored: '체험단',
   gov_support: '정부지원',
 }
+
+// 관리자 폼 / AI 프롬프트 / 필터 UI가 사용할 "현재 살아있는" 4개만 노출.
+// TYPE_LABELS는 deprecated 포함이라 lookup용, 이건 enumeration용.
+export const ACTIVE_TYPE_TAGS: readonly TypeTag[] = [
+  'regram',
+  'experience',
+  'kids_model',
+  'supporters',
+] as const

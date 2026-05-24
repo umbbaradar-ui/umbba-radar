@@ -6,7 +6,11 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { STAGE_LABELS, TYPE_LABELS } from "@/shared/types/post";
+import {
+  STAGE_LABELS,
+  TYPE_LABELS,
+  ACTIVE_TYPE_TAGS,
+} from "@/shared/types/post";
 import { track } from "@/modules/analytics/service";
 
 interface Props {
@@ -123,9 +127,9 @@ export function FilterBar({ stage, type, sort, q, hasChildren }: Props) {
         <Pill active={type === "all"} onClick={() => update("type", "all")}>
           전체
         </Pill>
-        {Object.entries(TYPE_LABELS).map(([k, v]) => (
+        {ACTIVE_TYPE_TAGS.map((k) => (
           <Pill key={k} active={type === k} onClick={() => update("type", k)}>
-            {v}
+            {TYPE_LABELS[k]}
           </Pill>
         ))}
       </PillRow>

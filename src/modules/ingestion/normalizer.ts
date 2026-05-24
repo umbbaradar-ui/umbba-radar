@@ -32,13 +32,10 @@ export type Stage =
   | "elementary_upper"
   | "all_ages";
 export type TypeTag =
-  | "follow"
   | "regram"
-  | "lottery"
-  | "free_trial"
-  | "experience_group"
-  | "sponsored"
-  | "gov_support";
+  | "experience"
+  | "kids_model"
+  | "supporters";
 
 export interface NormalizedPost {
   is_actual_event: boolean;
@@ -70,7 +67,7 @@ const SYSTEM_PROMPT = `당신은 한국 육아 정보 큐레이션 사이트 "�
       "body": string,                     // 한 줄 요약 (예: "댓글 + 친구 태그 → 30명 추첨")
       "kind": "recruiting" | "review" | "group_buy",
       "stage_categories": Array<"pregnancy"|"newborn"|"infant"|"toddler"|"preschool"|"elementary_lower"|"elementary_upper"|"all_ages">,
-      "type_tags": Array<"follow"|"regram"|"lottery"|"free_trial"|"experience_group"|"sponsored"|"gov_support">,
+      "type_tags": Array<"regram"|"experience"|"kids_model"|"supporters">,
       "deadline": string | null           // ISO 8601 with +09:00, 없으면 null
     },
     ...
@@ -92,14 +89,12 @@ const SYSTEM_PROMPT = `당신은 한국 육아 정보 큐레이션 사이트 "�
 - elementary_upper: 초등 고학년
 - all_ages: 전연령 (특정 시기 무관, 식탁세트·청소기·가전 등 가족 단위 제품. 시기 명확하지 않으면 이걸 단독 선택)
 
-# type_tags (참여 방식·이벤트 유형, 복수 선택 가능)
-- follow: 인스타·블로그 계정 팔로우만으로 참여 가능 (가장 가벼운 진입)
-- regram: 본인 피드에 리그램(재게시)해야 참여
-- lottery: 추첨/뽑기 형식
-- free_trial: 무료 샘플/체험 제품 제공
-- experience_group: 체험단 (제품 받고 후기 작성 의무)
-- sponsored: 협찬 (광고성 표시 의무)
-- gov_support: 정부·지자체 지원 사업
+# type_tags (참여 방식·이벤트 유형, 복수 선택 가능, 해당 없으면 빈 배열)
+- regram: 본인 피드에 리그램(재게시)해야 참여 — "필수 리그램"이라고 명시된 경우만
+- experience: 체험단 — 제품/서비스 받고 후기 작성·SNS 게시 의무 있음 (무료체험·협찬·체험단 모두 포함)
+- kids_model: 키즈모델·아동 모델 — 아이가 화보·광고 촬영에 참여
+- supporters: 서포터즈 — 장기 SNS 활동(주 N회 게시 등) 약속하고 제품/혜택 받음
+※ "팔로우만", "추첨 방식", "정부 지원사업"은 type_tags에 포함하지 마세요 (분류 의미 없음)
 
 # is_actual_event = false 인 경우
 - 만료 지난 이벤트 명확

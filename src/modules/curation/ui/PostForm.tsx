@@ -7,7 +7,11 @@
 // ============================================
 
 import type { Post } from "@/shared/types/post";
-import { STAGE_LABELS, TYPE_LABELS } from "@/shared/types/post";
+import {
+  STAGE_LABELS,
+  TYPE_LABELS,
+  ACTIVE_TYPE_TAGS,
+} from "@/shared/types/post";
 import { ImageUploadField } from "./ImageUploadField";
 
 export interface PostFormDefaults {
@@ -172,12 +176,12 @@ export function PostForm({ post, defaults, action, submitLabel, errorMessage }: 
 
       <Section title="유형 태그">
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-          {Object.entries(TYPE_LABELS).map(([k, l]) => (
+          {ACTIVE_TYPE_TAGS.map((k) => (
             <Checkbox
               key={k}
               name="type_tags"
               value={k}
-              label={l}
+              label={TYPE_LABELS[k]}
               defaultChecked={v.type_tags.includes(k)}
             />
           ))}
