@@ -44,6 +44,35 @@ export async function hasChildren(): Promise<boolean> {
   return children.length > 0;
 }
 
+export type ParentRole = "mother" | "father" | "other";
+
+export interface UserProfile {
+  user_id: string;
+  parent_role: ParentRole;
+  display_name: string | null;
+}
+
+/** 현재 사용자의 프로필 (부모 역할 등) */
+export async function getUserProfile(): Promise<UserProfile | null> {
+  try {
+    const supabase = await getServerSupabase();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return null;
+
+    const { data } = await supabase
+      .from("user_profiles")
+      .select("*")
+      .eq("user_id", user.id)
+      .maybeSingle();
+
+    return (data as UserProfile | null) ?? null;
+  } catch {
+    return null;
+  }
+}
+
 /** 생년월일 → 시기 카테고리 매핑 */
 export function getStageFromBirthDate(birthDate: string): string {
   const now = new Date();

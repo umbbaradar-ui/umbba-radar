@@ -8,6 +8,7 @@ import { ViewTransition } from "react";
 import type { Post } from "@/shared/types/post";
 import { STAGE_LABELS, TYPE_LABELS } from "@/shared/types/post";
 import { calcDDay } from "@/shared/utils/dday";
+import { formatRelativeTime } from "@/shared/utils/relative-time";
 
 interface Props {
   post: Post;
@@ -73,13 +74,16 @@ export function PostCard({ post }: Props) {
         </div>
       </ViewTransition>
 
-      {/* 본문: 한 줄 설명 + 태그 */}
+      {/* 본문: 한 줄 설명 + 태그 + 등록 상대시간 */}
       <div className="flex flex-1 flex-col gap-2 px-4 py-3">
         {post.body && (
           <p className="line-clamp-2 text-xs leading-relaxed text-slate-600">
             {post.body}
           </p>
         )}
+        <p className="text-[10px] text-slate-400">
+          {formatRelativeTime(post.created_at)} 등록
+        </p>
         <div className="mt-auto flex flex-wrap gap-1 pt-1">
           {post.stage_categories.slice(0, 2).map((s) => (
             <span

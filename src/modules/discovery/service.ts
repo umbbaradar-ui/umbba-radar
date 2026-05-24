@@ -1,16 +1,23 @@
 // ============================================
 // Discovery Service — 검색·필터·정렬 (읽기 전용 합성)
-// 자체 데이터 없음. Content의 Post를 받아 필터링.
+// stage·type 카테고리 필터링은 클라이언트 측에서 처리
+// (Supabase 배열 컬럼 필터는 복잡 → 메모리 필터 충분히 빠름)
 // ============================================
 
 import type { Post, StageCategory, TypeTag } from "@/shared/types/post";
+import type { SortMode } from "@/modules/content/service";
 
 export interface PostFilters {
   stage?: string;
   type?: string;
 }
 
-/** URL 검색 파라미터로 들어온 값을 후처리해서 카드 목록을 필터 */
+export interface SearchAndSort {
+  q?: string;
+  sort?: SortMode;
+}
+
+/** 클라이언트 측 필터 — stage·type 카테고리 매칭 */
 export function filterPosts(posts: Post[], filters: PostFilters): Post[] {
   const { stage, type } = filters;
 

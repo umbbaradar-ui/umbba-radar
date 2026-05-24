@@ -112,6 +112,20 @@ export function BottomTabNav({ user }: Props) {
 
           {/* 메뉴 — 관리자는 URL로 직접 접속, 공개 메뉴에서 노출 X */}
           <nav className="px-2 py-2">
+            {user && (
+              <SheetLink
+                href="/me"
+                icon="👤"
+                label="내 정보 수정"
+                onClick={() => setMoreOpen(false)}
+              />
+            )}
+            <SheetLink
+              href="/archive"
+              icon="🗓️"
+              label="지난 이벤트"
+              onClick={() => setMoreOpen(false)}
+            />
             <SheetLink
               href="/terms"
               icon="📄"

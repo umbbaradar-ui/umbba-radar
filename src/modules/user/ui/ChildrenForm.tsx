@@ -2,7 +2,7 @@
 
 // ============================================
 // 자녀 정보 + 부모 역할 입력 폼
-// 다둥이 지원 (자녀 추가 버튼), 부모는 엄마/아빠/기타 선택
+// 신규 가입 온보딩 + 마이페이지 수정 양쪽에서 사용 (initial 값 prop)
 // ============================================
 
 import { useState } from "react";
@@ -19,24 +19,40 @@ interface ChildInput {
 
 interface Props {
   next: string;
+  initialParentRole?: ParentRole;
+  initialChildren?: ChildInput[];
+  /** 마이페이지 모드 (저장 후 alert·label 변경) */
+  isEditMode?: boolean;
 }
 
 const MAX_CHILDREN = 5;
 
-export function ChildrenForm({ next }: Props) {
-  const [parentRole, setParentRole] = useState<ParentRole>("other");
-  const [children, setChildren] = useState<ChildInput[]>([
-    { gender: "X", birth_date: "", nickname: "" },
-  ]);
+const DEFAULT_CHILD: ChildInput = {
+  gender: "X",
+  birth_date: "",
+  nickname: "",
+};
+
+export function ChildrenForm({
+  next,
+  initialParentRole,
+  initialChildren,
+  isEditMode = false,
+}: Props) {
+  const [parentRole, setParentRole] = useState<ParentRole>(
+    initialParentRole ?? "other"
+  );
+  const [children, setChildren] = useState<ChildInput[]>(
+    initialChildren && initialChildren.length > 0
+      ? initialChildren
+      : [DEFAULT_CHILD]
+  );
   const [submitting, setSubmitting] = useState(false);
   const [clientError, setClientError] = useState<string | null>(null);
 
   function addChild() {
     if (children.length >= MAX_CHILDREN) return;
-    setChildren([
-      ...children,
-      { gender: "X", birth_date: "", nickname: "" },
-    ]);
+    setChildren([...children, { ...DEFAULT_CHILD }]);
   }
 
   function removeChild(idx: number) {
@@ -77,9 +93,11 @@ export function ChildrenForm({ next }: Props) {
       {/* 부모 역할 */}
       <section className="space-y-3 rounded-2xl bg-white p-5 shadow-sm">
         <h3 className="text-sm font-bold text-slate-900">🙋 본인은?</h3>
-        <p className="text-[11px] text-slate-500">
-          맞춤 알림에 활용돼요 (예: "엄마, 둘째에게 적합한…")
-        </p>
+        {!isEditMode && (
+          <p className="text-[11px] text-slate-500">
+            맞춤 알림에 활용돼요 (예: "엄마, 둘째에게 적합한…")
+          </p>
+        )}
         <div className="grid grid-cols-3 gap-2">
           <RolePill
             checked={parentRole === "mother"}
@@ -207,7 +225,11 @@ export function ChildrenForm({ next }: Props) {
         disabled={submitting}
         className="w-full rounded-xl bg-slate-900 px-4 py-4 text-sm font-bold text-white transition hover:bg-slate-800 disabled:opacity-60"
       >
-        {submitting ? "저장 중…" : "완료 →"}
+        {submitting
+          ? "저장 중…"
+          : isEditMode
+            ? "변경사항 저장"
+            : "완료 →"}
       </button>
     </form>
   );
