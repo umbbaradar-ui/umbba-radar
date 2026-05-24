@@ -32,13 +32,23 @@ export default async function LoginPage({ searchParams }: PageProps) {
         <GoogleSignInButton next={next} />
 
         <p className="mt-6 text-center text-[11px] text-slate-400">
-          로그인하지 않아도 사이트는 그대로 이용할 수 있어요.
+          비로그인 시 카드 1건까지만 자유롭게 열어볼 수 있어요.
           <br />
-          체크 기록은 이 기기에만 저장됩니다.
+          가입은 1초, 비밀번호 없음.
         </p>
 
-        <div className="mt-4 text-center">
-          <Link href="/" className="text-xs text-slate-500 underline">
+        <div className="mt-5 border-t border-slate-100 pt-4 text-center text-[11px] text-slate-400">
+          처음이세요?
+          <Link
+            href={`/signup${next ? `?next=${encodeURIComponent(next)}` : ""}`}
+            className="ml-1 font-medium text-slate-600 underline"
+          >
+            가입 안내 보기
+          </Link>
+        </div>
+
+        <div className="mt-2 text-center">
+          <Link href="/" className="text-[11px] text-slate-400 underline">
             ← 둘러보기로 돌아가기
           </Link>
         </div>

@@ -13,6 +13,7 @@ import { getCurrentUser } from "@/modules/user/service";
 import { CardClickTracker } from "@/modules/analytics/ui/CardClickTracker";
 import { ExternalLinkButton } from "@/modules/analytics/ui/ExternalLinkButton";
 import { AdSlot } from "@/modules/advertising/ui/AdSlot";
+import { ViewGate } from "@/modules/user/ui/ViewGate";
 import { STAGE_LABELS, TYPE_LABELS } from "@/shared/types/post";
 
 export const revalidate = 60;
@@ -46,6 +47,7 @@ export default async function PostDetailPage({ params }: PageProps) {
   return (
     <main className="mx-auto max-w-2xl px-5 py-4">
       <CardClickTracker postId={post.id} />
+      <ViewGate postId={post.id} loggedIn={Boolean(user)} />
       <Link
         href="/"
         className="mb-4 inline-flex items-center gap-1 text-sm text-slate-500 transition hover:text-slate-900"
