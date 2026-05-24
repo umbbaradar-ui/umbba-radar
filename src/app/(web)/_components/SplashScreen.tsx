@@ -1,7 +1,8 @@
 "use client";
 
 // ============================================
-// 첫 진입 스플래시 — 브랜드 + 슬로건을 1.5초간 강조
+// 첫 진입 스플래시 — 웹 브라우저 전용
+// PWA(standalone)는 OS 자체 스플래시가 이미 있으므로 skip
 // sessionStorage 로 같은 세션엔 한 번만 표시
 // ============================================
 
@@ -9,7 +10,18 @@ import { useEffect, useState } from "react";
 import { Logo } from "@/shared/ui/Logo";
 
 const STORAGE_KEY = "umbba-splash-shown";
-const HOLD_MS = 1400;
+const HOLD_MS = 900;
+const FADE_MS = 350;
+
+function isStandalonePWA(): boolean {
+  if (typeof window === "undefined") return false;
+  // Android·Desktop Chrome 등 표준
+  if (window.matchMedia("(display-mode: standalone)").matches) return true;
+  // iOS Safari (홈화면 추가)
+  const nav = window.navigator as Navigator & { standalone?: boolean };
+  if (nav.standalone === true) return true;
+  return false;
+}
 
 export function SplashScreen() {
   const [phase, setPhase] = useState<"hidden" | "in" | "out" | "done">(
@@ -18,11 +30,19 @@ export function SplashScreen() {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
+
+    // PWA로 설치된 경우 OS 스플래시와 중복되므로 skip
+    if (isStandalonePWA()) {
+      setPhase("done");
+      return;
+    }
+
     // 같은 세션에 이미 봤으면 건너뜀
     if (sessionStorage.getItem(STORAGE_KEY)) {
       setPhase("done");
       return;
     }
+
     // 1프레임 뒤 페이드 인 (마운트 직후 transition 작동)
     requestAnimationFrame(() => setPhase("in"));
     const holdTimer = setTimeout(() => setPhase("out"), HOLD_MS);
@@ -34,7 +54,7 @@ export function SplashScreen() {
     const t = setTimeout(() => {
       setPhase("done");
       sessionStorage.setItem(STORAGE_KEY, "1");
-    }, 400);
+    }, FADE_MS);
     return () => clearTimeout(t);
   }, [phase]);
 
@@ -42,9 +62,10 @@ export function SplashScreen() {
 
   return (
     <div
-      className={`pt-safe pb-safe fixed inset-0 z-[100] flex flex-col items-center justify-center gap-5 bg-gradient-to-br from-amber-50 via-amber-50 to-rose-50 transition-opacity duration-400 ${
+      className={`pt-safe pb-safe fixed inset-0 z-[100] flex flex-col items-center justify-center gap-5 bg-gradient-to-br from-amber-50 via-amber-50 to-rose-50 transition-opacity ${
         phase === "in" ? "opacity-100" : "opacity-0"
       }`}
+      style={{ transitionDuration: `${FADE_MS}ms` }}
       aria-hidden="true"
     >
       <Logo size={84} className="text-rose-500 drop-shadow-sm" />
