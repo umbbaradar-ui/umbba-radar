@@ -36,6 +36,6 @@ export function calcDDay(deadline: string | null): DDay | null {
   const days = Math.round((deadlineKST - todayKST) / DAY_MS);
 
   if (days < 0) return { label: "마감", urgent: false, days };
-  if (days === 0) return { label: "D-Day", urgent: true, days };
+  if (days === 0) return { label: "마감일!", urgent: true, days };
   return { label: `D-${days}`, urgent: days <= 3, days };
 }
