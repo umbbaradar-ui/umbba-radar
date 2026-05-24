@@ -8,12 +8,14 @@
 // - 아니면 항상 노출 (브라우저가 PWA 지원하든 안 하든, 사용자한테 결정권을 줌)
 // - 클릭 시 최선책 시도: 네이티브 prompt → iOS 가이드 → 일반 브라우저 메뉴 안내
 //
-// 이전 버전의 2.5초 timeout 로직 제거:
-//   Chrome은 'beforeinstallprompt'를 참여도 휴리스틱(엔게이지먼트) 후에 쏘는 경우가 많아
-//   첫 방문에서 이벤트를 못 받는 일이 흔함. 그래서 타임아웃으로 숨기면 평생 못 봄.
+// ⚠️ 모달은 createPortal로 document.body에 직접 마운트.
+//    모바일 헤더의 backdrop-blur·더보기 시트의 transform이
+//    CSS containing block을 만들어서 자식의 fixed positioning을 깨뜨림.
+//    portal로 escape해서 viewport 기준 정확히 위치 잡음.
 // ============================================
 
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
@@ -36,6 +38,13 @@ function detectStandalone(): boolean {
   if (window.matchMedia("(display-mode: standalone)").matches) return true;
   const nav = window.navigator as Navigator & { standalone?: boolean };
   return nav.standalone === true;
+}
+
+/** mount 후에만 true → SSR hydration mismatch 방지 (portal용) */
+function useMounted() {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  return mounted;
 }
 
 function useInstall() {
@@ -75,97 +84,132 @@ function useInstall() {
 }
 
 // ============================================
-// 모달 1: iOS Safari 가이드
+// Portal 래퍼 — 모든 모달을 document.body 직속으로 마운트
+// 모바일 헤더의 backdrop-blur·시트의 transform이 만드는 containing block 회피
 // ============================================
-function IOSGuideModal({ onClose }: { onClose: () => void }) {
+function ModalPortal({ children }: { children: React.ReactNode }) {
+  const mounted = useMounted();
+  if (!mounted) return null;
+  return createPortal(children, document.body);
+}
+
+/** 공통 모달 셸 — 모바일 하단 카드 / 데스크탑 중앙 카드, body 포털로 항상 viewport 기준 */
+function ModalShell({
+  onClose,
+  children,
+}: {
+  onClose: () => void;
+  children: React.ReactNode;
+}) {
   return (
-    <>
-      <div className="fixed inset-0 z-[60] bg-black/50" onClick={onClose} aria-hidden="true" />
-      <div className="pb-safe fixed inset-x-3 bottom-3 z-[61] rounded-2xl bg-white p-5 shadow-2xl sm:left-1/2 sm:right-auto sm:bottom-1/2 sm:-translate-x-1/2 sm:translate-y-1/2 sm:max-w-sm">
-        <div className="flex items-start gap-3">
-          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-rose-100 to-amber-100 text-2xl">
-            📲
-          </div>
-          <div className="flex-1">
-            <h3 className="text-base font-extrabold tracking-tight text-slate-900">
-              iOS Safari에서 홈 화면에 추가
-            </h3>
-            <p className="mt-1 text-xs leading-relaxed text-slate-600">
-              Safari 하단의{" "}
-              <span className="inline-block rounded bg-slate-100 px-1.5 py-0.5 font-bold text-slate-700">
-                공유 ⎋
-              </span>{" "}
-              버튼을 눌러주세요.
-            </p>
-            <p className="mt-2 text-xs leading-relaxed text-slate-600">
-              메뉴에서{" "}
-              <span className="font-bold text-slate-900">&quot;홈 화면에 추가&quot;</span>를
-              선택하면 끝!
-            </p>
-            <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-[11px] leading-relaxed text-amber-800">
-              💡 일반 앱처럼 홈 화면 아이콘에서 바로 들어올 수 있어요.
-            </p>
-          </div>
-        </div>
-        <button
-          type="button"
-          onClick={onClose}
-          className="mt-4 w-full rounded-xl bg-slate-900 px-4 py-3 text-sm font-bold text-white hover:bg-slate-800"
-        >
-          확인
-        </button>
+    <ModalPortal>
+      {/* 딤 */}
+      <div
+        className="fixed inset-0 z-[1000] bg-black/50"
+        onClick={onClose}
+        aria-hidden="true"
+      />
+      {/* 카드: 모바일 하단 fixed bottom, 데스크탑 중앙 */}
+      <div
+        className="pb-safe fixed inset-x-3 bottom-3 z-[1001] rounded-2xl bg-white p-5 shadow-2xl sm:inset-x-auto sm:bottom-auto sm:left-1/2 sm:top-1/2 sm:max-w-sm sm:-translate-x-1/2 sm:-translate-y-1/2"
+        role="dialog"
+        aria-modal="true"
+      >
+        {children}
       </div>
-    </>
+    </ModalPortal>
   );
 }
 
 // ============================================
-// 모달 2: Android/Desktop 일반 가이드 (네이티브 prompt 이벤트 못 받은 경우)
+// 모달 1: iOS Safari 가이드
+// ============================================
+function IOSGuideModal({ onClose }: { onClose: () => void }) {
+  return (
+    <ModalShell onClose={onClose}>
+      <div className="flex items-start gap-3">
+        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-rose-100 to-amber-100 text-2xl">
+          📲
+        </div>
+        <div className="flex-1">
+          <h3 className="text-base font-extrabold tracking-tight text-slate-900">
+            iOS Safari에서 홈 화면에 추가
+          </h3>
+          <p className="mt-1 text-xs leading-relaxed text-slate-600">
+            Safari 하단의{" "}
+            <span className="inline-block rounded bg-slate-100 px-1.5 py-0.5 font-bold text-slate-700">
+              공유 ⎋
+            </span>{" "}
+            버튼을 눌러주세요.
+          </p>
+          <p className="mt-2 text-xs leading-relaxed text-slate-600">
+            메뉴에서{" "}
+            <span className="font-bold text-slate-900">
+              &quot;홈 화면에 추가&quot;
+            </span>
+            를 선택하면 끝!
+          </p>
+          <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-[11px] leading-relaxed text-amber-800">
+            💡 일반 앱처럼 홈 화면 아이콘에서 바로 들어올 수 있어요.
+          </p>
+        </div>
+      </div>
+      <button
+        type="button"
+        onClick={onClose}
+        className="mt-4 w-full rounded-xl bg-slate-900 px-4 py-3 text-sm font-bold text-white hover:bg-slate-800"
+      >
+        확인
+      </button>
+    </ModalShell>
+  );
+}
+
+// ============================================
+// 모달 2: Android/Desktop 일반 가이드
 // ============================================
 function ManualGuideModal({ onClose }: { onClose: () => void }) {
   return (
-    <>
-      <div className="fixed inset-0 z-[60] bg-black/50" onClick={onClose} aria-hidden="true" />
-      <div className="pb-safe fixed inset-x-3 bottom-3 z-[61] rounded-2xl bg-white p-5 shadow-2xl sm:left-1/2 sm:right-auto sm:bottom-1/2 sm:-translate-x-1/2 sm:translate-y-1/2 sm:max-w-sm">
-        <div className="flex items-start gap-3">
-          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-rose-100 to-amber-100 text-2xl">
-            📲
-          </div>
-          <div className="flex-1">
-            <h3 className="text-base font-extrabold tracking-tight text-slate-900">
-              앱처럼 홈 화면에 추가
-            </h3>
-            <p className="mt-1 text-xs leading-relaxed text-slate-600">
-              브라우저 우측 상단{" "}
-              <span className="inline-block rounded bg-slate-100 px-1.5 py-0.5 font-bold text-slate-700">
-                ⋮ 메뉴
-              </span>{" "}
-              를 눌러주세요.
-            </p>
-            <p className="mt-2 text-xs leading-relaxed text-slate-600">
-              <span className="font-bold text-slate-900">
-                &quot;앱 설치&quot;
-              </span>{" "}
-              또는{" "}
-              <span className="font-bold text-slate-900">
-                &quot;홈 화면에 추가&quot;
-              </span>{" "}
-              항목 선택.
-            </p>
-            <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-[11px] leading-relaxed text-amber-800">
-              💡 Chrome·Samsung Internet·Edge 등에서 같은 메뉴를 찾을 수 있어요. 일부 브라우저(Firefox 모바일)는 지원 안 함.
-            </p>
-          </div>
+    <ModalShell onClose={onClose}>
+      <div className="flex items-start gap-3">
+        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-rose-100 to-amber-100 text-2xl">
+          📲
         </div>
-        <button
-          type="button"
-          onClick={onClose}
-          className="mt-4 w-full rounded-xl bg-slate-900 px-4 py-3 text-sm font-bold text-white hover:bg-slate-800"
-        >
-          확인
-        </button>
+        <div className="flex-1">
+          <h3 className="text-base font-extrabold tracking-tight text-slate-900">
+            앱처럼 홈 화면에 추가
+          </h3>
+          <p className="mt-1 text-xs leading-relaxed text-slate-600">
+            브라우저 우측 상단{" "}
+            <span className="inline-block rounded bg-slate-100 px-1.5 py-0.5 font-bold text-slate-700">
+              ⋮ 메뉴
+            </span>{" "}
+            를 눌러주세요.
+          </p>
+          <p className="mt-2 text-xs leading-relaxed text-slate-600">
+            <span className="font-bold text-slate-900">
+              &quot;앱 설치&quot;
+            </span>{" "}
+            또는{" "}
+            <span className="font-bold text-slate-900">
+              &quot;홈 화면에 추가&quot;
+            </span>{" "}
+            항목 선택.
+          </p>
+          <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-[11px] leading-relaxed text-amber-800">
+            💡 Chrome·Samsung Internet·Edge 등에서 같은 메뉴를 찾을 수 있어요.
+            일부 브라우저(Firefox 모바일)는 지원 안 함.
+          </p>
+        </div>
       </div>
-    </>
+      <button
+        type="button"
+        onClick={onClose}
+        className="mt-4 w-full rounded-xl bg-slate-900 px-4 py-3 text-sm font-bold text-white hover:bg-slate-800"
+      >
+        확인
+      </button>
+    </ModalShell>
   );
 }
 
