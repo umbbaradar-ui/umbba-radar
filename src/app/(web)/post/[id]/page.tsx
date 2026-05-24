@@ -15,20 +15,12 @@ import { ExternalLinkButton } from "@/modules/analytics/ui/ExternalLinkButton";
 import { AdSlot } from "@/modules/advertising/ui/AdSlot";
 import { ViewGate } from "@/modules/user/ui/ViewGate";
 import { STAGE_LABELS, TYPE_LABELS } from "@/shared/types/post";
+import { calcDDay } from "@/shared/utils/dday";
 
 export const revalidate = 60;
 
 interface PageProps {
   params: Promise<{ id: string }>;
-}
-
-function calcDDay(deadline: string | null): string | null {
-  if (!deadline) return null;
-  const diffMs = new Date(deadline).getTime() - Date.now();
-  const days = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
-  if (days < 0) return "마감";
-  if (days === 0) return "D-Day";
-  return `D-${days}`;
 }
 
 export default async function PostDetailPage({ params }: PageProps) {
@@ -69,13 +61,10 @@ export default async function PostDetailPage({ params }: PageProps) {
             {dday && (
               <span
                 className={`absolute left-4 top-4 rounded-full px-4 py-1.5 text-sm font-bold text-white ${
-                  dday !== "마감" &&
-                  Number.parseInt(dday.replace("D-", ""), 10) <= 3
-                    ? "bg-rose-500"
-                    : "bg-slate-700/80"
+                  dday.urgent ? "bg-rose-500" : "bg-slate-700/80"
                 }`}
               >
-                {dday}
+                {dday.label}
               </span>
             )}
             {isReview && (

@@ -7,20 +7,10 @@ import Link from "next/link";
 import { ViewTransition } from "react";
 import type { Post } from "@/shared/types/post";
 import { STAGE_LABELS, TYPE_LABELS } from "@/shared/types/post";
+import { calcDDay } from "@/shared/utils/dday";
 
 interface Props {
   post: Post;
-}
-
-function calcDDay(
-  deadline: string | null
-): { label: string; urgent: boolean } | null {
-  if (!deadline) return null;
-  const diffMs = new Date(deadline).getTime() - Date.now();
-  const days = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
-  if (days < 0) return { label: "마감", urgent: false };
-  if (days === 0) return { label: "D-Day", urgent: true };
-  return { label: `D-${days}`, urgent: days <= 3 };
 }
 
 export function PostCard({ post }: Props) {
