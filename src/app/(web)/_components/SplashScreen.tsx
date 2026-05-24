@@ -81,10 +81,30 @@ export function SplashScreen() {
         </h1>
       </div>
 
-      {/* 슬로건 → 하단 (safe-area 위로 살짝 띄움) */}
-      <p className="mb-12 text-sm font-medium text-rose-700">
-        엄빠 대신 매일 혜택 스캔 중 ♥
-      </p>
+      {/* 하단 영역: 로딩 인디케이터 + 슬로건 */}
+      <div className="mb-12 flex flex-col items-center gap-2.5">
+        {/* "혜택 정리 중 . . ." — 살아있는 느낌 부여, CSS-only 애니메이션 */}
+        <div className="flex items-center gap-1.5 text-xs font-medium text-rose-600/80">
+          <span>혜택 정리 중</span>
+          <span className="inline-flex gap-0.5">
+            <span
+              className="h-1 w-1 animate-bounce rounded-full bg-rose-500"
+              style={{ animationDelay: "0ms" }}
+            />
+            <span
+              className="h-1 w-1 animate-bounce rounded-full bg-rose-500"
+              style={{ animationDelay: "120ms" }}
+            />
+            <span
+              className="h-1 w-1 animate-bounce rounded-full bg-rose-500"
+              style={{ animationDelay: "240ms" }}
+            />
+          </span>
+        </div>
+        <p className="text-sm font-medium text-rose-700">
+          엄빠 대신 매일 혜택 스캔 중 ♥
+        </p>
+      </div>
     </div>
   );
 }
