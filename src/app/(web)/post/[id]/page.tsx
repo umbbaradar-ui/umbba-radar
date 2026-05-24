@@ -3,6 +3,7 @@
 // 메인의 썸네일이 hero 이미지로 모핑되는 ViewTransition
 // ============================================
 
+import type { Metadata } from "next";
 import Link from "next/link";
 import { ViewTransition } from "react";
 import { notFound } from "next/navigation";
@@ -23,6 +24,65 @@ interface PageProps {
   params: Promise<{ id: string }>;
 }
 
+// SEO — 카드별 고유 메타데이터 (검색결과·SNS 공유 카드 풍부화)
+export async function generateMetadata({
+  params,
+}: PageProps): Promise<Metadata> {
+  const { id } = await params;
+  const post = await getPost(id);
+
+  if (!post) {
+    return {
+      title: "카드를 찾을 수 없어요",
+      robots: { index: false, follow: false },
+    };
+  }
+
+  const dday = calcDDay(post.deadline);
+  const stageStr = post.stage_categories
+    .map((s) => STAGE_LABELS[s] ?? s)
+    .join(", ");
+  const typeStr = post.type_tags.map((t) => TYPE_LABELS[t] ?? t).join(", ");
+
+  const titleBase = post.brand_name
+    ? `[${post.brand_name}] ${post.title}`
+    : post.title;
+  const titleSuffix = dday ? ` · ${dday.label}` : "";
+  const title = `${titleBase}${titleSuffix} · 엄빠레이더`.slice(0, 100);
+
+  const description = [
+    typeStr && `${typeStr}`,
+    stageStr,
+    post.body?.replace(/\s+/g, " ").slice(0, 100),
+    "엄빠레이더에서 모은 임신·출산·육아 협찬 정보",
+  ]
+    .filter(Boolean)
+    .join(" · ")
+    .slice(0, 160);
+
+  const url = `/post/${post.id}`;
+
+  return {
+    title,
+    description,
+    alternates: { canonical: url },
+    openGraph: {
+      title,
+      description,
+      url,
+      siteName: "엄빠레이더",
+      locale: "ko_KR",
+      type: "article",
+      // 카드별 동적 OG 이미지는 같은 폴더의 opengraph-image.tsx가 자동 제공
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+    },
+  };
+}
+
 export default async function PostDetailPage({ params }: PageProps) {
   const { id } = await params;
   const [post, user] = await Promise.all([getPost(id), getCurrentUser()]);
@@ -36,8 +96,37 @@ export default async function PostDetailPage({ params }: PageProps) {
   const dday = calcDDay(post.deadline);
   const isReview = post.kind === "review";
 
+  // JSON-LD 구조화 데이터 (Google rich snippet)
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Article",
+    headline: post.title,
+    image: post.thumbnail_url ? [post.thumbnail_url] : undefined,
+    datePublished: post.created_at,
+    dateModified: post.updated_at,
+    author: {
+      "@type": "Organization",
+      name: post.brand_name ?? "엄빠레이더",
+    },
+    publisher: {
+      "@type": "Organization",
+      name: "엄빠레이더",
+      logo: {
+        "@type": "ImageObject",
+        url: "https://umbba-radar.com/icons/icon-512.png",
+      },
+    },
+    description: post.body?.slice(0, 200),
+    url: `https://umbba-radar.com/post/${post.id}`,
+  };
+
   return (
     <main className="mx-auto max-w-3xl px-4 py-4">
+      {/* JSON-LD — Google rich snippet 후보 (이미지·날짜·이벤트 표시) */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       <CardClickTracker postId={post.id} />
       <ViewGate postId={post.id} loggedIn={Boolean(user)} />
       <Link

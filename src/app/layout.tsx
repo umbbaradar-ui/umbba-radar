@@ -15,11 +15,29 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://umbba-radar.com"),
-  title: "엄빠레이더 — 엄빠 대신 매일 혜택 스캔 중 ♥",
+  title: {
+    default: "엄빠레이더 — 엄빠 대신 매일 혜택 스캔 중 ♥",
+    // 각 페이지 metadata.title 설정 시 "[페이지명] | 엄빠레이더" 형태로 자동 조합
+    template: "%s",
+  },
   description:
     "임신·출산·육아 협찬과 체험단, 후기를 한곳에 모아 보여드려요. 부모님 대신 스캔 중.",
   applicationName: "엄빠레이더",
   keywords: ["육아", "협찬", "체험단", "리그램", "추첨", "무료체험", "육아 혜택"],
+  alternates: {
+    canonical: "/",
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+      "max-video-preview": -1,
+    },
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
@@ -42,6 +60,33 @@ export const metadata: Metadata = {
   },
 };
 
+// JSON-LD Organization 구조화 데이터 — Google이 사이트 정체성 인식
+const ORGANIZATION_JSON_LD = {
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  name: "엄빠레이더",
+  alternateName: "umbba-radar",
+  url: "https://umbba-radar.com",
+  logo: "https://umbba-radar.com/icons/icon-512.png",
+  description:
+    "임신·출산·육아 협찬·체험단·후기를 한곳에 모은 큐레이션 서비스",
+  inLanguage: "ko-KR",
+};
+
+// JSON-LD WebSite 구조화 데이터 — sitelinks search box 후보
+const WEBSITE_JSON_LD = {
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  name: "엄빠레이더",
+  url: "https://umbba-radar.com",
+  inLanguage: "ko-KR",
+  potentialAction: {
+    "@type": "SearchAction",
+    target: "https://umbba-radar.com/?q={search_term_string}",
+    "query-input": "required name=search_term_string",
+  },
+};
+
 export const viewport: Viewport = {
   themeColor: "#FB7185",
   width: "device-width",
@@ -60,6 +105,21 @@ export default function RootLayout({
       lang="ko"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
+      <head>
+        {/* JSON-LD 구조화 데이터 — 검색엔진이 사이트 정체성/검색 박스 인식 */}
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify(ORGANIZATION_JSON_LD),
+          }}
+        />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify(WEBSITE_JSON_LD),
+          }}
+        />
+      </head>
       <body className="min-h-full flex flex-col bg-amber-50/40">
         {children}
         <Analytics />
