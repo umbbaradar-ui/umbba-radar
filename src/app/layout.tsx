@@ -27,6 +27,14 @@ export const metadata: Metadata = {
   alternates: {
     canonical: "/",
   },
+  // Search Console + Naver Search Advisor 소유권 인증
+  // SSR로 HTML 첫 응답에 포함 → 검색엔진 봇이 안정적으로 인식
+  verification: {
+    google: "KEPWbz9jGjKitHbLa8h1gFBCQawUwi68YxacPE883rw",
+    other: {
+      "naver-site-verification": "4af6b3a074aa9d46366e74854048a4e2e20b7aa5",
+    },
+  },
   robots: {
     index: true,
     follow: true,
