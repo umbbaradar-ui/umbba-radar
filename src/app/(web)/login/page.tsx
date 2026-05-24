@@ -50,7 +50,7 @@ export default async function LoginPage({ searchParams }: PageProps) {
         </Link>
 
         <p className="mt-6 text-center text-[11px] text-slate-400">
-          비로그인 시 카드 1건까지만 자유롭게 열어볼 수 있어요.
+          비로그인 시 카드 4건까지만 자유롭게 열어볼 수 있어요.
         </p>
 
         <div className="mt-5 border-t border-slate-100 pt-4 text-center text-[11px] text-slate-400">
