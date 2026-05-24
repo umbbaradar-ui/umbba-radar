@@ -1,13 +1,14 @@
 // ============================================
 // PWA 아이콘 자동 생성 스크립트
 //
-// 원본: public/bear-mascot.png (1254×1254)
+// 원본: assets/bear-mascot-source.png (1254×1254, ~1.3MB, public/ 밖에 보관)
 // 출력:
 //   - public/icons/icon-192.png        (any, 192×192)
 //   - public/icons/icon-512.png        (any, 512×512)
 //   - public/icons/icon-maskable-192.png (maskable, 192×192, 80% safe area)
 //   - public/icons/icon-maskable-512.png (maskable, 512×512, 80% safe area)
 //   - public/icons/apple-touch-icon.png  (180×180, iOS)
+//   - public/bear-mascot.png           (스플래시·인앱 사용, 300×300, ~30KB)
 //   - src/app/icon.png                 (브라우저 탭/HTML head, 512×512)
 //   - src/app/apple-icon.png           (iOS, 180×180)
 //
@@ -25,7 +26,7 @@ import { fileURLToPath } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, "..");
-const SOURCE = resolve(ROOT, "public/bear-mascot.png");
+const SOURCE = resolve(ROOT, "assets/bear-mascot-source.png");
 
 const BRAND_BG = { r: 255, g: 245, b: 248, alpha: 1 }; // #FFF5F8 (pink-50)
 const MASKABLE_SAFE_AREA = 0.8; // 중앙 80%에만 마스코트, 양옆 10%씩 패딩
@@ -76,6 +77,8 @@ async function main() {
     generateMaskable(192, resolve(ROOT, "public/icons/icon-maskable-192.png")),
     generateMaskable(512, resolve(ROOT, "public/icons/icon-maskable-512.png")),
     generateAny(180, resolve(ROOT, "public/icons/apple-touch-icon.png")),
+    // 스플래시·인앱 사용 (SplashScreen 140px, InstallBanner 36px → 300px면 충분)
+    generateAny(300, resolve(ROOT, "public/bear-mascot.png")),
     // src/app/ 내부 — Next.js metadata 자동 처리용 (탭 favicon, HTML head 등)
     generateAny(512, resolve(ROOT, "src/app/icon.png")),
     generateAny(180, resolve(ROOT, "src/app/apple-icon.png")),
