@@ -119,8 +119,16 @@ export function InstallBanner() {
     >
       <div className="rounded-2xl border border-rose-100 bg-white p-4 shadow-[0_10px_30px_rgba(15,23,42,0.15)]">
         <div className="flex items-start gap-3">
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-rose-100 to-amber-100 text-2xl">
-            📡
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-rose-100 to-amber-100">
+            {/* 마스코트 — 브랜드 통일 (📡 emoji 대체) */}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/bear-mascot.png"
+              alt=""
+              width={36}
+              height={36}
+              className="rounded-lg"
+            />
           </div>
           <div className="flex-1">
             <p className="text-sm font-bold tracking-tight text-slate-900">
