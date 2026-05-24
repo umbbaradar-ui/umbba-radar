@@ -16,6 +16,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { isPWAInstalled, markPWAInstalled } from "@/shared/utils/pwa";
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
@@ -33,13 +34,6 @@ function detectIOS(): boolean {
   return false;
 }
 
-function detectStandalone(): boolean {
-  if (typeof window === "undefined") return false;
-  if (window.matchMedia("(display-mode: standalone)").matches) return true;
-  const nav = window.navigator as Navigator & { standalone?: boolean };
-  return nav.standalone === true;
-}
-
 /** mount 후에만 true → SSR hydration mismatch 방지 (portal용) */
 function useMounted() {
   const [mounted, setMounted] = useState(false);
@@ -54,7 +48,7 @@ function useInstall() {
   useEffect(() => {
     if (typeof window === "undefined") return;
 
-    if (detectStandalone()) {
+    if (isPWAInstalled()) {
       setState("installed");
       return;
     }
@@ -70,6 +64,7 @@ function useInstall() {
 
     const onInstalled = () => {
       promptRef.current = null;
+      markPWAInstalled(); // 다음 방문(다른 컨텍스트 포함)에서도 인식되도록 플래그 저장
       setState("installed");
     };
     window.addEventListener("appinstalled", onInstalled);

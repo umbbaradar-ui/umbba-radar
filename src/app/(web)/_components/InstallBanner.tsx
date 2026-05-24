@@ -9,6 +9,7 @@
 // ============================================
 
 import { useEffect, useState } from "react";
+import { isPWAInstalled, markPWAInstalled } from "@/shared/utils/pwa";
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
@@ -22,13 +23,6 @@ const SHOW_DELAY_MS = 4000;
 function isIOS(): boolean {
   if (typeof window === "undefined") return false;
   return /iPhone|iPad|iPod/i.test(navigator.userAgent);
-}
-
-function isStandalone(): boolean {
-  if (typeof window === "undefined") return false;
-  if (window.matchMedia("(display-mode: standalone)").matches) return true;
-  const nav = window.navigator as Navigator & { standalone?: boolean };
-  return nav.standalone === true;
 }
 
 function wasRecentlyDismissed(): boolean {
@@ -50,7 +44,7 @@ export function InstallBanner() {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    if (isStandalone()) return;
+    if (isPWAInstalled()) return;
     if (wasRecentlyDismissed()) return;
 
     let timer: ReturnType<typeof setTimeout> | undefined;
@@ -74,9 +68,10 @@ export function InstallBanner() {
       scheduleShow();
     }
 
-    // 설치 완료 이벤트(android) — 배너 닫고 쿨다운 저장
+    // 설치 완료 이벤트(android) — 배너 닫고 쿨다운 저장 + PWA 인식 플래그
     const onInstalled = () => {
       setShow(false);
+      markPWAInstalled(); // 다음 방문에서 isPWAInstalled() 즉시 true
       localStorage.setItem(STORAGE_KEY, Date.now().toString());
     };
     window.addEventListener("appinstalled", onInstalled);
