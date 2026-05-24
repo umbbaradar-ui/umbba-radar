@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://umbba-radar.com"),
-  title: "엄빠레이더 — 놓치는 혜택은 없게",
+  title: "엄빠레이더 — 엄빠 대신 매일 혜택 스캔 중 ♥",
   description:
     "임신·출산·육아 협찬과 체험단, 후기를 한곳에 모아 보여드려요. 부모님 대신 스캔 중.",
   applicationName: "엄빠레이더",
@@ -26,7 +26,7 @@ export const metadata: Metadata = {
     title: "엄빠레이더",
   },
   openGraph: {
-    title: "엄빠레이더 — 놓치는 혜택은 없게",
+    title: "엄빠레이더 — 엄빠 대신 매일 혜택 스캔 중 ♥",
     description:
       "임신·출산·육아 협찬과 체험단, 후기를 한곳에 모아 보여드려요.",
     url: "https://umbba-radar.com",
@@ -36,7 +36,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "엄빠레이더 — 놓치는 혜택은 없게",
+    title: "엄빠레이더 — 엄빠 대신 매일 혜택 스캔 중 ♥",
     description:
       "임신·출산·육아 협찬과 체험단, 후기를 한곳에 모아 보여드려요.",
   },
