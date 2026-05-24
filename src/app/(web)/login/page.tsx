@@ -29,17 +29,21 @@ export default async function LoginPage({ searchParams }: PageProps) {
           </p>
         </header>
 
-        <GoogleSignInButton next={next} />
-
-        <div className="my-5 flex items-center gap-3">
-          <div className="h-px flex-1 bg-slate-200" />
-          <span className="text-[11px] text-slate-400">또는</span>
-          <div className="h-px flex-1 bg-slate-200" />
-        </div>
+        {/* Google OAuth는 계정 정지 풀리면 NEXT_PUBLIC_GOOGLE_OAUTH_ENABLED=true 로 켜기 */}
+        {process.env.NEXT_PUBLIC_GOOGLE_OAUTH_ENABLED === "true" && (
+          <>
+            <GoogleSignInButton next={next} />
+            <div className="my-5 flex items-center gap-3">
+              <div className="h-px flex-1 bg-slate-200" />
+              <span className="text-[11px] text-slate-400">또는</span>
+              <div className="h-px flex-1 bg-slate-200" />
+            </div>
+          </>
+        )}
 
         <Link
           href={`/login/email${next ? `?next=${encodeURIComponent(next)}` : ""}`}
-          className="flex w-full items-center justify-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-800 transition hover:bg-slate-50"
+          className="flex w-full items-center justify-center gap-3 rounded-xl bg-slate-900 px-4 py-3.5 text-sm font-bold text-white transition hover:bg-slate-800"
         >
           <span aria-hidden="true">📧</span>
           <span>이메일로 로그인</span>
