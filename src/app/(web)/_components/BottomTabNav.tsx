@@ -15,6 +15,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { SimpleUser } from "@/modules/user/service";
 import { signOutAction } from "@/modules/user/actions";
+import { InstallSheetEntry } from "@/modules/user/ui/InstallActions";
 
 interface Props {
   user: SimpleUser | null;
@@ -111,7 +112,7 @@ export function BottomTabNav({ user }: Props) {
           </div>
 
           {/* 메뉴 — 관리자는 URL로 직접 접속, 공개 메뉴에서 노출 X */}
-          <nav className="px-2 py-2">
+          <nav className="space-y-1 px-2 py-2">
             {user && (
               <SheetLink
                 href="/me"
@@ -120,6 +121,8 @@ export function BottomTabNav({ user }: Props) {
                 onClick={() => setMoreOpen(false)}
               />
             )}
+            {/* 앱 설치 진입점 — 푸시·자동 배너와 별개 보조 경로 */}
+            <InstallSheetEntry onClick={() => setMoreOpen(false)} />
             <SheetLink
               href="/archive"
               icon="🗓️"

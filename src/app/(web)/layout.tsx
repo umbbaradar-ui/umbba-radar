@@ -10,6 +10,7 @@ import { BottomTabNav } from "./_components/BottomTabNav";
 import { SplashScreen } from "./_components/SplashScreen";
 import { ServiceWorkerRegister } from "./_components/ServiceWorkerRegister";
 import { InstallBanner } from "./_components/InstallBanner";
+import { InstallNavChip } from "@/modules/user/ui/InstallActions";
 import { MigrationOnLogin } from "@/modules/personalization/ui/MigrationOnLogin";
 
 export default async function WebLayout({
@@ -53,6 +54,9 @@ export default async function WebLayout({
             >
               제보하기
             </Link>
+            <div className="ml-1">
+              <InstallNavChip variant="desktop" />
+            </div>
             <div className="ml-2">
               <UserMenu user={user} />
             </div>
@@ -62,17 +66,16 @@ export default async function WebLayout({
 
       {/* 모바일 상단 미니 헤더 (md 미만에서만) */}
       <div className="pt-safe sticky top-0 z-20 border-b border-amber-100 bg-white/85 backdrop-blur md:hidden">
-        <div className="flex items-center justify-between px-4 py-3">
+        <div className="flex items-center justify-between gap-2 px-4 py-3">
           <Link
             href="/"
-            className="flex items-center gap-1.5 text-sm font-extrabold tracking-tight text-slate-900"
+            className="flex shrink-0 items-center gap-1.5 text-sm font-extrabold tracking-tight text-slate-900"
           >
             <Logo size={22} className="text-rose-500" />
             <span>엄빠레이더</span>
           </Link>
-          <span className="text-[10px] text-slate-400">
-            놓치는 혜택은 없게
-          </span>
+          {/* 미설치·미지원이면 자동으로 숨겨짐 → 설치한 사용자에겐 노출 X */}
+          <InstallNavChip variant="mobile" />
         </div>
       </div>
 

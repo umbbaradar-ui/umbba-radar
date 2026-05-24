@@ -10,7 +10,7 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 
 const STORAGE_KEY = "umbba-detail-views";
-const FREE_VIEW_LIMIT = 1; // 1건은 자유 열람, 2번째부터 가입 유도
+const FREE_VIEW_LIMIT = 4; // 4건은 자유 열람, 5번째부터 가입 유도
 
 interface Props {
   postId: string;
