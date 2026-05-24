@@ -31,6 +31,7 @@ export type Stage =
   | "elementary_lower"
   | "elementary_upper";
 export type TypeTag =
+  | "follow"
   | "regram"
   | "lottery"
   | "free_trial"
@@ -68,7 +69,7 @@ const SYSTEM_PROMPT = `당신은 한국 육아 정보 큐레이션 사이트 "�
       "body": string,                     // 한 줄 요약 (예: "댓글 + 친구 태그 → 30명 추첨")
       "kind": "recruiting" | "review" | "group_buy",
       "stage_categories": Array<"pregnancy"|"newborn"|"infant"|"toddler"|"preschool"|"elementary_lower"|"elementary_upper">,
-      "type_tags": Array<"regram"|"lottery"|"free_trial"|"experience_group"|"sponsored"|"gov_support">,
+      "type_tags": Array<"follow"|"regram"|"lottery"|"free_trial"|"experience_group"|"sponsored"|"gov_support">,
       "deadline": string | null           // ISO 8601 with +09:00, 없으면 null
     },
     ...
@@ -79,6 +80,15 @@ const SYSTEM_PROMPT = `당신은 한국 육아 정보 큐레이션 사이트 "�
 - recruiting: 신청·모집 공고
 - review: 사용 후기 (유용한 정보 있어야 함)
 - group_buy: 공동구매
+
+# type_tags (참여 방식·이벤트 유형, 복수 선택 가능)
+- follow: 인스타·블로그 계정 팔로우만으로 참여 가능 (가장 가벼운 진입)
+- regram: 본인 피드에 리그램(재게시)해야 참여
+- lottery: 추첨/뽑기 형식
+- free_trial: 무료 샘플/체험 제품 제공
+- experience_group: 체험단 (제품 받고 후기 작성 의무)
+- sponsored: 협찬 (광고성 표시 의무)
+- gov_support: 정부·지자체 지원 사업
 
 # is_actual_event = false 인 경우
 - 만료 지난 이벤트 명확

@@ -25,6 +25,7 @@ export type StageCategory =
   | 'elementary_upper'
 
 export type TypeTag =
+  | 'follow'
   | 'regram'
   | 'lottery'
   | 'free_trial'
@@ -67,6 +68,7 @@ export const STAGE_LABELS: Record<StageCategory, string> = {
 }
 
 export const TYPE_LABELS: Record<TypeTag, string> = {
+  follow: '팔로우',
   regram: '리그램',
   lottery: '추첨',
   free_trial: '무료체험',
