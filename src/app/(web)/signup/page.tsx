@@ -49,9 +49,23 @@ export default async function SignupPage({ searchParams }: PageProps) {
 
         <GoogleSignInButton next={next} />
 
-        <p className="mt-4 text-center text-[11px] text-slate-400">
-          가입 = 로그인. 별도 비밀번호 필요 없음.
+        <p className="mt-3 text-center text-[11px] text-slate-400">
+          구글 1초 · 비밀번호 X
         </p>
+
+        <div className="my-5 flex items-center gap-3">
+          <div className="h-px flex-1 bg-slate-200" />
+          <span className="text-[11px] text-slate-400">또는</span>
+          <div className="h-px flex-1 bg-slate-200" />
+        </div>
+
+        <Link
+          href={`/signup/email${next ? `?next=${encodeURIComponent(next)}` : ""}`}
+          className="flex w-full items-center justify-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-800 transition hover:bg-slate-50"
+        >
+          <span aria-hidden="true">📧</span>
+          <span>이메일로 가입</span>
+        </Link>
 
         <div className="mt-5 border-t border-slate-100 pt-4 text-center text-[11px] text-slate-400">
           이미 가입했어요?

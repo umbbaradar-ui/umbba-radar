@@ -31,10 +31,22 @@ export default async function LoginPage({ searchParams }: PageProps) {
 
         <GoogleSignInButton next={next} />
 
+        <div className="my-5 flex items-center gap-3">
+          <div className="h-px flex-1 bg-slate-200" />
+          <span className="text-[11px] text-slate-400">또는</span>
+          <div className="h-px flex-1 bg-slate-200" />
+        </div>
+
+        <Link
+          href={`/login/email${next ? `?next=${encodeURIComponent(next)}` : ""}`}
+          className="flex w-full items-center justify-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-800 transition hover:bg-slate-50"
+        >
+          <span aria-hidden="true">📧</span>
+          <span>이메일로 로그인</span>
+        </Link>
+
         <p className="mt-6 text-center text-[11px] text-slate-400">
           비로그인 시 카드 1건까지만 자유롭게 열어볼 수 있어요.
-          <br />
-          가입은 1초, 비밀번호 없음.
         </p>
 
         <div className="mt-5 border-t border-slate-100 pt-4 text-center text-[11px] text-slate-400">
