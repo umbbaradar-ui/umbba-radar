@@ -6,10 +6,18 @@
 // ============================================
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   saveProfileAndChildrenAction,
   type ParentRole,
 } from "../actions";
+
+const ERROR_MESSAGES = {
+  required: "자녀를 최소 한 명 입력해주세요.",
+  invalid: "모든 자녀의 성별·생년월일을 채워주세요.",
+  save_failed: "저장에 실패했어요. 잠시 후 다시 시도해주세요.",
+  auth_required: "세션이 만료됐어요. 다시 로그인해주세요.",
+} as const;
 
 interface ChildInput {
   gender: "M" | "F" | "X";
@@ -39,6 +47,7 @@ export function ChildrenForm({
   initialChildren,
   isEditMode = false,
 }: Props) {
+  const router = useRouter();
   const [parentRole, setParentRole] = useState<ParentRole>(
     initialParentRole ?? "other"
   );
@@ -81,17 +90,31 @@ export function ChildrenForm({
     }
     setSubmitting(true);
     try {
-      await saveProfileAndChildrenAction(parentRole, children, next);
-    } catch (err) {
-      // Next.js의 redirect()/notFound()는 NEXT_REDIRECT / NEXT_NOT_FOUND digest를
-      // 가진 에러를 throw해서 동작함. 잡아버리면 navigation이 죽으니 반드시 re-throw.
-      const digest = (err as { digest?: unknown } | null)?.digest;
-      if (
-        typeof digest === "string" &&
-        (digest.startsWith("NEXT_REDIRECT") || digest === "NEXT_NOT_FOUND")
-      ) {
-        throw err;
+      const result = await saveProfileAndChildrenAction(
+        parentRole,
+        children,
+        next
+      );
+      if (result.ok) {
+        if (isEditMode) {
+          // 마이페이지: 페이지 머무름, 데이터만 새로고침
+          router.refresh();
+          setSubmitting(false);
+        } else {
+          // 온보딩: 메인(혹은 next)으로 이동
+          router.push(result.next);
+          router.refresh();
+        }
+      } else {
+        if (result.error === "auth_required") {
+          router.push("/login");
+          return;
+        }
+        setSubmitting(false);
+        setClientError(ERROR_MESSAGES[result.error]);
       }
+    } catch (err) {
+      console.error("[ChildrenForm] save failed:", err);
       setSubmitting(false);
       setClientError("저장에 실패했어요. 잠시 후 다시 시도해주세요.");
     }
