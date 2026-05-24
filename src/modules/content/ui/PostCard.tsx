@@ -1,6 +1,7 @@
 // ============================================
 // PostCard — 카드 1개를 그리드에 그리는 컴포넌트
-// 이미지 영역과 텍스트 영역 분리 — 업체 이미지 위에 덮어쓰지 않음
+// 이미지 영역과 텍스트 영역 분리
+// 본문/등록시간 제거, 3일내 신규는 NEW 배지로
 // ============================================
 
 import Link from "next/link";
@@ -8,15 +9,18 @@ import { ViewTransition } from "react";
 import type { Post } from "@/shared/types/post";
 import { STAGE_LABELS, TYPE_LABELS } from "@/shared/types/post";
 import { calcDDay } from "@/shared/utils/dday";
-import { formatRelativeTime } from "@/shared/utils/relative-time";
 
 interface Props {
   post: Post;
 }
 
+const NEW_THRESHOLD_MS = 3 * 24 * 60 * 60 * 1000;
+
 export function PostCard({ post }: Props) {
   const dday = calcDDay(post.deadline);
   const isReview = post.kind === "review";
+  const isNew =
+    Date.now() - new Date(post.created_at).getTime() < NEW_THRESHOLD_MS;
 
   return (
     <Link
@@ -40,15 +44,24 @@ export function PostCard({ post }: Props) {
             </div>
           )}
 
-          {/* D-day 배지 (좌측 상단) */}
-          {dday && (
-            <span
-              className={`absolute left-3 top-3 rounded-full px-2.5 py-1 text-[11px] font-extrabold tracking-tight text-white shadow-sm ${
-                dday.urgent ? "bg-rose-500" : "bg-slate-900/70 backdrop-blur"
-              }`}
-            >
-              {dday.label}
-            </span>
+          {/* 좌측 상단 배지 그룹 — D-day + NEW */}
+          {(dday || isNew) && (
+            <div className="absolute left-3 top-3 flex gap-1">
+              {dday && (
+                <span
+                  className={`rounded-full px-2.5 py-1 text-[11px] font-extrabold tracking-tight text-white shadow-sm ${
+                    dday.urgent ? "bg-rose-500" : "bg-slate-900/70 backdrop-blur"
+                  }`}
+                >
+                  {dday.label}
+                </span>
+              )}
+              {isNew && (
+                <span className="rounded-full bg-emerald-500 px-2.5 py-1 text-[11px] font-extrabold tracking-tight text-white shadow-sm">
+                  NEW
+                </span>
+              )}
+            </div>
           )}
 
           {/* 후기 배지 (우측 상단) */}
@@ -60,7 +73,7 @@ export function PostCard({ post }: Props) {
         </div>
       </ViewTransition>
 
-      {/* 텍스트 영역 — 이미지와 분리, 자체 텍스트 영역 */}
+      {/* 텍스트 영역 — 이미지와 분리 */}
       <div className="flex flex-1 flex-col gap-1.5 px-4 py-3.5">
         {post.brand_name && (
           <p className="text-[11px] font-semibold tracking-tight text-rose-600">
@@ -70,14 +83,9 @@ export function PostCard({ post }: Props) {
         <h3 className="line-clamp-2 text-sm font-bold leading-snug tracking-tight text-slate-900">
           {post.title}
         </h3>
-        {post.body && (
-          <p className="line-clamp-2 text-xs leading-relaxed text-slate-500">
-            {post.body}
-          </p>
-        )}
 
-        {/* 태그 */}
-        <div className="mt-1 flex flex-wrap gap-1">
+        {/* 태그 — 카드 하단 고정 */}
+        <div className="mt-auto flex flex-wrap gap-1 pt-1.5">
           {post.stage_categories.slice(0, 2).map((s) => (
             <span
               key={s}
@@ -95,11 +103,6 @@ export function PostCard({ post }: Props) {
             </span>
           ))}
         </div>
-
-        {/* 등록 시간 */}
-        <p className="mt-auto pt-1.5 text-[10px] text-slate-400">
-          {formatRelativeTime(post.created_at)} 등록
-        </p>
       </div>
     </Link>
   );

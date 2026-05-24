@@ -82,7 +82,16 @@ export function ChildrenForm({
     setSubmitting(true);
     try {
       await saveProfileAndChildrenAction(parentRole, children, next);
-    } catch {
+    } catch (err) {
+      // Next.js의 redirect()/notFound()는 NEXT_REDIRECT / NEXT_NOT_FOUND digest를
+      // 가진 에러를 throw해서 동작함. 잡아버리면 navigation이 죽으니 반드시 re-throw.
+      const digest = (err as { digest?: unknown } | null)?.digest;
+      if (
+        typeof digest === "string" &&
+        (digest.startsWith("NEXT_REDIRECT") || digest === "NEXT_NOT_FOUND")
+      ) {
+        throw err;
+      }
       setSubmitting(false);
       setClientError("저장에 실패했어요. 잠시 후 다시 시도해주세요.");
     }
