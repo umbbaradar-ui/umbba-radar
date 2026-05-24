@@ -3,10 +3,14 @@
 // ============================================
 // 이메일·비밀번호 가입 / 로그인 폼
 // Supabase Auth signUp / signInWithPassword 직접 호출
+//
+// 주의: 로그인 성공 후 router.push 대신 window.location.href 로 풀 리로드.
+// router.refresh + push 조합은 Supabase 쿠키 propagation과 race condition을
+// 일으켜 일부 폰·쿠키 상태에서 "로그인 → 다시 로그인 화면으로 롤백" 무한루프
+// 발생함. 풀 리로드는 쿠키 100% 동행 보장.
 // ============================================
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { getBrowserSupabase } from "@/shared/db/supabase-browser";
 import { track } from "@/modules/analytics/service";
 
@@ -15,7 +19,6 @@ interface SignUpProps {
 }
 
 export function EmailSignUpForm({ next }: SignUpProps) {
-  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
@@ -64,17 +67,15 @@ export function EmailSignUpForm({ next }: SignUpProps) {
     }
 
     // 이메일 확인 필수면 user.email_confirmed_at = null
-    // 자동 로그인이면 session 받음
+    // 자동 로그인이면 session 받음 → 풀 리로드로 쿠키 동기화 보장
     if (data.user && data.session) {
       // 즉시 로그인됨 — 자녀 정보 입력으로
-      router.push(`/signup/profile${next ? `?next=${encodeURIComponent(next)}` : ""}`);
+      window.location.href = `/signup/profile${next ? `?next=${encodeURIComponent(next)}` : ""}`;
     } else {
-      // 이메일 확인 필요
-      router.push(
-        `/signup/verify?email=${encodeURIComponent(email)}${
-          next ? `&next=${encodeURIComponent(next)}` : ""
-        }`
-      );
+      // 이메일 확인 필요 (세션 없음 → 쿠키 race 영향 없음, 그대로 navigation OK)
+      window.location.href = `/signup/verify?email=${encodeURIComponent(email)}${
+        next ? `&next=${encodeURIComponent(next)}` : ""
+      }`;
     }
   }
 
@@ -146,7 +147,6 @@ interface LoginProps {
 }
 
 export function EmailLoginForm({ next }: LoginProps) {
-  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -174,9 +174,10 @@ export function EmailLoginForm({ next }: LoginProps) {
       return;
     }
 
-    // 로그인 성공 — 자녀 정보 있으면 next, 없으면 onboarding
-    router.refresh();
-    router.push(next ?? "/");
+    // 로그인 성공 — 풀 리로드로 쿠키 동기화 100% 보장
+    // (router.refresh + push 조합은 쿠키 race condition으로 메인 롤백 루프 유발)
+    // proxy.ts가 새 쿠키 인식 후 자녀 정보 유무 따라 /signup/profile 또는 next로 분기
+    window.location.href = next ?? "/";
   }
 
   return (
