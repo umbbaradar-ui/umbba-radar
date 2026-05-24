@@ -45,7 +45,11 @@ function parseFormToPost(formData: FormData): PostInsertInput {
     formData.getAll(k).map((v) => v.toString()).filter(Boolean);
 
   const deadlineRaw = get("deadline");
-  const deadline = deadlineRaw ? new Date(deadlineRaw).toISOString() : null;
+  // datetime-local은 timezone 정보 없음. Vercel 서버 local time(UTC/US 등)에 의존하면
+  // 캘린더 날짜가 1일 밀릴 수 있어서 KST(+09:00)로 명시적 해석
+  const deadline = deadlineRaw
+    ? new Date(`${deadlineRaw}:00+09:00`).toISOString()
+    : null;
 
   return {
     kind: get("kind") || "recruiting",

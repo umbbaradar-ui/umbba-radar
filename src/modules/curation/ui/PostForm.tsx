@@ -17,9 +17,9 @@ interface Props {
 function toLocalDatetimeInput(iso: string | null): string {
   if (!iso) return "";
   const d = new Date(iso);
-  const tzOffsetMs = d.getTimezoneOffset() * 60 * 1000;
-  const local = new Date(d.getTime() - tzOffsetMs);
-  return local.toISOString().slice(0, 16);
+  // KST 기준 YYYY-MM-DDTHH:mm 으로 변환 (서버·클라이언트 timezone 무관)
+  const kst = new Date(d.getTime() + 9 * 60 * 60 * 1000);
+  return kst.toISOString().slice(0, 16);
 }
 
 export function PostForm({ post, action, submitLabel, errorMessage }: Props) {
