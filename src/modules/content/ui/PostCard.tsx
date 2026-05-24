@@ -1,6 +1,6 @@
 // ============================================
 // PostCard — 카드 1개를 그리드에 그리는 컴포넌트
-// 이미지 우선, 텍스트 정돈 — "앱 같은" 시각감
+// 이미지 영역과 텍스트 영역 분리 — 업체 이미지 위에 덮어쓰지 않음
 // ============================================
 
 import Link from "next/link";
@@ -21,8 +21,9 @@ export function PostCard({ post }: Props) {
   return (
     <Link
       href={`/post/${post.id}`}
-      className="group flex flex-col overflow-hidden rounded-3xl bg-white shadow-[0_2px_12px_rgba(15,23,42,0.06)] transition duration-200 hover:-translate-y-0.5 hover:shadow-[0_8px_24px_rgba(15,23,42,0.10)]"
+      className="group flex flex-col overflow-hidden rounded-2xl bg-white shadow-[0_2px_12px_rgba(15,23,42,0.06)] transition duration-200 hover:-translate-y-0.5 hover:shadow-[0_8px_24px_rgba(15,23,42,0.10)]"
     >
+      {/* 이미지 영역 — 깔끔하게 이미지만 (배지만 오버레이) */}
       <ViewTransition name={`post-thumb-${post.id}`}>
         <div className="relative aspect-square w-full overflow-hidden bg-slate-100">
           {post.thumbnail_url ? (
@@ -39,10 +40,7 @@ export function PostCard({ post }: Props) {
             </div>
           )}
 
-          {/* 하단 그라데이션 — 텍스트·배지 가독성 보강 */}
-          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black/55 via-black/20 to-transparent" />
-
-          {/* D-day 배지 */}
+          {/* D-day 배지 (좌측 상단) */}
           {dday && (
             <span
               className={`absolute left-3 top-3 rounded-full px-2.5 py-1 text-[11px] font-extrabold tracking-tight text-white shadow-sm ${
@@ -53,38 +51,33 @@ export function PostCard({ post }: Props) {
             </span>
           )}
 
-          {/* 후기 배지 */}
+          {/* 후기 배지 (우측 상단) */}
           {isReview && (
-            <span className="absolute right-3 top-3 rounded-full bg-white/95 px-2.5 py-1 text-[11px] font-extrabold tracking-tight text-amber-700 shadow-sm">
+            <span className="absolute right-3 top-3 rounded-full bg-amber-400 px-2.5 py-1 text-[11px] font-extrabold tracking-tight text-amber-900 shadow-sm">
               후기
             </span>
           )}
-
-          {/* 브랜드명·제목 오버레이 — 이미지 위에 직접 */}
-          <div className="absolute inset-x-0 bottom-0 p-4">
-            {post.brand_name && (
-              <p className="text-[11px] font-semibold tracking-tight text-white/85 drop-shadow">
-                {post.brand_name}
-              </p>
-            )}
-            <h3 className="mt-0.5 line-clamp-2 text-[15px] font-extrabold leading-tight tracking-tight text-white drop-shadow">
-              {post.title}
-            </h3>
-          </div>
         </div>
       </ViewTransition>
 
-      {/* 본문: 한 줄 설명 + 태그 + 등록 상대시간 */}
-      <div className="flex flex-1 flex-col gap-2 px-4 py-3">
+      {/* 텍스트 영역 — 이미지와 분리, 자체 텍스트 영역 */}
+      <div className="flex flex-1 flex-col gap-1.5 px-4 py-3.5">
+        {post.brand_name && (
+          <p className="text-[11px] font-semibold tracking-tight text-rose-600">
+            {post.brand_name}
+          </p>
+        )}
+        <h3 className="line-clamp-2 text-sm font-bold leading-snug tracking-tight text-slate-900">
+          {post.title}
+        </h3>
         {post.body && (
-          <p className="line-clamp-2 text-xs leading-relaxed text-slate-600">
+          <p className="line-clamp-2 text-xs leading-relaxed text-slate-500">
             {post.body}
           </p>
         )}
-        <p className="text-[10px] text-slate-400">
-          {formatRelativeTime(post.created_at)} 등록
-        </p>
-        <div className="mt-auto flex flex-wrap gap-1 pt-1">
+
+        {/* 태그 */}
+        <div className="mt-1 flex flex-wrap gap-1">
           {post.stage_categories.slice(0, 2).map((s) => (
             <span
               key={s}
@@ -102,6 +95,11 @@ export function PostCard({ post }: Props) {
             </span>
           ))}
         </div>
+
+        {/* 등록 시간 */}
+        <p className="mt-auto pt-1.5 text-[10px] text-slate-400">
+          {formatRelativeTime(post.created_at)} 등록
+        </p>
       </div>
     </Link>
   );
