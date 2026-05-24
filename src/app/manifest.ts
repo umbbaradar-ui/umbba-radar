@@ -8,7 +8,7 @@ export default function manifest(): MetadataRoute.Manifest {
       "놓치는 혜택은 없게. 임신·출산·육아 협찬·체험단·후기를 한곳에 모은 큐레이션 앱.",
     start_url: "/",
     display: "standalone",
-    background_color: "#FFFBEB",
+    background_color: "#FFF7ED",
     theme_color: "#FB7185",
     lang: "ko",
     orientation: "portrait",
