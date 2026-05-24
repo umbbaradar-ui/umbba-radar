@@ -67,14 +67,14 @@ export function SplashScreen() {
       style={{ transitionDuration: `${FADE_MS}ms` }}
       aria-hidden="true"
     >
-      {/* 마스코트 아이콘 (PNG fallback로 자동 PWA 아이콘 사용) */}
+      {/* 마스코트 (public/bear-mascot.png 참조) */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
-        src="/icon"
+        src="/bear-mascot.png"
         alt=""
-        width={120}
-        height={120}
-        className="rounded-3xl drop-shadow-md"
+        width={140}
+        height={140}
+        className="rounded-[28px] drop-shadow-md"
       />
       <div className="text-center">
         <h1 className="text-3xl font-extrabold tracking-tight text-slate-900">
