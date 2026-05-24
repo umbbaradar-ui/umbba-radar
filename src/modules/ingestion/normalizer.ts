@@ -34,6 +34,7 @@ export type TypeTag =
   | "regram"
   | "lottery"
   | "free_trial"
+  | "experience_group"
   | "sponsored"
   | "gov_support";
 
@@ -67,7 +68,7 @@ const SYSTEM_PROMPT = `당신은 한국 육아 정보 큐레이션 사이트 "�
       "body": string,                     // 한 줄 요약 (예: "댓글 + 친구 태그 → 30명 추첨")
       "kind": "recruiting" | "review" | "group_buy",
       "stage_categories": Array<"pregnancy"|"newborn"|"infant"|"toddler"|"preschool"|"elementary_lower"|"elementary_upper">,
-      "type_tags": Array<"regram"|"lottery"|"free_trial"|"sponsored"|"gov_support">,
+      "type_tags": Array<"regram"|"lottery"|"free_trial"|"experience_group"|"sponsored"|"gov_support">,
       "deadline": string | null           // ISO 8601 with +09:00, 없으면 null
     },
     ...

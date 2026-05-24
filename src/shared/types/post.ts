@@ -28,6 +28,7 @@ export type TypeTag =
   | 'regram'
   | 'lottery'
   | 'free_trial'
+  | 'experience_group'
   | 'sponsored'
   | 'gov_support'
 
@@ -69,6 +70,7 @@ export const TYPE_LABELS: Record<TypeTag, string> = {
   regram: '리그램',
   lottery: '추첨',
   free_trial: '무료체험',
+  experience_group: '체험단',
   sponsored: '협찬',
   gov_support: '정부지원',
 }
