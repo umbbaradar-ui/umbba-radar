@@ -10,9 +10,10 @@
 import { useEffect, useState } from "react";
 
 const STORAGE_KEY = "umbba-splash-shown";
-const HOLD_MS_WEB = 900;
-const HOLD_MS_PWA = 1200;
-const FADE_MS = 350;
+// 체감 속도 우선 — 슬로건 읽을 시간만 확보하고 빠르게 사라짐
+const HOLD_MS_WEB = 500;
+const HOLD_MS_PWA = 700;
+const FADE_MS = 250;
 
 function isStandalonePWA(): boolean {
   if (typeof window === "undefined") return false;
