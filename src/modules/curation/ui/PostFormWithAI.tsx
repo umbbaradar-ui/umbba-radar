@@ -46,6 +46,7 @@ export function PostFormWithAI({
       deadline: data.deadline,
       stage_categories: data.stage_categories ?? [],
       type_tags: data.type_tags ?? [],
+      topic: data.topic ?? "parenting",
       // 추출 직후엔 일단 pending(승인대기)로 두고 관리자가 검토 후 published로 변경 권장
       status: "pending",
     };

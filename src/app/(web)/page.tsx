@@ -21,6 +21,7 @@ interface PageProps {
   searchParams: Promise<{
     stage?: string;
     type?: string;
+    topic?: string;
     sort?: string;
     q?: string;
   }>;
@@ -34,6 +35,7 @@ function parseSort(s?: string): SortMode {
 export default async function HomePage({ searchParams }: PageProps) {
   const sp = await searchParams;
   const type = sp.type ?? "all";
+  const topic = sp.topic ?? "all";
   const sort = parseSort(sp.sort);
   const q = (sp.q ?? "").trim();
 
@@ -47,9 +49,9 @@ export default async function HomePage({ searchParams }: PageProps) {
 
   // 서버에서 검색·정렬 처리, 카테고리 필터는 클라이언트(메모리) 처리
   const fetched = await listPosts({ q, sort });
-  const posts = filterPosts(fetched, { stage, type, myChildStages });
+  const posts = filterPosts(fetched, { stage, type, topic, myChildStages });
 
-  const filterActive = stage !== "all" || type !== "all";
+  const filterActive = stage !== "all" || type !== "all" || topic !== "all";
 
   return (
     <main className="mx-auto max-w-6xl px-4 py-6">
@@ -70,6 +72,7 @@ export default async function HomePage({ searchParams }: PageProps) {
         <FilterBar
           stage={stage}
           type={type}
+          topic={topic}
           sort={sort}
           q={q}
           hasChildren={hasChildren}

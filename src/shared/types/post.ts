@@ -15,6 +15,21 @@ export const SOURCE_TYPE_LABELS: Record<SourceType, string> = {
   submission: '제보',
 }
 
+// 주제 분류 (시기·유형과 별개의 axis)
+// parenting: 부모-자녀 활동, 아동 관련 (대부분 카드)
+// living: 가전·가구·식기·생활용품 등 살림 관련
+export type TopicCategory = 'parenting' | 'living'
+
+export const TOPIC_LABELS: Record<TopicCategory, string> = {
+  parenting: '육아',
+  living: '리빙',
+}
+
+export const ACTIVE_TOPIC_CATEGORIES: readonly TopicCategory[] = [
+  'parenting',
+  'living',
+] as const
+
 export type StageCategory =
   | 'pregnancy'
   | 'newborn'
@@ -54,6 +69,7 @@ export interface Post {
   reviewer_handle: string | null
   stage_categories: StageCategory[]
   type_tags: TypeTag[]
+  topic: TopicCategory
   is_sponsored: boolean
   pinned_until: string | null
   status: PostStatus

@@ -36,6 +36,7 @@ export type TypeTag =
   | "experience"
   | "kids_model"
   | "supporters";
+export type Topic = "parenting" | "living";
 
 export interface NormalizedPost {
   is_actual_event: boolean;
@@ -46,6 +47,7 @@ export interface NormalizedPost {
   kind: Kind;
   stage_categories: Stage[];
   type_tags: TypeTag[];
+  topic: Topic;
   deadline: string | null;
 }
 
@@ -68,6 +70,7 @@ const SYSTEM_PROMPT = `당신은 한국 육아 정보 큐레이션 사이트 "�
       "kind": "recruiting" | "review" | "group_buy",
       "stage_categories": Array<"pregnancy"|"newborn"|"infant"|"toddler"|"preschool"|"elementary_lower"|"elementary_upper"|"all_ages">,
       "type_tags": Array<"regram"|"experience"|"kids_model"|"supporters">,
+      "topic": "parenting" | "living",     // 콘텐츠 주제 (필수, 둘 중 하나)
       "deadline": string | null           // ISO 8601 with +09:00, 없으면 null
     },
     ...
@@ -95,6 +98,11 @@ const SYSTEM_PROMPT = `당신은 한국 육아 정보 큐레이션 사이트 "�
 - kids_model: 키즈모델·아동 모델 — 아이가 화보·광고 촬영에 참여
 - supporters: 서포터즈 — 장기 SNS 활동(주 N회 게시 등) 약속하고 제품/혜택 받음
 ※ "팔로우만", "추첨 방식", "정부 지원사업"은 type_tags에 포함하지 마세요 (분류 의미 없음)
+
+# topic (콘텐츠 주제, 필수 — 둘 중 하나)
+- parenting: 부모-자녀 활동·아동 관련 (이유식·기저귀·완구·교구·키즈모델·체험단 등 아이가 주체이거나 직접 사용)
+- living: 가전·가구·식기·청소·생활용품 (가족 단위 사용이지만 아이가 주체 아님 — 식탁, 공기청정기, 침구, 청소기 등)
+※ 애매하면 parenting을 선택 (육아 사이트 디폴트)
 
 # is_actual_event = false 인 경우
 - 만료 지난 이벤트 명확

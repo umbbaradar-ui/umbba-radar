@@ -51,6 +51,8 @@ function parseFormToPost(formData: FormData): PostInsertInput {
     ? new Date(`${deadlineRaw}:00+09:00`).toISOString()
     : null;
 
+  const topic = get("topic") || "parenting";
+
   return {
     kind: get("kind") || "recruiting",
     title: get("title"),
@@ -62,6 +64,7 @@ function parseFormToPost(formData: FormData): PostInsertInput {
     reviewer_handle: getOrNull("reviewer_handle"),
     stage_categories: getAll("stage_categories"),
     type_tags: getAll("type_tags"),
+    topic: topic === "living" ? "living" : "parenting",
     is_sponsored: formData.get("is_sponsored") === "on",
     status: (get("status") || "draft") as PostStatus,
   };

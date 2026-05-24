@@ -54,6 +54,7 @@ export interface PostInsertInput {
   reviewer_handle?: string | null;
   stage_categories: string[];
   type_tags: string[];
+  topic?: string; // 'parenting' | 'living' — 미지정 시 DB DEFAULT 'parenting'
   is_sponsored?: boolean;
   status: PostStatus;
   source_type?: SourceType;

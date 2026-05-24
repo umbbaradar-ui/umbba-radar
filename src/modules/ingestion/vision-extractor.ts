@@ -18,6 +18,7 @@ export interface VisionExtractResult {
   kind: "recruiting" | "review" | "group_buy";
   stage_categories: string[];
   type_tags: string[];
+  topic: "parenting" | "living";
   deadline: string | null;
 }
 
@@ -39,6 +40,7 @@ const VISION_SYSTEM_PROMPT = `당신은 한국 육아 정보 큐레이션 사이
   "kind": "recruiting" | "review" | "group_buy",
   "stage_categories": Array<"pregnancy"|"newborn"|"infant"|"toddler"|"preschool"|"elementary_lower"|"elementary_upper"|"all_ages">,
   "type_tags": Array<"regram"|"experience"|"kids_model"|"supporters">,
+  "topic": "parenting" | "living",          // 콘텐츠 주제 (필수)
   "deadline": string | null                 // ISO 8601 with +09:00. 명확히 적혀있을 때만, 아니면 null
 }
 
@@ -53,6 +55,11 @@ const VISION_SYSTEM_PROMPT = `당신은 한국 육아 정보 큐레이션 사이
 - kids_model: 키즈모델·아동 모델 — 아이가 화보·광고 촬영 참여
 - supporters: 서포터즈 — 장기 SNS 활동(주 N회 게시 등) 약속하고 제품/혜택 수령
 ※ "팔로우만", "추첨 방식", "정부 지원사업"은 type_tags에 포함하지 마세요 (분류 의미 없음)
+
+# topic (콘텐츠 주제, 필수 — 둘 중 하나)
+- parenting: 아이가 주체이거나 직접 사용 (이유식·기저귀·완구·교구·키즈모델·아동 체험단 등)
+- living: 가전·가구·식기·청소용품·침구 등 살림 (아이용 아닌 가족 단위)
+※ 애매하면 parenting (육아 사이트 디폴트)
 
 # stage_categories
 - pregnancy: 임신중

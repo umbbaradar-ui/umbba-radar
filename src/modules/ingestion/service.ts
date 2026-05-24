@@ -132,6 +132,7 @@ export async function runIngestion(): Promise<IngestionStats> {
         kind: norm.kind,
         stage_categories: norm.stage_categories ?? [],
         type_tags: norm.type_tags ?? [],
+        topic: norm.topic === "living" ? "living" : "parenting",
         deadline: norm.deadline,
         status: "pending",
         source_type: "ingestion",

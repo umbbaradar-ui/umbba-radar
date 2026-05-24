@@ -11,6 +11,8 @@ import {
   STAGE_LABELS,
   TYPE_LABELS,
   ACTIVE_TYPE_TAGS,
+  TOPIC_LABELS,
+  ACTIVE_TOPIC_CATEGORIES,
 } from "@/shared/types/post";
 import { ImageUploadField } from "./ImageUploadField";
 
@@ -25,6 +27,7 @@ export interface PostFormDefaults {
   reviewer_handle?: string | null;
   stage_categories?: string[];
   type_tags?: string[];
+  topic?: string;
   status?: string;
   is_sponsored?: boolean;
 }
@@ -61,6 +64,7 @@ export function PostForm({ post, defaults, action, submitLabel, errorMessage }: 
     stage_categories:
       defaults?.stage_categories ?? post?.stage_categories ?? [],
     type_tags: defaults?.type_tags ?? post?.type_tags ?? [],
+    topic: defaults?.topic ?? post?.topic ?? "parenting",
     status: defaults?.status ?? post?.status ?? "draft",
     is_sponsored: defaults?.is_sponsored ?? post?.is_sponsored ?? false,
   };
@@ -158,6 +162,26 @@ export function PostForm({ post, defaults, action, submitLabel, errorMessage }: 
             className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
           />
         </Field>
+      </Section>
+
+      <Section title="주제">
+        <div className="flex gap-2">
+          {ACTIVE_TOPIC_CATEGORIES.map((k) => (
+            <label
+              key={k}
+              className="flex flex-1 items-center justify-center gap-2 rounded-lg border border-slate-200 px-4 py-2 text-sm text-slate-700 has-[:checked]:border-rose-300 has-[:checked]:bg-rose-50 has-[:checked]:font-bold"
+            >
+              <input
+                type="radio"
+                name="topic"
+                value={k}
+                defaultChecked={v.topic === k}
+                className="h-4 w-4"
+              />
+              {TOPIC_LABELS[k]}
+            </label>
+          ))}
+        </div>
       </Section>
 
       <Section title="시기 카테고리">

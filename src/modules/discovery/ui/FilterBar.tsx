@@ -10,27 +10,38 @@ import {
   STAGE_LABELS,
   TYPE_LABELS,
   ACTIVE_TYPE_TAGS,
+  TOPIC_LABELS,
+  ACTIVE_TOPIC_CATEGORIES,
 } from "@/shared/types/post";
 import { track } from "@/modules/analytics/service";
 
 interface Props {
   stage: string;
   type: string;
+  topic: string;
   sort: string;
   q: string;
   /** 자녀 등록된 사용자만 true → "내 아이" pill 노출 */
   hasChildren?: boolean;
 }
 
-export function FilterBar({ stage, type, sort, q, hasChildren }: Props) {
+export function FilterBar({
+  stage,
+  type,
+  topic,
+  sort,
+  q,
+  hasChildren,
+}: Props) {
   const router = useRouter();
   const [searchInput, setSearchInput] = useState(q);
 
   function buildUrl(overrides: Partial<Record<string, string>>) {
-    const current = { stage, type, sort, q, ...overrides };
+    const current = { stage, type, topic, sort, q, ...overrides };
     const params = new URLSearchParams();
     if (current.stage && current.stage !== "all") params.set("stage", current.stage);
     if (current.type && current.type !== "all") params.set("type", current.type);
+    if (current.topic && current.topic !== "all") params.set("topic", current.topic);
     if (current.sort && current.sort !== "deadline_asc") params.set("sort", current.sort);
     if (current.q && current.q.trim()) params.set("q", current.q.trim());
     const qs = params.toString();
@@ -38,7 +49,7 @@ export function FilterBar({ stage, type, sort, q, hasChildren }: Props) {
   }
 
   function update(key: string, value: string) {
-    track("filter_change", { key, value, stage, type, sort, q });
+    track("filter_change", { key, value, stage, type, topic, sort, q });
     router.push(buildUrl({ [key]: value }));
   }
 
@@ -118,6 +129,22 @@ export function FilterBar({ stage, type, sort, q, hasChildren }: Props) {
         {Object.entries(STAGE_LABELS).map(([k, v]) => (
           <Pill key={k} active={stage === k} onClick={() => update("stage", k)}>
             {v}
+          </Pill>
+        ))}
+      </PillRow>
+
+      {/* 주제 */}
+      <PillRow label="주제">
+        <Pill active={topic === "all"} onClick={() => update("topic", "all")}>
+          전체
+        </Pill>
+        {ACTIVE_TOPIC_CATEGORIES.map((k) => (
+          <Pill
+            key={k}
+            active={topic === k}
+            onClick={() => update("topic", k)}
+          >
+            {TOPIC_LABELS[k]}
           </Pill>
         ))}
       </PillRow>

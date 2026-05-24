@@ -4,12 +4,18 @@
 // (Supabase 배열 컬럼 필터는 복잡 → 메모리 필터 충분히 빠름)
 // ============================================
 
-import type { Post, StageCategory, TypeTag } from "@/shared/types/post";
+import type {
+  Post,
+  StageCategory,
+  TypeTag,
+  TopicCategory,
+} from "@/shared/types/post";
 import type { SortMode } from "@/modules/content/service";
 
 export interface PostFilters {
   stage?: string;
   type?: string;
+  topic?: string;
   /** "내 아이" 필터용 — 사용자 자녀들의 시기 합집합 */
   myChildStages?: StageCategory[];
 }
@@ -19,11 +25,14 @@ export interface SearchAndSort {
   sort?: SortMode;
 }
 
-/** 클라이언트 측 필터 — stage·type 카테고리 매칭 */
+/** 클라이언트 측 필터 — stage·type·topic 카테고리 매칭 */
 export function filterPosts(posts: Post[], filters: PostFilters): Post[] {
-  const { stage, type, myChildStages } = filters;
+  const { stage, type, topic, myChildStages } = filters;
 
   return posts.filter((p) => {
+    if (topic && topic !== "all") {
+      if (p.topic !== (topic as TopicCategory)) return false;
+    }
     if (stage && stage !== "all") {
       const tags = p.stage_categories;
 
