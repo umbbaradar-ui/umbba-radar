@@ -29,7 +29,8 @@ export type Stage =
   | "toddler"
   | "preschool"
   | "elementary_lower"
-  | "elementary_upper";
+  | "elementary_upper"
+  | "all_ages";
 export type TypeTag =
   | "follow"
   | "regram"
@@ -68,7 +69,7 @@ const SYSTEM_PROMPT = `당신은 한국 육아 정보 큐레이션 사이트 "�
       "brand_name": string | null,
       "body": string,                     // 한 줄 요약 (예: "댓글 + 친구 태그 → 30명 추첨")
       "kind": "recruiting" | "review" | "group_buy",
-      "stage_categories": Array<"pregnancy"|"newborn"|"infant"|"toddler"|"preschool"|"elementary_lower"|"elementary_upper">,
+      "stage_categories": Array<"pregnancy"|"newborn"|"infant"|"toddler"|"preschool"|"elementary_lower"|"elementary_upper"|"all_ages">,
       "type_tags": Array<"follow"|"regram"|"lottery"|"free_trial"|"experience_group"|"sponsored"|"gov_support">,
       "deadline": string | null           // ISO 8601 with +09:00, 없으면 null
     },
@@ -80,6 +81,16 @@ const SYSTEM_PROMPT = `당신은 한국 육아 정보 큐레이션 사이트 "�
 - recruiting: 신청·모집 공고
 - review: 사용 후기 (유용한 정보 있어야 함)
 - group_buy: 공동구매
+
+# stage_categories (시기, 복수 선택 가능)
+- pregnancy: 임신중
+- newborn: 출산 직후 (~3개월)
+- infant: 영아 (~12개월)
+- toddler: 유아 (1~5세)
+- preschool: 유치원
+- elementary_lower: 초등 저학년
+- elementary_upper: 초등 고학년
+- all_ages: 전연령 (특정 시기 무관, 식탁세트·청소기·가전 등 가족 단위 제품. 시기 명확하지 않으면 이걸 단독 선택)
 
 # type_tags (참여 방식·이벤트 유형, 복수 선택 가능)
 - follow: 인스타·블로그 계정 팔로우만으로 참여 가능 (가장 가벼운 진입)

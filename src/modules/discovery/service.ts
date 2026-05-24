@@ -23,7 +23,16 @@ export function filterPosts(posts: Post[], filters: PostFilters): Post[] {
 
   return posts.filter((p) => {
     if (stage && stage !== "all") {
-      if (!p.stage_categories.includes(stage as StageCategory)) return false;
+      // 'all_ages' 시기 필터를 명시적으로 선택했으면 그 태그만, 아니면
+      // 특정 시기 + all_ages 둘 다 포함 (전연령 제품은 모든 시기 필터에 등장)
+      const tags = p.stage_categories;
+      if (stage === "all_ages") {
+        if (!tags.includes("all_ages" as StageCategory)) return false;
+      } else {
+        const hasStage = tags.includes(stage as StageCategory);
+        const hasAllAges = tags.includes("all_ages" as StageCategory);
+        if (!hasStage && !hasAllAges) return false;
+      }
     }
     if (type && type !== "all") {
       if (!p.type_tags.includes(type as TypeTag)) return false;

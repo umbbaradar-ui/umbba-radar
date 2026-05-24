@@ -23,6 +23,7 @@ export type StageCategory =
   | 'preschool'
   | 'elementary_lower'
   | 'elementary_upper'
+  | 'all_ages'
 
 export type TypeTag =
   | 'follow'
@@ -65,6 +66,7 @@ export const STAGE_LABELS: Record<StageCategory, string> = {
   preschool: '유치원',
   elementary_lower: '초등 저학년',
   elementary_upper: '초등 고학년',
+  all_ages: '전연령',
 }
 
 export const TYPE_LABELS: Record<TypeTag, string> = {
