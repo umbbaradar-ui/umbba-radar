@@ -1,7 +1,13 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import Script from "next/script";
 import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
+
+// Google Tag Manager — 환경변수 우선, 없으면 기본값 (배포 디폴트)
+// dev 환경에선 자동 비활성 → 테스트 데이터가 GA4에 섞이지 않음
+const GTM_ID = process.env.NEXT_PUBLIC_GTM_ID ?? "GTM-PR2K864P";
+const GTM_ENABLED = Boolean(GTM_ID) && process.env.NODE_ENV === "production";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -127,8 +133,31 @@ export default function RootLayout({
             __html: JSON.stringify(WEBSITE_JSON_LD),
           }}
         />
+
+        {/* Google Tag Manager — next/script로 SSR 안전하게 로드
+            strategy="afterInteractive" = 페이지 인터랙티브 후 로드 (LCP 영향 X) */}
+        {GTM_ENABLED && (
+          <Script id="gtm-init" strategy="afterInteractive">
+            {`(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+})(window,document,'script','dataLayer','${GTM_ID}');`}
+          </Script>
+        )}
       </head>
       <body className="min-h-full flex flex-col bg-amber-50/40">
+        {/* GTM noscript fallback — JS 차단 사용자도 페이지뷰 추적 */}
+        {GTM_ENABLED && (
+          <noscript>
+            <iframe
+              src={`https://www.googletagmanager.com/ns.html?id=${GTM_ID}`}
+              height="0"
+              width="0"
+              style={{ display: "none", visibility: "hidden" }}
+            />
+          </noscript>
+        )}
         {children}
         <Analytics />
       </body>
