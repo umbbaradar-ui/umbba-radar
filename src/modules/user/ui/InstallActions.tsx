@@ -265,8 +265,11 @@ export function InstallSheetEntry({ onClick }: SheetEntryProps) {
   if (state === "installed" || state === "loading") return null;
 
   const onPress = () => {
+    // 시트 닫기 애니메이션(300ms) 끝난 후 모달 띄움 — 두 애니메이션 겹침 방지
     onClick?.();
-    handleClick();
+    setTimeout(() => {
+      handleClick();
+    }, 320);
   };
 
   return (

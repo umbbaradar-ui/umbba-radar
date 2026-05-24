@@ -38,6 +38,30 @@ export async function getUserStatusMap(): Promise<UserStatusMap> {
   }
 }
 
+/**
+ * 현재 로그인 사용자의 자녀 출생일 목록 ("내 아이" 필터용)
+ * 비로그인·자녀 없음이면 빈 배열
+ */
+export async function getUserChildrenBirths(): Promise<{ birth_date: string }[]> {
+  try {
+    const supabase = await getServerSupabase();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return [];
+
+    const { data, error } = await supabase
+      .from("children")
+      .select("birth_date")
+      .eq("user_id", user.id);
+
+    if (error || !data) return [];
+    return data as { birth_date: string }[];
+  } catch {
+    return [];
+  }
+}
+
 /** 단일 카드에 대한 현재 사용자의 체크 상태 */
 export async function getUserStatusForPost(
   postId: string

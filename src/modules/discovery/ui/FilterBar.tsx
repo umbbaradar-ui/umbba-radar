@@ -14,9 +14,11 @@ interface Props {
   type: string;
   sort: string;
   q: string;
+  /** 자녀 등록된 사용자만 true → "내 아이" pill 노출 */
+  hasChildren?: boolean;
 }
 
-export function FilterBar({ stage, type, sort, q }: Props) {
+export function FilterBar({ stage, type, sort, q, hasChildren }: Props) {
   const router = useRouter();
   const [searchInput, setSearchInput] = useState(q);
 
@@ -101,6 +103,14 @@ export function FilterBar({ stage, type, sort, q }: Props) {
         <Pill active={stage === "all"} onClick={() => update("stage", "all")}>
           전체
         </Pill>
+        {hasChildren && (
+          <Pill
+            active={stage === "my_child"}
+            onClick={() => update("stage", "my_child")}
+          >
+            💛 내 아이
+          </Pill>
+        )}
         {Object.entries(STAGE_LABELS).map(([k, v]) => (
           <Pill key={k} active={stage === k} onClick={() => update("stage", k)}>
             {v}

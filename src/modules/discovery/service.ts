@@ -10,6 +10,8 @@ import type { SortMode } from "@/modules/content/service";
 export interface PostFilters {
   stage?: string;
   type?: string;
+  /** "내 아이" 필터용 — 사용자 자녀들의 시기 합집합 */
+  myChildStages?: StageCategory[];
 }
 
 export interface SearchAndSort {
@@ -19,16 +21,24 @@ export interface SearchAndSort {
 
 /** 클라이언트 측 필터 — stage·type 카테고리 매칭 */
 export function filterPosts(posts: Post[], filters: PostFilters): Post[] {
-  const { stage, type } = filters;
+  const { stage, type, myChildStages } = filters;
 
   return posts.filter((p) => {
     if (stage && stage !== "all") {
-      // 'all_ages' 시기 필터를 명시적으로 선택했으면 그 태그만, 아니면
-      // 특정 시기 + all_ages 둘 다 포함 (전연령 제품은 모든 시기 필터에 등장)
       const tags = p.stage_categories;
-      if (stage === "all_ages") {
+
+      if (stage === "my_child") {
+        // 내 아이 필터: 자녀 시기 중 하나 OR 전연령 매칭
+        // myChildStages 빈 배열이면 통과 못 함 (호출 측이 활성화 조건 처리)
+        if (!myChildStages || myChildStages.length === 0) return false;
+        const hasAnyChildStage = myChildStages.some((s) => tags.includes(s));
+        const hasAllAges = tags.includes("all_ages" as StageCategory);
+        if (!hasAnyChildStage && !hasAllAges) return false;
+      } else if (stage === "all_ages") {
+        // 전연령 필터를 명시적으로 선택 → all_ages 태그만
         if (!tags.includes("all_ages" as StageCategory)) return false;
       } else {
+        // 일반 특정 시기 → 해당 시기 OR 전연령
         const hasStage = tags.includes(stage as StageCategory);
         const hasAllAges = tags.includes("all_ages" as StageCategory);
         if (!hasStage && !hasAllAges) return false;
