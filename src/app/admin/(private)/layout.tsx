@@ -1,12 +1,13 @@
 // ============================================
 // 관리자 영역 레이아웃 (보호됨)
-// 모든 자식 페이지에 진입 시 인증 체크
+// 모든 자식 페이지에 진입 시 인증 체크 + 승인 대기 배지
 // ============================================
 
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { logoutAction } from "@/modules/curation/actions";
+import { getCounts } from "@/modules/curation/service";
 import { Logo } from "@/shared/ui/Logo";
 
 const ADMIN_COOKIE = "umbba-admin";
@@ -22,6 +23,15 @@ export default async function AdminPrivateLayout({
 
   if (!expected || !token || token !== expected) {
     redirect("/admin/login");
+  }
+
+  // 승인 대기 카드 수 (네비 배지용)
+  let pendingCount = 0;
+  try {
+    const counts = await getCounts();
+    pendingCount = counts.byStatus.pending;
+  } catch {
+    // 조회 실패는 무시
   }
 
   return (
@@ -44,9 +54,20 @@ export default async function AdminPrivateLayout({
             </Link>
             <Link
               href="/admin/queue"
+              className="flex items-center gap-1 rounded-full px-3 py-1 text-xs font-medium text-slate-600 hover:bg-slate-100"
+            >
+              <span>승인 대기함</span>
+              {pendingCount > 0 && (
+                <span className="rounded-full bg-rose-500 px-1.5 py-0.5 text-[10px] font-bold text-white">
+                  {pendingCount}
+                </span>
+              )}
+            </Link>
+            <Link
+              href="/admin/stats"
               className="rounded-full px-3 py-1 text-xs font-medium text-slate-600 hover:bg-slate-100"
             >
-              승인 대기함
+              통계
             </Link>
             <Link
               href="/admin/new"

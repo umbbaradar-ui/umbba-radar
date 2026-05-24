@@ -83,6 +83,162 @@ export async function expireOverduePosts(): Promise<number> {
   return data?.length ?? 0;
 }
 
+export interface AdminStats {
+  totals: {
+    posts: number;
+    pending: number;
+    published: number;
+    expired: number;
+    draft: number;
+  };
+  bySource: Record<SourceType, number>;
+  byStage: Record<string, number>;
+  byType: Record<string, number>;
+  /** 기간 내 (최근 N일) 이벤트 카운트 */
+  events: {
+    card_click: number;
+    source_link_click: number;
+    status_mark: number;
+    search: number;
+    login_attempt: number;
+    signup_attempt: number;
+  };
+  /** 원문 클릭률 = source_link_click / card_click (결정적 KPI) */
+  ctr: number;
+  /** 고유 사용자 수 (anon_id + user_id 합집합) */
+  uniqueUsers: number;
+  /** 카드별 클릭 통계 Top 10 */
+  topCards: Array<{
+    post_id: string;
+    title: string;
+    card_clicks: number;
+    source_clicks: number;
+    ctr: number;
+  }>;
+  /** 기간 (일) */
+  periodDays: number;
+}
+
+export async function selectAdminStats(periodDays: number = 7): Promise<AdminStats> {
+  const since = new Date(Date.now() - periodDays * 24 * 60 * 60 * 1000).toISOString();
+
+  // 1. 카드 — 상태·소스·시기·유형
+  const { data: posts } = await supabaseServer
+    .from("posts")
+    .select("id, title, status, source_type, stage_categories, type_tags");
+
+  // 2. 이벤트 (최근 N일)
+  const { data: events } = await supabaseServer
+    .from("events")
+    .select("event_name, post_id, anon_id, user_id, created_at")
+    .gte("created_at", since);
+
+  // 집계
+  const totals = {
+    posts: posts?.length ?? 0,
+    pending: 0,
+    published: 0,
+    expired: 0,
+    draft: 0,
+  };
+  const bySource: Record<SourceType, number> = { admin: 0, ingestion: 0, submission: 0 };
+  const byStage: Record<string, number> = {};
+  const byType: Record<string, number> = {};
+  const postTitleMap = new Map<string, string>();
+
+  for (const p of (posts ?? []) as Array<{
+    id: string;
+    title: string;
+    status: PostStatus;
+    source_type: SourceType;
+    stage_categories: string[];
+    type_tags: string[];
+  }>) {
+    postTitleMap.set(p.id, p.title);
+    if (p.status === "published") totals.published++;
+    else if (p.status === "pending") totals.pending++;
+    else if (p.status === "expired") totals.expired++;
+    else if (p.status === "draft") totals.draft++;
+
+    bySource[p.source_type] = (bySource[p.source_type] ?? 0) + 1;
+    if (p.status === "published") {
+      for (const s of p.stage_categories ?? []) byStage[s] = (byStage[s] ?? 0) + 1;
+      for (const t of p.type_tags ?? []) byType[t] = (byType[t] ?? 0) + 1;
+    }
+  }
+
+  // 이벤트 집계
+  const eventCounts = {
+    card_click: 0,
+    source_link_click: 0,
+    status_mark: 0,
+    search: 0,
+    login_attempt: 0,
+    signup_attempt: 0,
+  };
+  const cardClicks = new Map<string, number>();
+  const sourceClicks = new Map<string, number>();
+  const uniqueIds = new Set<string>();
+
+  for (const ev of (events ?? []) as Array<{
+    event_name: string;
+    post_id: string | null;
+    anon_id: string | null;
+    user_id: string | null;
+  }>) {
+    if (ev.event_name in eventCounts) {
+      eventCounts[ev.event_name as keyof typeof eventCounts]++;
+    }
+    if (ev.event_name === "card_click" && ev.post_id) {
+      cardClicks.set(ev.post_id, (cardClicks.get(ev.post_id) ?? 0) + 1);
+    }
+    if (ev.event_name === "source_link_click" && ev.post_id) {
+      sourceClicks.set(ev.post_id, (sourceClicks.get(ev.post_id) ?? 0) + 1);
+    }
+    const id = ev.user_id || ev.anon_id;
+    if (id) uniqueIds.add(id);
+  }
+
+  const ctr =
+    eventCounts.card_click > 0
+      ? eventCounts.source_link_click / eventCounts.card_click
+      : 0;
+
+  // 카드별 Top 10 (card_click + source_click 합 기준)
+  const cardScores: Array<{
+    post_id: string;
+    title: string;
+    card_clicks: number;
+    source_clicks: number;
+    ctr: number;
+  }> = [];
+  const allCardIds = new Set([...cardClicks.keys(), ...sourceClicks.keys()]);
+  for (const id of allCardIds) {
+    const cc = cardClicks.get(id) ?? 0;
+    const sc = sourceClicks.get(id) ?? 0;
+    cardScores.push({
+      post_id: id,
+      title: postTitleMap.get(id) ?? "(삭제됨)",
+      card_clicks: cc,
+      source_clicks: sc,
+      ctr: cc > 0 ? sc / cc : 0,
+    });
+  }
+  cardScores.sort((a, b) => b.card_clicks + b.source_clicks - (a.card_clicks + a.source_clicks));
+
+  return {
+    totals,
+    bySource,
+    byStage,
+    byType,
+    events: eventCounts,
+    ctr,
+    uniqueUsers: uniqueIds.size,
+    topCards: cardScores.slice(0, 10),
+    periodDays,
+  };
+}
+
 export async function selectStatusCounts(): Promise<{
   byStatus: Record<PostStatus, number>;
   bySource: Record<SourceType, number>;

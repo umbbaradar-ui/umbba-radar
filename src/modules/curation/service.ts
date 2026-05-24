@@ -9,7 +9,9 @@ import {
   selectPostByIdAdmin,
   selectPendingPosts,
   selectStatusCounts,
+  selectAdminStats,
   type PostInsertInput,
+  type AdminStats,
 } from "./repository";
 import type { Post, SourceType } from "@/shared/types/post";
 
@@ -29,4 +31,8 @@ export async function getCounts() {
   return selectStatusCounts();
 }
 
-export type { PostInsertInput };
+export async function getAdminStats(periodDays = 7): Promise<AdminStats> {
+  return selectAdminStats(periodDays);
+}
+
+export type { PostInsertInput, AdminStats };
