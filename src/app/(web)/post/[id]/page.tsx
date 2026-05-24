@@ -123,6 +123,7 @@ export default async function PostDetailPage({ params }: PageProps) {
                 day: "numeric",
                 hour: "2-digit",
                 minute: "2-digit",
+                timeZone: "Asia/Seoul", // Vercel 서버는 UTC라 KST 명시 안 하면 9시간 밀림
               })}
             </p>
           )}

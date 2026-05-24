@@ -136,7 +136,9 @@ export default async function AdminDashboard({ searchParams }: PageProps) {
                   </td>
                   <td className="px-4 py-3 text-xs text-slate-600">
                     {p.deadline
-                      ? new Date(p.deadline).toLocaleDateString("ko-KR")
+                      ? new Date(p.deadline).toLocaleDateString("ko-KR", {
+                          timeZone: "Asia/Seoul",
+                        })
                       : "—"}
                   </td>
                   <td className="px-4 py-3">
