@@ -20,7 +20,14 @@ export const NAVER_KEYWORDS: string[] = [
 ];
 
 // 검색 결과당 가져올 개수 (네이버 최대 100)
-export const NAVER_DISPLAY_PER_KEYWORD = 20;
+// Gemini 무료 티어 15 RPM 제한 + 배치 5건씩 → 1회 cron으로 약 30건 처리
+export const NAVER_DISPLAY_PER_KEYWORD = 3;
 
 // AI 신뢰도가 이 값 미만이면 적재 안 함 (큐 노이즈 방지)
 export const MIN_CONFIDENCE = 0.6;
+
+// Gemini 배치 크기 (한 번에 정규화할 아이템 수)
+export const NORMALIZE_BATCH_SIZE = 5;
+
+// Gemini 호출 간 지연 (ms). 15 RPM 안전 마진
+export const GEMINI_DELAY_MS = 4500;

@@ -1,17 +1,18 @@
 // ============================================
 // Ingestion Service — orchestration
-// 일 1회 cron이 이 함수를 호출
-// 흐름: 네이버 → AI 정규화 → 중복 제거 → posts(pending) INSERT
+// 흐름: 네이버 → 중복 제거 → 배치 AI 정규화 (RPM 제한 대응) → posts(pending) INSERT
 // ============================================
 
 import "server-only";
 import { supabaseServer } from "@/shared/db/supabase-server";
-import { searchBlog } from "./sources/naver-search";
-import { normalize } from "./normalizer";
+import { searchBlog, type NaverBlogItem } from "./sources/naver-search";
+import { normalizeBatch, type NormalizerInput } from "./normalizer";
 import {
   NAVER_KEYWORDS,
   NAVER_DISPLAY_PER_KEYWORD,
   MIN_CONFIDENCE,
+  NORMALIZE_BATCH_SIZE,
+  GEMINI_DELAY_MS,
 } from "./keywords";
 
 export interface IngestionStats {
@@ -19,22 +20,26 @@ export interface IngestionStats {
   finishedAt: string;
   durationMs: number;
   keywordsProcessed: number;
-  fetched: number;       // 네이버에서 가져온 총 건수
-  duplicates: number;    // 이미 DB에 source_url 있는 것
-  normalized: number;    // AI 정규화 성공
-  filtered: number;      // AI가 "이벤트 아님" 또는 신뢰도 낮음으로 거름
-  inserted: number;      // 실제 posts에 INSERT됨
+  fetched: number;
+  duplicates: number;
+  normalized: number;
+  filtered: number;
+  inserted: number;
   errors: number;
   errorMessages: string[];
 }
 
-async function isDuplicate(sourceUrl: string): Promise<boolean> {
+function sleep(ms: number): Promise<void> {
+  return new Promise((r) => setTimeout(r, ms));
+}
+
+async function existingSourceUrls(urls: string[]): Promise<Set<string>> {
+  if (urls.length === 0) return new Set();
   const { data } = await supabaseServer
     .from("posts")
-    .select("id")
-    .eq("source_url", sourceUrl)
-    .maybeSingle();
-  return Boolean(data);
+    .select("source_url")
+    .in("source_url", urls);
+  return new Set((data ?? []).map((row) => row.source_url as string));
 }
 
 export async function runIngestion(): Promise<IngestionStats> {
@@ -53,61 +58,98 @@ export async function runIngestion(): Promise<IngestionStats> {
     errorMessages: [],
   };
 
+  // 1. 네이버에서 전부 수집
+  const allItems: NaverBlogItem[] = [];
   for (const keyword of NAVER_KEYWORDS) {
-    let items;
     try {
-      items = await searchBlog(keyword, NAVER_DISPLAY_PER_KEYWORD);
+      const items = await searchBlog(keyword, NAVER_DISPLAY_PER_KEYWORD);
       stats.fetched += items.length;
       stats.keywordsProcessed++;
+      allItems.push(...items);
     } catch (e) {
       stats.errors++;
       stats.errorMessages.push(`naver "${keyword}": ${String(e)}`);
+    }
+  }
+
+  // 2. URL 기준 in-batch 중복 제거 + DB 중복 체크
+  const seenUrls = new Set<string>();
+  const uniqueItems = allItems.filter((it) => {
+    if (seenUrls.has(it.link)) return false;
+    seenUrls.add(it.link);
+    return true;
+  });
+  stats.duplicates += allItems.length - uniqueItems.length;
+
+  const dbExisting = await existingSourceUrls(uniqueItems.map((it) => it.link));
+  const candidates = uniqueItems.filter((it) => {
+    if (dbExisting.has(it.link)) {
+      stats.duplicates++;
+      return false;
+    }
+    return true;
+  });
+
+  // 3. 배치 AI 정규화 + Rate Limit 회피 지연
+  for (let i = 0; i < candidates.length; i += NORMALIZE_BATCH_SIZE) {
+    const batch = candidates.slice(i, i + NORMALIZE_BATCH_SIZE);
+    const inputs: NormalizerInput[] = batch.map((it) => ({
+      title: it.title,
+      description: it.description,
+      link: it.link,
+      postdate: it.postdate,
+    }));
+
+    let results;
+    try {
+      results = await normalizeBatch(inputs);
+    } catch (e) {
+      stats.errors += batch.length;
+      stats.errorMessages.push(`batch ${i}: ${String(e)}`);
+      // 첫 배치 외 다음 배치들도 같은 이유로 실패할 가능성 → 빠르게 종료
+      if (i === 0) break;
       continue;
     }
 
-    for (const item of items) {
-      try {
-        if (await isDuplicate(item.link)) {
-          stats.duplicates++;
-          continue;
-        }
-
-        const norm = await normalize(item);
-        if (!norm) {
-          stats.errors++;
-          continue;
-        }
-
-        if (!norm.is_actual_event || norm.confidence < MIN_CONFIDENCE) {
-          stats.filtered++;
-          continue;
-        }
-
-        stats.normalized++;
-
-        const { error } = await supabaseServer.from("posts").insert({
-          title: norm.title.slice(0, 120),
-          brand_name: norm.brand_name,
-          body: norm.body?.slice(0, 500) ?? null,
-          source_url: item.link,
-          kind: norm.kind,
-          stage_categories: norm.stage_categories ?? [],
-          type_tags: norm.type_tags ?? [],
-          deadline: norm.deadline,
-          status: "pending",
-          source_type: "ingestion",
-        });
-
-        if (error) {
-          stats.errors++;
-          stats.errorMessages.push(`insert "${item.link}": ${error.message}`);
-        } else {
-          stats.inserted++;
-        }
-      } catch (e) {
+    for (let j = 0; j < batch.length; j++) {
+      const norm = results[j];
+      const item = batch[j];
+      if (!norm) {
         stats.errors++;
-        stats.errorMessages.push(`item "${item.link}": ${String(e)}`);
+        continue;
       }
+      if (!norm.is_actual_event || norm.confidence < MIN_CONFIDENCE) {
+        stats.filtered++;
+        continue;
+      }
+      stats.normalized++;
+
+      const { error: insertError } = await supabaseServer.from("posts").insert({
+        title: norm.title.slice(0, 120),
+        brand_name: norm.brand_name,
+        body: norm.body?.slice(0, 500) ?? null,
+        source_url: item.link,
+        kind: norm.kind,
+        stage_categories: norm.stage_categories ?? [],
+        type_tags: norm.type_tags ?? [],
+        deadline: norm.deadline,
+        status: "pending",
+        source_type: "ingestion",
+      });
+
+      if (insertError) {
+        stats.errors++;
+        stats.errorMessages.push(
+          `insert "${item.link}": ${insertError.message}`
+        );
+      } else {
+        stats.inserted++;
+      }
+    }
+
+    // 다음 배치 전 지연 (마지막 배치 후엔 생략)
+    if (i + NORMALIZE_BATCH_SIZE < candidates.length) {
+      await sleep(GEMINI_DELAY_MS);
     }
   }
 
