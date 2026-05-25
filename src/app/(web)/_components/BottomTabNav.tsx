@@ -37,7 +37,7 @@ export function BottomTabNav({ user }: Props) {
           <Tab href="/" label="홈" active={isHome}>
             <HomeIcon filled={isHome} />
           </Tab>
-          <Tab href="/my" label="내것" active={isMy}>
+          <Tab href="/my" label="내 레이더" active={isMy}>
             <BookmarkIcon filled={isMy} />
           </Tab>
           <SubmitTab href="/submit" label="제보" active={isSubmit} />
@@ -113,6 +113,12 @@ export function BottomTabNav({ user }: Props) {
 
           {/* 메뉴 — 관리자는 URL로 직접 접속, 공개 메뉴에서 노출 X */}
           <nav className="space-y-1 px-2 py-2">
+            <SheetLink
+              href="/notifications"
+              icon="🔔"
+              label="알림 모아보기"
+              onClick={() => setMoreOpen(false)}
+            />
             {user && (
               <SheetLink
                 href="/me"

@@ -43,8 +43,8 @@ export default function manifest(): ExtendedManifest {
     // 자주 가는 4곳 직행. 아이콘 미지정 시 OS가 앱 아이콘으로 fallback.
     shortcuts: [
       {
-        name: "내 관심·신청 카드",
-        short_name: "내것",
+        name: "내 레이더 (관심·신청 카드)",
+        short_name: "내 레이더",
         description: "관심·신청 표시한 카드 모아보기",
         url: "/my",
       },

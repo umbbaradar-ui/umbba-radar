@@ -1,10 +1,10 @@
 // ============================================
-// 마이 페이지 — /my
-// 로컬스토리지에 저장된 사용자 체크 카드들
+// 내 레이더 — /my
+// 관심 / 신청함 / 과거 레이더 3탭
 // ============================================
 
-import { listPosts } from "@/modules/content/service";
-import { MyPostsList } from "@/modules/personalization/ui/MyPostsList";
+import { listPosts, listExpiredPosts } from "@/modules/content/service";
+import { MyRadarTabs } from "@/modules/personalization/ui/MyRadarTabs";
 import { getUserStatusMap } from "@/modules/personalization/service-server";
 import { getCurrentUser } from "@/modules/user/service";
 import { AdSlot } from "@/modules/advertising/ui/AdSlot";
@@ -13,8 +13,9 @@ import { AdSlot } from "@/modules/advertising/ui/AdSlot";
 export const dynamic = "force-dynamic";
 
 export default async function MyPage() {
-  const [allPosts, user] = await Promise.all([
+  const [activePosts, expiredPosts, user] = await Promise.all([
     listPosts(),
+    listExpiredPosts(),
     getCurrentUser(),
   ]);
   const statusMap = user ? await getUserStatusMap() : {};
@@ -24,8 +25,9 @@ export default async function MyPage() {
       <div className="mx-auto max-w-6xl px-4 pt-6">
         <AdSlot id="my_top" />
       </div>
-      <MyPostsList
-        posts={allPosts}
+      <MyRadarTabs
+        activePosts={activePosts}
+        expiredPosts={expiredPosts}
         loggedIn={Boolean(user)}
         initialStatusMap={statusMap}
       />

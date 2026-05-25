@@ -12,11 +12,17 @@ import { ServiceWorkerRegister } from "./_components/ServiceWorkerRegister";
 import { InstallBanner } from "./_components/InstallBanner";
 import { InstallNavChip } from "@/modules/user/ui/InstallActions";
 import { MigrationOnLogin } from "@/modules/personalization/ui/MigrationOnLogin";
+import { NotificationBell } from "./_components/NotificationBell";
+import { getNotifications } from "@/modules/personalization/service-server";
 
 export default async function WebLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   const user = await getCurrentUser();
+
+  // 알림 벨 배지용 — 가장 최근 알림 시간만 헤더에 전달 (실제 목록은 /notifications에서)
+  const notifications = user ? await getNotifications() : [];
+  const latestNotifEventAt = notifications[0]?.eventAt ?? null;
 
   return (
     <>
@@ -53,7 +59,7 @@ export default async function WebLayout({
               href="/my"
               className="rounded-full px-3 py-1.5 font-medium text-slate-600 transition hover:bg-amber-100/60 hover:text-slate-900"
             >
-              내 카드
+              내 레이더
             </Link>
             <Link
               href="/submit"
@@ -63,6 +69,12 @@ export default async function WebLayout({
             </Link>
             <div className="ml-1">
               <InstallNavChip variant="desktop" />
+            </div>
+            <div className="ml-1">
+              <NotificationBell
+                latestEventAt={latestNotifEventAt}
+                variant="desktop"
+              />
             </div>
             <div className="ml-2">
               <UserMenu user={user} />
@@ -81,8 +93,14 @@ export default async function WebLayout({
             <Logo size={22} className="text-rose-500" />
             <span>엄빠레이더</span>
           </Link>
-          {/* 미설치·미지원이면 자동으로 숨겨짐 → 설치한 사용자에겐 노출 X */}
-          <InstallNavChip variant="mobile" />
+          <div className="flex items-center gap-1">
+            {/* 미설치·미지원이면 자동으로 숨겨짐 → 설치한 사용자에겐 노출 X */}
+            <InstallNavChip variant="mobile" />
+            <NotificationBell
+              latestEventAt={latestNotifEventAt}
+              variant="mobile"
+            />
+          </div>
         </div>
       </div>
 
