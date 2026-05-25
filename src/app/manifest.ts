@@ -126,32 +126,30 @@ export default function manifest(): ExtendedManifest {
         purpose: "maskable",
       },
     ],
-    // 안드로이드 Chrome 설치 모달 + Play Store 등록 시 사용
-    // 사용자가 폰에서 직접 캡처해서 public/screenshots/ 에 업로드 필요
-    //   - 사이즈: 1080x1920 (Android Phone portrait)
-    //   - 캡처 가이드: PROJECT 루트 README 또는 OWNERSHIP.md 참조
-    // 파일 없으면 PWABuilder가 경고 표시 (점수 영향) — 캡처 업로드 후 정상화
+    // 안드로이드 Chrome 설치 모달 + Play Store 등록 시 사용 (form_factor: narrow)
+    // 사용자 폰 캡처 원본 720×~1400 (안드로이드 일반 비율). PWABuilder/Play는 720+ OK.
+    // 더 큰 1080×1920이 필요하면 사용자가 재캡처 후 동일 경로 덮어쓰기.
     screenshots: [
       {
-        src: "/screenshots/mobile-home.png",
-        sizes: "1080x1920",
-        type: "image/png",
+        src: "/screenshots/mobile-home.jpg",
+        sizes: "720x1403",
+        type: "image/jpeg",
         form_factor: "narrow",
         label: "메인 — 오늘의 협찬·체험단 카드",
       },
       {
-        src: "/screenshots/mobile-card.png",
-        sizes: "1080x1920",
-        type: "image/png",
+        src: "/screenshots/mobile-card.jpg",
+        sizes: "720x1406",
+        type: "image/jpeg",
         form_factor: "narrow",
         label: "카드 상세 — 신청 방법·마감일",
       },
       {
-        src: "/screenshots/mobile-my.png",
-        sizes: "1080x1920",
-        type: "image/png",
+        src: "/screenshots/mobile-my.jpg",
+        sizes: "720x1398",
+        type: "image/jpeg",
         form_factor: "narrow",
-        label: "내것 — 관심·신청 카드 모아보기",
+        label: "내 레이더 — 관심·신청 카드 모아보기",
       },
     ],
   };
