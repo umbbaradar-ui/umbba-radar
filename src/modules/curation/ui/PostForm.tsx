@@ -28,6 +28,7 @@ export interface PostFormDefaults {
   thumbnail_url?: string | null;
   source_url?: string;
   body?: string | null;
+  search_keywords?: string | null;
   deadline?: string | null;
   deadline_unknown?: boolean;
   reviewer_handle?: string | null;
@@ -63,6 +64,8 @@ export function PostForm({ post, defaults, action, submitLabel, errorMessage }: 
     thumbnail_url: defaults?.thumbnail_url ?? post?.thumbnail_url ?? null,
     source_url: defaults?.source_url ?? post?.source_url ?? "",
     body: defaults?.body ?? post?.body ?? "",
+    search_keywords:
+      defaults?.search_keywords ?? post?.search_keywords ?? "",
     deadline: toLocalDatetimeInput(
       defaults?.deadline ?? post?.deadline ?? null
     ),
@@ -153,6 +156,22 @@ export function PostForm({ post, defaults, action, submitLabel, errorMessage }: 
             placeholder="예: 인스타 댓글 + 친구 태그 → 30명 추첨"
             className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
           />
+        </Field>
+
+        <Field label="검색 키워드 (동의어·유사어)">
+          <textarea
+            name="search_keywords"
+            rows={2}
+            defaultValue={v.search_keywords ?? ""}
+            placeholder="기저귀, 팬티, 기저귀팬티"
+            className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+          />
+          <p className="mt-1 text-[11px] leading-relaxed text-slate-500">
+            카드에 안 적힌 비슷한 단어도 검색에 잡히게 — <strong>콤마(,)로 구분</strong>해서 입력.
+            <br />
+            예: 팬티·기저귀 / 분유·이유식·수유 / 유모차·뒤집기카 등.
+            사용자에게 노출되지는 않아요.
+          </p>
         </Field>
 
         <Field label="마감일">

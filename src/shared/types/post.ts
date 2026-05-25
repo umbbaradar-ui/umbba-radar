@@ -56,6 +56,8 @@ export interface Post {
   thumbnail_url: string | null
   source_url: string
   body: string | null
+  /** 검색 매칭용 동의어·유사어 (콤마 구분, UI 노출 X). 예: "기저귀,팬티,기저귀팬티" */
+  search_keywords: string | null
   deadline: string | null
   /** true = 실제 마감일 모름, deadline은 등록일+7일 자동 계산값 (UI에 "추정" 표시) */
   deadline_unknown: boolean

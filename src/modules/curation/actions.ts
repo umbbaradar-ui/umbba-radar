@@ -67,6 +67,20 @@ function parseFormToPost(formData: FormData): PostInsertInput {
 
   const topic = get("topic") || "parenting";
 
+  // 검색 키워드 — 공백·중복 정리 후 콤마 구분 형식으로 저장
+  // 예: "기저귀, 팬티 , 기저귀팬티" → "기저귀,팬티,기저귀팬티"
+  const searchKeywordsRaw = get("search_keywords");
+  const searchKeywords = searchKeywordsRaw
+    ? Array.from(
+        new Set(
+          searchKeywordsRaw
+            .split(",")
+            .map((s) => s.trim())
+            .filter(Boolean)
+        )
+      ).join(",")
+    : null;
+
   return {
     kind: get("kind") || "recruiting",
     title: get("title"),
@@ -74,6 +88,7 @@ function parseFormToPost(formData: FormData): PostInsertInput {
     thumbnail_url: getOrNull("thumbnail_url"),
     source_url: get("source_url"),
     body: getOrNull("body"),
+    search_keywords: searchKeywords,
     deadline,
     deadline_unknown: deadlineUnknown,
     reviewer_handle: getOrNull("reviewer_handle"),

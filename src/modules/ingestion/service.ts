@@ -134,10 +134,26 @@ export async function runIngestion(): Promise<IngestionStats> {
           ).toISOString()
         : norm.deadline;
 
+      // AI가 채운 search_keywords도 한 번 정제 (콤마 split + trim + dedup, 길이 제한)
+      const searchKeywords = norm.search_keywords
+        ? Array.from(
+            new Set(
+              norm.search_keywords
+                .split(",")
+                .map((s) => s.trim())
+                .filter(Boolean)
+            )
+          )
+            .slice(0, 5)
+            .join(",")
+            .slice(0, 200)
+        : null;
+
       const { error: insertError } = await supabaseServer.from("posts").insert({
         title: norm.title.slice(0, 120),
         brand_name: norm.brand_name,
         body: norm.body?.slice(0, 500) ?? null,
+        search_keywords: searchKeywords,
         source_url: item.link,
         kind: norm.kind,
         stage_categories: norm.stage_categories ?? [],

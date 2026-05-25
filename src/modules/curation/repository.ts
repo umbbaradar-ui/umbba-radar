@@ -50,6 +50,8 @@ export interface PostInsertInput {
   thumbnail_url?: string | null;
   source_url: string;
   body?: string | null;
+  /** 검색 매칭용 동의어·유사어 (콤마 구분, UI 노출 X) */
+  search_keywords?: string | null;
   /** ISO 또는 null. deadline_unknown=true면 actions가 자동 계산해서 채움 */
   deadline?: string | null;
   /** true면 마감 미정 — UI에 "추정" 표시, 푸시 알림 제외 */

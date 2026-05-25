@@ -15,6 +15,8 @@ export interface VisionExtractResult {
   title: string;
   brand_name: string | null;
   body: string;
+  /** 검색 매칭용 동의어·유사어 (콤마 구분, 1~3개) */
+  search_keywords: string | null;
   kind: "recruiting" | "review" | "group_buy";
   stage_categories: string[];
   type_tags: string[];
@@ -37,6 +39,7 @@ const VISION_SYSTEM_PROMPT = `당신은 한국 육아 정보 큐레이션 사이
   "title": string,                          // 깔끔한 한 줄 (예: "○○ 분유 무료 샘플 신청")
   "brand_name": string | null,              // 브랜드명. 명확히 보이는 경우만, 아니면 null
   "body": string,                           // 한 줄 요약 (예: "댓글 + 친구 태그 → 30명 추첨")
+  "search_keywords": string | null,         // 동의어·유사어 콤마 구분 1~3개 (아래 가이드 참조)
   "kind": "recruiting" | "review" | "group_buy",
   "stage_categories": Array<"pregnancy"|"newborn"|"infant"|"toddler"|"elementary"|"all_ages">,
   "type_tags": Array<"regram"|"experience"|"kids_model"|"supporters"|"form">,
@@ -62,6 +65,15 @@ const VISION_SYSTEM_PROMPT = `당신은 한국 육아 정보 큐레이션 사이
 - parenting: 아이가 주체이거나 직접 사용 (이유식·기저귀·완구·교구·키즈모델·아동 체험단 등)
 - living: 가전·가구·식기·청소용품·침구 등 살림 (아이용 아닌 가족 단위)
 ※ 애매하면 parenting (육아 사이트 디폴트)
+
+# search_keywords (검색 동의어·유사어, 콤마 구분 1~3개)
+사용자가 다른 표현으로 검색해도 이 카드가 잡히게 하는 보조 키워드.
+제목·본문에 이미 있는 단어는 중복 X. 동의어 안 떠오르면 null.
+예시:
+- "팬티 체험단" → "기저귀,기저귀팬티"
+- "분유 샘플" → "이유식,수유용품"
+- "조리원" → "산후조리원,산후도우미"
+- "유모차" → "스트롤러,유모차세트"
 
 # stage_categories
 - pregnancy: 임신중

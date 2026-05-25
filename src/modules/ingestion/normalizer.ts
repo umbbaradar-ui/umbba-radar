@@ -43,6 +43,8 @@ export interface NormalizedPost {
   title: string;
   brand_name: string | null;
   body: string;
+  /** 검색 매칭용 동의어·유사어 (콤마 구분, 1~3개). 예: "기저귀,팬티" */
+  search_keywords: string | null;
   kind: Kind;
   stage_categories: Stage[];
   type_tags: TypeTag[];
@@ -66,6 +68,7 @@ const SYSTEM_PROMPT = `당신은 한국 육아 정보 큐레이션 사이트 "�
       "title": string,                    // 깔끔한 한 줄 (예: "○○ 분유 무료 샘플 신청")
       "brand_name": string | null,
       "body": string,                     // 한 줄 요약 (예: "댓글 + 친구 태그 → 30명 추첨")
+      "search_keywords": string | null,   // 동의어·유사어 콤마 구분 1~3개 (아래 가이드 참조)
       "kind": "recruiting" | "review" | "group_buy",
       "stage_categories": Array<"pregnancy"|"newborn"|"infant"|"toddler"|"elementary"|"all_ages">,
       "type_tags": Array<"regram"|"experience"|"kids_model"|"supporters"|"form">,
@@ -102,6 +105,18 @@ const SYSTEM_PROMPT = `당신은 한국 육아 정보 큐레이션 사이트 "�
 - parenting: 부모-자녀 활동·아동 관련 (이유식·기저귀·완구·교구·키즈모델·체험단 등 아이가 주체이거나 직접 사용)
 - living: 가전·가구·식기·청소·생활용품 (가족 단위 사용이지만 아이가 주체 아님 — 식탁, 공기청정기, 침구, 청소기 등)
 ※ 애매하면 parenting을 선택 (육아 사이트 디폴트)
+
+# search_keywords (검색 동의어·유사어, 콤마 구분 1~3개)
+사용자가 다른 표현으로 검색해도 이 카드가 잡히게 하는 보조 키워드.
+제목·본문에 이미 있는 단어는 중복으로 넣지 마세요 (어차피 잡힘).
+예시:
+- 카드: "기저귀 팬티 체험단" → search_keywords: null (이미 본문에 다 있음)
+- 카드: "팬티 체험단" → search_keywords: "기저귀,기저귀팬티"
+- 카드: "분유 샘플" → search_keywords: "이유식,수유용품"
+- 카드: "유모차 협찬" → search_keywords: "유모차세트,스트롤러"
+- 카드: "조리원 후기" → search_keywords: "산후조리원,산후도우미"
+- 카드: "초등 학습지" → search_keywords: "방문학습,학습지구독"
+동의어가 떠오르지 않으면 null. 억지 채우지 말 것.
 
 # is_actual_event = false 인 경우
 - 만료 지난 이벤트 명확

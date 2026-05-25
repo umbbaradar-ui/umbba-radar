@@ -29,13 +29,14 @@ export async function selectPublishedPosts(
 
   let query = supabase.from("posts").select("*").eq("status", "published");
 
-  // 검색어 필터
+  // 검색어 필터 — title/brand_name/body + search_keywords(동의어) 4개 컬럼 ILIKE OR
+  // search_keywords는 관리자 직접 입력 또는 AI 자동 생성한 동의어 (콤마 구분 텍스트)
   if (q) {
     const safe = sanitizeSearchTerm(q);
     if (safe) {
       const pattern = `%${safe}%`;
       query = query.or(
-        `title.ilike.${pattern},brand_name.ilike.${pattern},body.ilike.${pattern}`
+        `title.ilike.${pattern},brand_name.ilike.${pattern},body.ilike.${pattern},search_keywords.ilike.${pattern}`
       );
     }
   }
