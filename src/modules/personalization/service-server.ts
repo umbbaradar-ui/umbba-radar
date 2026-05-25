@@ -106,11 +106,10 @@ export async function getRecentMatchingCards(
 
   if (error || !data) return [];
 
-  // 자녀 시기 매칭 (또는 all_ages) 필터
+  // 자녀 시기와 정확히 일치하는 카드만 (all_ages 제외 — "내 아이 기준" 원칙)
+  // 메인 페이지 필터는 all_ages 포함하지만, 알림은 진짜 맞춤만 보여줌.
   const matched = (data as Post[]).filter((p) =>
-    p.stage_categories.some(
-      (s) => stages.includes(s) || s === ("all_ages" as StageCategory)
-    )
+    p.stage_categories.some((s) => stages.includes(s))
   );
 
   return matched.slice(0, limit);

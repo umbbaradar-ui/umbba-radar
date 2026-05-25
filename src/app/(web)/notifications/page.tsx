@@ -13,6 +13,7 @@ import { getStageVisual } from "@/shared/utils/stage-visuals";
 import { formatRelativeTime } from "@/shared/utils/relative-time";
 import { calcDDay } from "@/shared/utils/dday";
 import { NotificationSeenMarker } from "./_components/NotificationSeenMarker";
+import { NotificationsHeader } from "./_components/NotificationsHeader";
 
 export const dynamic = "force-dynamic";
 
@@ -27,23 +28,21 @@ export default async function NotificationsPage() {
 
   const latestEventAt = notifications[0]?.eventAt ?? null;
 
-  return (
-    <main className="mx-auto max-w-3xl px-4 py-6">
-      {/* 페이지 진입 시 lastSeen 갱신 → 벨 배지 사라짐 */}
-      {latestEventAt && <NotificationSeenMarker latestEventAt={latestEventAt} />}
+  const subtitle =
+    user && hasChildren
+      ? `내 아이에 맞는 혜택 ${notifications.length}건`
+      : "내 아이에 맞는 혜택 알림";
 
-      <header className="mb-5 flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-extrabold tracking-tight text-slate-900">
-            알림
-          </h1>
-          <p className="mt-1 text-xs text-slate-500">
-            {user && hasChildren
-              ? `내 아이에 맞는 혜택을 모아드려요 · ${notifications.length}건`
-              : "내 아이에 맞는 혜택 알림"}
-          </p>
-        </div>
-      </header>
+  return (
+    <>
+      {/* sticky 헤더 — 모바일 상단 헤더 위에 가려서 알림 페이지 전용 UI */}
+      <NotificationsHeader subtitle={subtitle} />
+
+      <main className="mx-auto max-w-3xl px-4 py-5">
+        {/* 페이지 진입 시 lastSeen 갱신 → 벨 배지 사라짐 */}
+        {latestEventAt && (
+          <NotificationSeenMarker latestEventAt={latestEventAt} />
+        )}
 
       {/* 상태별 분기 */}
       {!user ? (
@@ -76,7 +75,8 @@ export default async function NotificationsPage() {
           ))}
         </ul>
       )}
-    </main>
+      </main>
+    </>
   );
 }
 
