@@ -18,7 +18,7 @@ export default function TermsPage() {
           이용약관
         </h1>
         <p className="mt-2 text-xs text-slate-500">
-          시행일: 2026년 5월 22일 · 최종 업데이트: 2026년 5월 22일
+          시행일: 2026년 5월 22일 · 최종 업데이트: 2026년 5월 25일
         </p>
         <div className="mt-4 rounded-xl bg-amber-50 px-4 py-3 text-xs text-amber-700">
           ⚠️ 본 약관은 <strong>초안(draft)</strong>입니다. 정식 출시 전 법률
@@ -138,16 +138,51 @@ export default function TermsPage() {
         </ol>
       </Section>
 
-      <Section title="제10조 (약관의 변경)">
+      <Section title="제10조 (광고 표시 및 수익화)">
+        <ol className="list-decimal space-y-1 pl-5">
+          <li>
+            <strong>현재 서비스는 광고를 표시하지 않습니다.</strong> 다만 운영 비용
+            충당 및 지속 가능성을 위해 향후 다음 형태의 광고가 도입될 수 있습니다.
+          </li>
+          <li className="list-none">
+            <ul className="ml-4 list-disc space-y-0.5">
+              <li>카드 사이에 표시되는 배너·디스플레이 광고</li>
+              <li>광고 표시가 명확히 구분된 스폰서드 카드</li>
+              <li>구글 애드센스·토스애즈 등 검증된 광고 네트워크</li>
+            </ul>
+          </li>
+          <li>
+            광고 도입 시 시행 <strong>14일 전 앱 안 배너 등으로 사전 고지</strong>하며,
+            개인정보처리방침을 함께 갱신합니다.
+          </li>
+          <li>
+            이용자는 광고 차단 기능이나 외부 도구를 사용해 광고를 차단할 수 있으며,
+            이로 인해 서비스 이용에 제한을 두지 않습니다.
+          </li>
+          <li>
+            서비스는 광고 콘텐츠의 정확성·진위에 대해 책임지지 않으며, 광고를 통한
+            제3자 거래로 발생한 손해에 관여하지 않습니다.
+          </li>
+        </ol>
+      </Section>
+
+      <Section title="제11조 (약관의 변경)">
         <p>
           본 약관은 관련 법령·운영 정책에 따라 변경될 수 있으며, 변경 시 시행일
-          7일 전 공지합니다. 중대한 변경의 경우 30일 전 공지하며, 변경 후 계속
-          이용 시 동의로 간주합니다.
+          7일 전 공지합니다. 중대한 변경(예: 광고 도입, 유료화, 서비스 범위
+          변경 등)의 경우 30일 전 공지하며, 변경 후 계속 이용 시 동의로 간주합니다.
         </p>
       </Section>
 
       <footer className="mt-10 border-t border-slate-200 pt-6 text-xs text-slate-500">
-        문의: 본 서비스 운영자에게 연락 (운영자 연락처는 출시 정식 약관에 표기 예정).
+        문의:{" "}
+        <a
+          href="mailto:umbba.radar@gmail.com"
+          className="font-semibold text-rose-600 underline"
+        >
+          umbba.radar@gmail.com
+        </a>{" "}
+        · 영업일 기준 3일 이내 답변드립니다.
       </footer>
     </main>
   );

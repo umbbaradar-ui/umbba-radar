@@ -18,7 +18,7 @@ export default function PrivacyPage() {
           개인정보처리방침
         </h1>
         <p className="mt-2 text-xs text-slate-500">
-          시행일: 2026년 5월 22일 · 최종 업데이트: 2026년 5월 22일
+          시행일: 2026년 5월 22일 · 최종 업데이트: 2026년 5월 25일
         </p>
         <div className="mt-4 rounded-xl bg-amber-50 px-4 py-3 text-xs text-amber-700">
           ⚠️ 본 방침은 <strong>초안(draft)</strong>입니다. 정식 출시 전
@@ -162,17 +162,58 @@ export default function PrivacyPage() {
         </p>
       </Section>
 
-      <Section title="10. 방침의 변경">
-        <p>
-          본 방침이 변경될 경우 시행일 7일 전 서비스에 공지합니다. 중대한 변경은
-          30일 전 공지합니다.
+      <Section title="10. 광고 및 수익화 (향후 도입 예정)">
+        <p className="mb-2">
+          <strong>현재 서비스는 광고를 표시하지 않습니다.</strong> 다만 운영 비용
+          충당 및 지속 가능성을 위해 향후 다음 형태의 광고가 도입될 수 있습니다.
+        </p>
+        <ul className="list-disc space-y-1 pl-5">
+          <li>카드 사이에 표시되는 배너·디스플레이 광고</li>
+          <li>스폰서드 카드 (광고 표시가 명확히 구분된 형태)</li>
+          <li>광고 네트워크: 구글 애드센스·토스애즈 등 검증된 제휴사</li>
+        </ul>
+        <p className="mt-2">
+          광고 도입 시 다음 절차를 따릅니다.
+        </p>
+        <ul className="list-disc space-y-1 pl-5">
+          <li>도입 시행 <strong>14일 전 앱 안 배너·이메일로 사전 고지</strong></li>
+          <li>본 방침에 광고로 인한 데이터 처리 항목 추가·게시</li>
+          <li>광고 식별 데이터(광고 ID 등) 수집 시 별도 동의 절차</li>
+          <li>개인 식별 가능 정보를 광고주에게 제공하지 않음 (집계·익명 통계만)</li>
+        </ul>
+        <p className="mt-2 text-xs text-slate-500">
+          ※ 광고 차단으로 인한 서비스 이용 제한은 두지 않습니다. 사용자가 광고를
+          차단해도 모든 기능을 동일하게 이용할 수 있습니다.
         </p>
       </Section>
 
-      <Section title="11. 개인정보 보호 책임자">
+      <Section title="11. 방침의 변경">
         <p>
-          개인정보 관련 문의·민원·피해 구제 요청은 본 서비스 운영자에게 연락 바랍니다.
-          (구체 연락처는 정식 출시 시 명기 예정)
+          본 방침이 변경될 경우 시행일 7일 전 서비스에 공지합니다. 중대한 변경(예:
+          새 데이터 수집, 광고 도입, 제3자 제공 등)은 30일 전 공지합니다.
+        </p>
+      </Section>
+
+      <Section title="12. 개인정보 보호 책임자">
+        <p>
+          개인정보 관련 문의·민원·피해 구제 요청은{" "}
+          <a
+            href="mailto:umbba.radar@gmail.com"
+            className="font-semibold text-rose-600 underline"
+          >
+            umbba.radar@gmail.com
+          </a>{" "}
+          로 보내주세요. 영업일 기준 3일 이내 답변드립니다.
+        </p>
+        <p className="mt-2">
+          계정 삭제 요청은{" "}
+          <a
+            href="/account-deletion"
+            className="font-semibold text-slate-700 underline"
+          >
+            /account-deletion
+          </a>{" "}
+          페이지에서 자세한 안내를 확인할 수 있습니다.
         </p>
       </Section>
 
