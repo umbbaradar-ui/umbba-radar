@@ -21,7 +21,7 @@ interface StageRange {
  *   시기       | 코어 범위        | 버퍼   | 최종 (개월)
  *   -----------|-----------------|--------|------------
  *   임신중     | 출산 전 ~ 0     | —      | -10 ~ 0
- *   신생아     | 0~3개월         | ±3개월 | -3 ~ 6
+ *   신생아     | 0~3개월         | +3개월 | 0 ~ 6     ← 출산 전 버퍼 제거
  *   영아       | 3~12개월        | ±3개월 | 3 ~ 15
  *   유아       | 1~7세 (12~84)   | ±6개월 | 6 ~ 90
  *   초등생     | 7~13세 (84~156) | ±12개월| 72 ~ 168
@@ -31,10 +31,15 @@ interface StageRange {
  *   신생아↔영아: 3~6개월
  *   영아↔유아:   6~15개월 (1세 전후)
  *   유아↔초등생: 72~90개월 (6세~7세 6개월, 초등 입학 시기)
+ *
+ * 신생아 출산 전 버퍼 비제공 이유:
+ *   "신생아용 카드"는 신청 조건에 "이미 태어난 아기 필수"가 흔함 →
+ *   임신 중 부모에게 매칭되면 실제 신청 불가 → 알림·필터 모두에서 제외.
+ *   임신 중 부모는 pregnancy 카테고리만 받음.
  */
 export const STAGE_RANGES: StageRange[] = [
   { stage: "pregnancy", minMonths: -10, maxMonths: 0 },
-  { stage: "newborn", minMonths: -3, maxMonths: 6 },
+  { stage: "newborn", minMonths: 0, maxMonths: 6 },
   { stage: "infant", minMonths: 3, maxMonths: 15 },
   { stage: "toddler", minMonths: 6, maxMonths: 90 }, // 코어 1~7세 + ±6개월
   { stage: "elementary", minMonths: 72, maxMonths: 168 }, // 코어 7~13세 + ±12개월
