@@ -24,6 +24,12 @@
 .DS_Store
 *.pem
 
+# Play Store 서명 키 — 절대 repo에 들어가면 안 됨 (분실 시 앱 업데이트 불가)
+*.keystore
+*.jks
+signing-key-info.txt
+signing-key-info*.txt
+
 # debug
 npm-debug.log*
 yarn-debug.log*
