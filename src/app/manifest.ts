@@ -1,7 +1,7 @@
 import type { MetadataRoute } from "next";
 
 // MetadataRoute.Manifest 타입엔 launch_handler / display_override / dir / screenshots
-// 일부 신규 W3C 필드가 아직 없어서 캐스팅. 브라우저는 모두 지원.
+// / share_target 등 신규 W3C 필드가 아직 없어서 캐스팅. 브라우저는 모두 지원.
 type ExtendedManifest = MetadataRoute.Manifest & {
   dir?: "ltr" | "rtl" | "auto";
   display_override?: string[];
@@ -13,6 +13,16 @@ type ExtendedManifest = MetadataRoute.Manifest & {
     form_factor?: "narrow" | "wide";
     label?: string;
   }>;
+  share_target?: {
+    action: string;
+    method?: "GET" | "POST";
+    enctype?: string;
+    params: {
+      title?: string;
+      text?: string;
+      url?: string;
+    };
+  };
 };
 
 export default function manifest(): ExtendedManifest {
@@ -40,33 +50,50 @@ export default function manifest(): ExtendedManifest {
     categories: ["lifestyle", "shopping", "parenting"],
     // PWA shortcuts: Android 홈 아이콘 길게 누르면 뜨는 빠른 메뉴
     // (iOS Safari는 미지원 — Android·일부 데스크탑만 적용)
-    // 자주 가는 4곳 직행. 아이콘 미지정 시 OS가 앱 아이콘으로 fallback.
+    // 자주 가는 4곳 직행. 각 96×96 고유 아이콘 (scripts/generate-shortcut-icons.mjs로 생성).
     shortcuts: [
       {
         name: "내 레이더 (관심·신청 카드)",
         short_name: "내 레이더",
         description: "관심·신청 표시한 카드 모아보기",
         url: "/my",
+        icons: [{ src: "/icons/shortcut-my.png", sizes: "96x96", type: "image/png" }],
       },
       {
         name: "체험단만 보기",
         short_name: "체험단",
         description: "체험단·협찬 신청 가능 카드",
         url: "/?type=experience",
+        icons: [{ src: "/icons/shortcut-experience.png", sizes: "96x96", type: "image/png" }],
       },
       {
         name: "키즈모델만 보기",
         short_name: "키즈모델",
         description: "키즈모델·아동 모델 모집 카드",
         url: "/?type=kids_model",
+        icons: [{ src: "/icons/shortcut-kids-model.png", sizes: "96x96", type: "image/png" }],
       },
       {
         name: "혜택 제보하기",
         short_name: "제보",
         description: "발견한 협찬·체험단 알려주기",
         url: "/submit",
+        icons: [{ src: "/icons/shortcut-submit.png", sizes: "96x96", type: "image/png" }],
       },
     ],
+    // share_target: 다른 앱(인스타·카톡·갤러리)에서 "공유" → 엄빠레이더 PWA로 직행
+    // GET 방식 — URL query string으로 전달되어 /submit 페이지가 받음
+    // (POST + multipart도 가능하지만 GET이 가장 호환성 좋음 + 이미지 첨부는 1단계 X)
+    // /submit/page.tsx가 shared_url/title/text searchParams로 폼 prefill 처리
+    share_target: {
+      action: "/submit",
+      method: "GET",
+      params: {
+        title: "shared_title",
+        text: "shared_text",
+        url: "shared_url",
+      },
+    },
     // PWA 아이콘 정책:
     // - any: Chrome/Edge 등이 그대로 사용 (둥근 모서리는 OS가 추가)
     // - maskable: Android 어댑티브 아이콘 (원/사각/물방울 등으로 잘림)
