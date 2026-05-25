@@ -160,10 +160,14 @@ export default async function PostDetailPage({ params }: PageProps) {
             {dday && (
               <span
                 className={`absolute left-4 top-4 rounded-full px-4 py-1.5 text-sm font-bold text-white ${
-                  dday.urgent ? "bg-rose-500" : "bg-slate-700/80"
+                  post.deadline_unknown
+                    ? "bg-amber-500/85"
+                    : dday.urgent
+                      ? "bg-rose-500"
+                      : "bg-slate-700/80"
                 }`}
               >
-                {dday.label}
+                {post.deadline_unknown ? `~${dday.label}` : dday.label}
               </span>
             )}
             {isReview && (
@@ -214,18 +218,36 @@ export default async function PostDetailPage({ params }: PageProps) {
             </div>
           )}
 
-          {post.deadline && (
-            <p className="text-xs text-slate-500">
-              마감: {new Date(post.deadline).toLocaleString("ko-KR", {
-                year: "numeric",
-                month: "long",
-                day: "numeric",
-                hour: "2-digit",
-                minute: "2-digit",
-                timeZone: "Asia/Seoul", // Vercel 서버는 UTC라 KST 명시 안 하면 9시간 밀림
-              })}
-            </p>
-          )}
+          {post.deadline &&
+            (post.deadline_unknown ? (
+              <div className="rounded-xl border border-amber-200 bg-amber-50/60 px-4 py-3 text-xs leading-relaxed text-amber-800">
+                <p className="font-semibold">⚠️ 마감일 미정</p>
+                <p className="mt-1">
+                  정확한 마감일이 안내되지 않은 카드예요. 등록일 기준{" "}
+                  <strong>
+                    {new Date(post.deadline).toLocaleDateString("ko-KR", {
+                      month: "long",
+                      day: "numeric",
+                      timeZone: "Asia/Seoul",
+                    })}
+                  </strong>{" "}
+                  까지 자동 노출돼요. 본문과 원문에서 정확한 마감을 꼭
+                  확인해주세요.
+                </p>
+              </div>
+            ) : (
+              <p className="text-xs text-slate-500">
+                마감:{" "}
+                {new Date(post.deadline).toLocaleString("ko-KR", {
+                  year: "numeric",
+                  month: "long",
+                  day: "numeric",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                  timeZone: "Asia/Seoul", // Vercel 서버는 UTC라 KST 명시 안 하면 9시간 밀림
+                })}
+              </p>
+            ))}
 
           <StatusButtons
             postId={post.id}

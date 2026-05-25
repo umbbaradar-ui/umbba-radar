@@ -43,6 +43,7 @@ export async function GET(request: Request) {
       .from("posts")
       .select("id, title, brand_name, deadline")
       .eq("status", "published")
+      .eq("deadline_unknown", false) // 추정 마감 카드는 가짜 마감 알림 방지로 제외
       .gte("deadline", fromIso)
       .lt("deadline", toIso);
 

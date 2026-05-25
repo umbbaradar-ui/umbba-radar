@@ -6,6 +6,7 @@
 // 부모(PostFormWithAI)가 key prop으로 remount 시키면 새 defaults 반영됨
 // ============================================
 
+import { useState } from "react";
 import type { Post } from "@/shared/types/post";
 import {
   STAGE_LABELS,
@@ -17,6 +18,9 @@ import {
 } from "@/shared/types/post";
 import { ImageUploadField } from "./ImageUploadField";
 
+/** UNKNOWN_DEADLINE_DAYS와 동기화 (actions.ts) — UI 라벨에 노출하는 기간 */
+const UNKNOWN_DAYS_LABEL = 7;
+
 export interface PostFormDefaults {
   kind?: string;
   title?: string;
@@ -25,6 +29,7 @@ export interface PostFormDefaults {
   source_url?: string;
   body?: string | null;
   deadline?: string | null;
+  deadline_unknown?: boolean;
   reviewer_handle?: string | null;
   stage_categories?: string[];
   type_tags?: string[];
@@ -61,6 +66,8 @@ export function PostForm({ post, defaults, action, submitLabel, errorMessage }: 
     deadline: toLocalDatetimeInput(
       defaults?.deadline ?? post?.deadline ?? null
     ),
+    deadline_unknown:
+      defaults?.deadline_unknown ?? post?.deadline_unknown ?? false,
     reviewer_handle: defaults?.reviewer_handle ?? post?.reviewer_handle ?? "",
     stage_categories:
       defaults?.stage_categories ?? post?.stage_categories ?? [],
@@ -69,6 +76,9 @@ export function PostForm({ post, defaults, action, submitLabel, errorMessage }: 
     status: defaults?.status ?? post?.status ?? "draft",
     is_sponsored: defaults?.is_sponsored ?? post?.is_sponsored ?? false,
   };
+
+  // 마감 미정 토글 — 체크 시 datetime input 비활성화 + 시각적 흐림
+  const [deadlineUnknown, setDeadlineUnknown] = useState(v.deadline_unknown);
 
   return (
     <form action={action} className="space-y-6">
@@ -150,8 +160,27 @@ export function PostForm({ post, defaults, action, submitLabel, errorMessage }: 
             type="datetime-local"
             name="deadline"
             defaultValue={v.deadline}
-            className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+            disabled={deadlineUnknown}
+            className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm disabled:bg-slate-50 disabled:text-slate-400"
           />
+          {/* 마감 미정 토글 — 체크 시 등록일 +N일을 자동으로 deadline에 저장
+              (사용자에게는 "추정 마감" 라벨로 표시, 푸시 알림은 제외) */}
+          <label className="mt-2 flex items-start gap-2 rounded-lg bg-amber-50/60 px-3 py-2 text-xs text-amber-800">
+            <input
+              type="checkbox"
+              name="deadline_unknown"
+              checked={deadlineUnknown}
+              onChange={(e) => setDeadlineUnknown(e.target.checked)}
+              className="mt-0.5 h-4 w-4"
+            />
+            <span>
+              <strong>마감일 미정</strong> (체크 시 등록일 +{UNKNOWN_DAYS_LABEL}일 후 자동 종료)
+              <br />
+              <span className="text-amber-700/80">
+                * 정확한 마감은 본문에 적어주세요. 푸시 알림은 발송되지 않아요.
+              </span>
+            </span>
+          </label>
         </Field>
 
         <Field label="후기 작성자 핸들 (review일 때만)">

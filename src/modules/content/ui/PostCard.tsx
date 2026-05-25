@@ -55,16 +55,27 @@ export function PostCard({ post }: Props) {
             </div>
           )}
 
-          {/* 좌측 상단 배지 그룹 — D-day + NEW */}
+          {/* 좌측 상단 배지 그룹 — D-day + NEW
+              마감 미정 카드는 D-day 라벨에 ~ 접두어 + amber 톤으로 "추정" 시각화.
+              urgent 빨강 효과는 사용 안 함 (가짜 긴급 인상 방지). */}
           {(dday || isNew) && (
             <div className="absolute left-3 top-3 flex gap-1">
               {dday && (
                 <span
                   className={`rounded-full px-2.5 py-1 text-[11px] font-extrabold tracking-tight text-white shadow-sm ${
-                    dday.urgent ? "bg-rose-500" : "bg-slate-900/70 backdrop-blur"
+                    post.deadline_unknown
+                      ? "bg-amber-500/85 backdrop-blur"
+                      : dday.urgent
+                        ? "bg-rose-500"
+                        : "bg-slate-900/70 backdrop-blur"
                   }`}
+                  title={
+                    post.deadline_unknown
+                      ? "마감일 미정 — 등록일 기준 자동 종료"
+                      : undefined
+                  }
                 >
-                  {dday.label}
+                  {post.deadline_unknown ? `~${dday.label}` : dday.label}
                 </span>
               )}
               {isNew && (

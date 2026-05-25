@@ -50,7 +50,10 @@ export interface PostInsertInput {
   thumbnail_url?: string | null;
   source_url: string;
   body?: string | null;
+  /** ISO 또는 null. deadline_unknown=true면 actions가 자동 계산해서 채움 */
   deadline?: string | null;
+  /** true면 마감 미정 — UI에 "추정" 표시, 푸시 알림 제외 */
+  deadline_unknown?: boolean;
   reviewer_handle?: string | null;
   stage_categories: string[];
   type_tags: string[];

@@ -55,6 +55,8 @@ export interface Post {
   source_url: string
   body: string | null
   deadline: string | null
+  /** true = 실제 마감일 모름, deadline은 등록일+7일 자동 계산값 (UI에 "추정" 표시) */
+  deadline_unknown: boolean
   reviewer_handle: string | null
   stage_categories: StageCategory[]
   type_tags: TypeTag[]

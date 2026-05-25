@@ -124,6 +124,16 @@ export async function runIngestion(): Promise<IngestionStats> {
       }
       stats.normalized++;
 
+      // AI가 마감일 추출 못 했으면 deadline_unknown=true + 등록일 +7일 자동 채움
+      // (수동 admin 카드와 동일한 정책, UNKNOWN_DEADLINE_DAYS와 동기화)
+      const UNKNOWN_DEADLINE_DAYS = 7;
+      const deadlineUnknown = !norm.deadline;
+      const effectiveDeadline = deadlineUnknown
+        ? new Date(
+            Date.now() + UNKNOWN_DEADLINE_DAYS * 24 * 60 * 60 * 1000
+          ).toISOString()
+        : norm.deadline;
+
       const { error: insertError } = await supabaseServer.from("posts").insert({
         title: norm.title.slice(0, 120),
         brand_name: norm.brand_name,
@@ -133,7 +143,8 @@ export async function runIngestion(): Promise<IngestionStats> {
         stage_categories: norm.stage_categories ?? [],
         type_tags: norm.type_tags ?? [],
         topic: norm.topic === "living" ? "living" : "parenting",
-        deadline: norm.deadline,
+        deadline: effectiveDeadline,
+        deadline_unknown: deadlineUnknown,
         status: "pending",
         source_type: "ingestion",
       });
