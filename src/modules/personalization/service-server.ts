@@ -21,8 +21,9 @@ export interface NotificationItem {
   reason?: string;
 }
 
-const NEW_MATCH_DAYS = 14; // 자녀 시기 매칭 신규 카드 — 최근 14일
-const DEADLINE_THRESHOLDS = [1, 3, 7]; // 관심 카드 마감 임박 일수
+const NEW_MATCH_DAYS = 14; // 자녀 시기 매칭 신규 카드 — 최근 N일 이내 + 가입 이후만
+const DEADLINE_NOTIFY_DAYS = 3; // 마감 임박 알림 노출 범위 (이전엔 7일이었음)
+const DEADLINE_THRESHOLDS = [1, 3]; // "마감 N일 전" 강조 라벨용
 
 export type UserStatusMap = Record<string, UserPostStatusValue>;
 
@@ -80,21 +81,34 @@ export async function getUserChildrenBirths(): Promise<{ birth_date: string }[]>
 }
 
 /**
- * 자녀 시기 매칭 + 최근 N일 published 카드 (알림용)
+ * 자녀 시기 매칭 + 최근 N일 + 가입 이후 published 카드 (알림용)
  * 비로그인·자녀 없음이면 빈 배열
+ *
+ * 노출 윈도우: max(가입일, now - NEW_MATCH_DAYS).
+ * 가입 전 등록된 카드는 "신규 매칭" 아님 → 알림 안 띄움.
  */
 export async function getRecentMatchingCards(
   limit = 20
 ): Promise<Post[]> {
-  const births = await getUserChildrenBirths();
+  const supabase = await getServerSupabase();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return [];
+
+  const { data: childrenData } = await supabase
+    .from("children")
+    .select("birth_date")
+    .eq("user_id", user.id);
+  const births = (childrenData ?? []) as { birth_date: string }[];
   if (births.length === 0) return [];
 
   const stages = getStagesForChildren(births);
   if (stages.length === 0) return [];
 
-  const sinceIso = new Date(
-    Date.now() - NEW_MATCH_DAYS * 24 * 60 * 60 * 1000
-  ).toISOString();
+  const windowStartMs = Date.now() - NEW_MATCH_DAYS * 24 * 60 * 60 * 1000;
+  const signupMs = new Date(user.created_at).getTime();
+  const sinceIso = new Date(Math.max(windowStartMs, signupMs)).toISOString();
 
   const { data, error } = await supabaseServer
     .from("posts")
@@ -116,12 +130,14 @@ export async function getRecentMatchingCards(
 }
 
 /**
- * 관심 등록한 카드 중 마감 임박 (7/3/1일 전, 미신청 상태)
+ * 관심 등록한 카드 중 마감 임박 (DEADLINE_NOTIFY_DAYS일 이내, 미신청 상태)
  * 로그인 사용자만, DB user_post_status 기준
+ *
+ * 정렬: 마감 빠른 순. 같은 daysLeft 내에서는 내 아이 시기와 정확 매칭되는 카드 우선.
  */
-export async function getInterestedDeadlineSoon(): Promise<
-  Array<{ post: Post; daysLeft: number }>
-> {
+export async function getInterestedDeadlineSoon(
+  myChildStages: StageCategory[] = []
+): Promise<Array<{ post: Post; daysLeft: number }>> {
   try {
     const supabase = await getServerSupabase();
     const {
@@ -156,14 +172,23 @@ export async function getInterestedDeadlineSoon(): Promise<
       if (!post.deadline) continue;
       const deadlineMs = new Date(post.deadline).getTime();
       const daysLeft = Math.ceil((deadlineMs - now) / (24 * 60 * 60 * 1000));
-      // 7일 이내(임박) + 양수(아직 마감 X)만
-      if (daysLeft > 0 && daysLeft <= 7) {
+      if (daysLeft > 0 && daysLeft <= DEADLINE_NOTIFY_DAYS) {
         items.push({ post, daysLeft });
       }
     }
 
-    // 마감 빠른 순
-    items.sort((a, b) => a.daysLeft - b.daysLeft);
+    // 같은 daysLeft 내에선 내 아이 시기 정확 매칭(all_ages 제외) 우선
+    const stageSet = new Set(myChildStages);
+    const isMyChildMatch = (p: Post) =>
+      stageSet.size > 0 &&
+      p.stage_categories.some((s) => s !== "all_ages" && stageSet.has(s));
+
+    items.sort((a, b) => {
+      if (a.daysLeft !== b.daysLeft) return a.daysLeft - b.daysLeft;
+      const aMy = isMyChildMatch(a.post) ? 1 : 0;
+      const bMy = isMyChildMatch(b.post) ? 1 : 0;
+      return bMy - aMy;
+    });
     return items;
   } catch {
     return [];
@@ -174,9 +199,13 @@ export async function getInterestedDeadlineSoon(): Promise<
  * 알림 종합 — 신규 매칭 + 마감 임박 합쳐 정렬
  */
 export async function getNotifications(): Promise<NotificationItem[]> {
+  // 내 아이 시기 미리 계산 → 마감 임박끼리 정렬 키로 사용
+  const births = await getUserChildrenBirths();
+  const myChildStages = getStagesForChildren(births);
+
   const [newMatches, deadlineSoon] = await Promise.all([
     getRecentMatchingCards(20),
-    getInterestedDeadlineSoon(),
+    getInterestedDeadlineSoon(myChildStages),
   ]);
 
   const items: NotificationItem[] = [];
