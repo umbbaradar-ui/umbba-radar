@@ -20,6 +20,9 @@ import { formatRelativeTime } from "@/shared/utils/relative-time";
 import { calcDDay } from "@/shared/utils/dday";
 
 const STORAGE_KEY = "umbba-notif-last-seen";
+/** lastSeen 갱신 시 같은 탭의 NotificationBell이 즉시 재계산하도록 dispatch.
+ *  storage 이벤트는 cross-tab에서만 발생 → 같은 탭은 별도 custom event 필요. */
+const SEEN_EVENT = "umbba-notif-seen";
 
 export interface NotificationData {
   kind: "new_match" | "deadline_soon";
@@ -60,6 +63,9 @@ export function NotificationsList({ notifications, latestEventAt }: Props) {
     if (latestEventAt) {
       try {
         localStorage.setItem(STORAGE_KEY, latestEventAt);
+        // 같은 탭의 NotificationBell이 즉시 빨간 점 갱신하도록 알림
+        // (storage 이벤트는 다른 탭에서만 발생 → 같은 탭은 custom event 필요)
+        window.dispatchEvent(new Event(SEEN_EVENT));
       } catch {
         // 무시
       }

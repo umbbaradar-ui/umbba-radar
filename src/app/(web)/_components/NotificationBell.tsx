@@ -15,6 +15,9 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 
 const STORAGE_KEY = "umbba-notif-last-seen";
+/** NotificationsList가 lastSeen 갱신 시 발생시키는 custom event
+ *  (NotificationBell이 layout에 상주 → props 안 바뀌면 useEffect 재실행 안 됨 → 이벤트로 강제 동기화) */
+const SEEN_EVENT = "umbba-notif-seen";
 
 interface Props {
   /** 가장 최근 알림 발생 시간 (ISO). 없으면 배지 안 보임 */
@@ -27,20 +30,45 @@ export function NotificationBell({ latestEventAt, variant = "desktop" }: Props) 
   const [hasUnread, setHasUnread] = useState(false);
 
   useEffect(() => {
-    if (!latestEventAt) {
-      setHasUnread(false);
-      return;
-    }
-    try {
-      const lastSeen = localStorage.getItem(STORAGE_KEY);
-      if (!lastSeen) {
-        setHasUnread(true);
+    // lastSeen 기반 unread 판정 — mount/props 변경/이벤트 발생 시마다 호출
+    const compute = () => {
+      if (!latestEventAt) {
+        setHasUnread(false);
         return;
       }
-      setHasUnread(new Date(latestEventAt).getTime() > new Date(lastSeen).getTime());
-    } catch {
-      setHasUnread(false);
-    }
+      try {
+        const lastSeen = localStorage.getItem(STORAGE_KEY);
+        if (!lastSeen) {
+          setHasUnread(true);
+          return;
+        }
+        setHasUnread(
+          new Date(latestEventAt).getTime() > new Date(lastSeen).getTime()
+        );
+      } catch {
+        setHasUnread(false);
+      }
+    };
+
+    compute();
+
+    // /notifications에서 lastSeen 갱신 시 같은 탭 동기화 (custom event)
+    const onSeen = () => compute();
+    // 다른 탭에서 lastSeen 변경 시도 동기화 (storage event는 cross-tab만)
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === STORAGE_KEY) compute();
+    };
+    // 백그라운드 → 포커스 복귀 시 한 번 더 확인 (다른 디바이스에서 봤을 가능성)
+    const onFocus = () => compute();
+
+    window.addEventListener(SEEN_EVENT, onSeen);
+    window.addEventListener("storage", onStorage);
+    window.addEventListener("focus", onFocus);
+    return () => {
+      window.removeEventListener(SEEN_EVENT, onSeen);
+      window.removeEventListener("storage", onStorage);
+      window.removeEventListener("focus", onFocus);
+    };
   }, [latestEventAt]);
 
   const sizeClass =
