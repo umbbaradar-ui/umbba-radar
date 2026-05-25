@@ -131,6 +131,28 @@ https://umbba-radar.com/privacy
 
 ---
 
+## 계정 삭제 안내 URL (Google Play 2024년~ 필수)
+
+```
+https://umbba-radar.com/account-deletion
+```
+
+---
+
+## 운영 이메일 (고정)
+
+```
+umbba.radar@gmail.com
+```
+
+용도:
+- Play Console "개발자 연락처 → 이메일 주소" (공개 노출)
+- 계정 삭제·개인정보 문의 채널
+- VAPID_SUBJECT env 기본값
+- 향후 사업자 등록 시 대표 메일
+
+---
+
 ## 데이터 보안 섹션 입력 항목
 
 Play Console > 데이터 보안 섹션에서 답할 내용:

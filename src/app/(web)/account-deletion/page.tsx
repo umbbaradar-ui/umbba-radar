@@ -10,8 +10,7 @@
 //   2. 삭제 요청 단계를 눈에 띄게
 //   3. 삭제되는 데이터 유형 + 보관 항목·기간 명시
 //
-// ⚠️ 운영 이메일은 실제 받을 수 있는 주소로 교체 필요.
-//   현재 placeholder: admin@umbba-radar.com (Cloudflare Email Routing 설정 권장).
+// 운영 이메일: umbba.radar@gmail.com (고정)
 // ============================================
 
 import type { Metadata } from "next";
@@ -22,8 +21,8 @@ export const metadata: Metadata = {
     "엄빠레이더 계정과 관련 데이터(자녀 정보·관심 카드·알림 구독 등) 삭제 요청 안내.",
 };
 
-// 운영 이메일 — 실제 받을 수 있는 주소로 교체
-const SUPPORT_EMAIL = "admin@umbba-radar.com";
+// 운영 이메일 (개인정보·계정 삭제·기타 문의 공식 채널)
+const SUPPORT_EMAIL = "umbba.radar@gmail.com";
 
 export default function AccountDeletionPage() {
   const subject = encodeURIComponent("[엄빠레이더] 계정 삭제 요청");
