@@ -9,30 +9,29 @@
 
 배포는 모두 완료됐지만 **사용자가 외부 콘솔에서 수동으로 처리해야** 할 항목들:
 
-### 1. DB 마이그레이션 3개 — Supabase Dashboard > SQL Editor
+### 1. ~~DB 마이그레이션 3개~~ ✅ 완료 (2026-05-25)
 
-순서대로 실행 (트랜잭션 + 검증 로직 포함, 실패 시 자동 롤백):
+011/012/013 모두 Supabase Dashboard SQL Editor에서 실행 완료.
+- 011: type_tags 7→4 (follow/lottery/gov_support 제거, free_trial+experience_group+sponsored → experience)
+- 012: topic 컬럼 추가 (parenting/living)
+- 013: stage_categories 8→6 (preschool→toddler, elementary_lower+upper → elementary)
 
-```
-supabase/migrations/011_simplify_type_tags.sql   ← type_tags 7→4
-supabase/migrations/012_add_topic.sql            ← topic 컬럼 추가 (parenting/living)
-supabase/migrations/013_simplify_stages.sql      ← stage_categories 8→6
-```
+후속 정리도 같이 진행됨 (2026-05-25 세션):
+- `post.ts`의 deprecated fallback 라벨 일괄 제거 (union·STAGE_LABELS·TYPE_LABELS)
+- `stage-visuals.ts`의 deprecated 엔트리 제거
+- `service-server.ts`의 `getStageFromBirthDate` 데드코드 제거 (옛 stage 값 반환하던 함수)
+- `npm run build` 통과 확인
 
-⚠️ **012는 컬럼 자체가 없으면 신규 카드 insert 실패**. 우선순위 가장 높음.
-011, 013은 코드에 deprecated fallback 라벨 있어 미실행도 동작은 OK.
+### 2. ~~검색엔진 콘솔~~ ✅ 완료 (2026-05-25)
 
-### 2. 검색엔진 콘솔 (메타태그는 이미 박혀있음)
+Google Search Console + Naver Search Advisor 사이트 등록 + sitemap 제출 완료.
+verification 메타태그는 `src/app/layout.tsx:38-43`에 상주 (소스 변경 금지).
 
-- **Google Search Console**: `https://umbba-radar.com` 추가 → HTML 태그 방식 인증 → Sitemaps에 `sitemap.xml` 제출
-- **Naver Search Advisor**: 사이트 등록 → HTML 태그 방식 인증 → 사이트맵 제출
+### 3. ~~GA4 페이지뷰 태그~~ ✅ 완료 (2026-05-25)
 
-### 3. GA4 페이지뷰 태그 — GTM UI
+GTM 컨테이너 `GTM-PR2K864P`에 GA4 페이지뷰 태그 등록 + 게시 완료.
 
-GTM 컨테이너 `GTM-PR2K864P` 이미 설치됨. GA4 측정 ID(`G-XXXXXXX`) 받아서:
-- GTM > 태그 > GA4 이벤트 > 측정 ID 입력 > 트리거 "모든 페이지" > 게시
-
-### 4. (선택) PWA Screenshots 캡처
+### 4. (선택) PWA Screenshots 캡처 — 🔴 대기 중
 
 - 폰에서 메인/카드상세/내 레이더 3장 캡처
 - 1080×1920 크롭 후 `public/screenshots/{mobile-home,mobile-card,mobile-my}.png` 업로드
@@ -90,7 +89,7 @@ GTM 컨테이너 `GTM-PR2K864P` 이미 설치됨. GA4 측정 ID(`G-XXXXXXX`) 받
 - 기존 카드는 일괄 `parenting`
 - AI(Gemini)가 새 카드 분류
 
-deprecated 값은 `post.ts` union/labels에 임시 fallback (다음 PR에서 제거 가능).
+~~deprecated 값은 `post.ts` union/labels에 임시 fallback~~ → 2026-05-25 일괄 제거 완료.
 `ACTIVE_STAGE_CATEGORIES`, `ACTIVE_TYPE_TAGS`, `ACTIVE_TOPIC_CATEGORIES` 상수로 UI/AI는 신규만 노출.
 
 **stages.ts 월령 매칭 버퍼 재설계**:
@@ -152,10 +151,10 @@ deprecated 값은 `post.ts` union/labels에 임시 fallback (다음 PR에서 제
 ## 🔮 미해결 / 다음 단계 옵션
 
 ### 작은 follow-up (단순 작업)
-- [ ] `post.ts`의 deprecated stage/type 라벨 제거 (마이그레이션 011/013 실행 + 4주 안정화 후)
+- [x] ~~`post.ts`의 deprecated stage/type 라벨 제거~~ (2026-05-25 완료)
 - [ ] PWA shortcuts 각각 다른 96×96 아이콘 디자인 (지금은 모두 앱 아이콘 fallback)
 - [ ] screenshots 3장 사용자 캡처 → 매니페스트 검증 통과
-- [ ] GA4 측정 ID 발급 후 GTM에 페이지뷰 태그 추가
+- [x] ~~GA4 측정 ID 발급 후 GTM에 페이지뷰 태그 추가~~ (2026-05-25 완료)
 
 ### 중간 작업 (의사결정 필요)
 - [ ] `share_target` manifest 추가 + `/submit` prefill 처리 (인스타 → 공유 → 제보 자동)
@@ -188,8 +187,7 @@ deprecated 값은 `post.ts` union/labels에 임시 fallback (다음 PR에서 제
 - `NEXT_PUBLIC_GOOGLE_OAUTH_ENABLED` (현재 비활성)
 
 ### DB (Supabase) 마이그레이션 현황
-- 010까지 완료
-- 011/012/013 작성됨, **사용자 실행 대기** ⚠️
+- 013까지 모두 실행 완료 (2026-05-25)
 
 ### Vercel
 - Hobby plan, daily cron 21:00 KST (`vercel.json`)
@@ -234,4 +232,4 @@ deprecated 값은 `post.ts` union/labels에 임시 fallback (다음 PR에서 제
 ---
 
 > 이 문서는 살아있는 인수인계서입니다. 다음 세션에서 변경된 정책·완료된 액션은 갱신 또는 제거해주세요.
-> 마지막 갱신: 2026-05-25
+> 마지막 갱신: 2026-05-25 (사용자 액션 1·2·3 완료 반영 + deprecated 라벨 일괄 제거 후속 정리)

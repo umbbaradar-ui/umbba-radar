@@ -73,19 +73,3 @@ export async function getUserProfile(): Promise<UserProfile | null> {
   }
 }
 
-/** 생년월일 → 시기 카테고리 매핑 */
-export function getStageFromBirthDate(birthDate: string): string {
-  const now = new Date();
-  const birth = new Date(birthDate);
-  const monthsDiff =
-    (now.getFullYear() - birth.getFullYear()) * 12 +
-    (now.getMonth() - birth.getMonth());
-
-  if (monthsDiff < 0) return "pregnancy"; // 출산 예정 (미래)
-  if (monthsDiff < 3) return "newborn";
-  if (monthsDiff < 24) return "infant";
-  if (monthsDiff < 48) return "toddler";
-  if (monthsDiff < 84) return "preschool";
-  if (monthsDiff < 120) return "elementary_lower";
-  return "elementary_upper";
-}

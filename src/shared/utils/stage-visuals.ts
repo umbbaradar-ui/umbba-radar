@@ -15,7 +15,6 @@ interface StageVisual {
 }
 
 export const STAGE_VISUALS: Record<StageCategory, StageVisual> = {
-  // 신규 6종
   pregnancy: {
     emoji: "🤰",
     bgClass: "bg-pink-100",
@@ -45,22 +44,6 @@ export const STAGE_VISUALS: Record<StageCategory, StageVisual> = {
     emoji: "🏠",
     bgClass: "bg-slate-100",
     accentClass: "text-slate-700",
-  },
-  // ↓ deprecated — DB 마이그레이션 잔여물 보호용
-  preschool: {
-    emoji: "🧸",
-    bgClass: "bg-orange-100",
-    accentClass: "text-orange-700",
-  },
-  elementary_lower: {
-    emoji: "🎒",
-    bgClass: "bg-emerald-100",
-    accentClass: "text-emerald-700",
-  },
-  elementary_upper: {
-    emoji: "🎒",
-    bgClass: "bg-emerald-100",
-    accentClass: "text-emerald-700",
   },
 };
 
