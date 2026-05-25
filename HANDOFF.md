@@ -160,9 +160,10 @@ GTM 컨테이너 `GTM-PR2K864P`에 GA4 페이지뷰 태그 등록 + 게시 완�
 - [ ] `share_target` manifest 추가 + `/submit` prefill 처리 (인스타 → 공유 → 제보 자동)
 - [ ] proxy.ts children 조회 캐싱 (페이지 네비 -50~100ms, AUTH 로직 변경 위험 중)
 - [ ] PostCard 블러 백드롭 제거 검토 (렌더 비용, 디자인 영향)
+- [ ] 마감 미정 카드 노출 기간 관리자 입력화 (현재 7일 하드코딩)
 
 ### 큰 작업 (별도 의논 필요)
-- [ ] Web Push 인프라 (Stage 2 — MAU 100+ 후): VAPID 키, sw.js 확장, 발송 cron
+- [x] ~~Web Push 인프라~~ (2026-05-25 풀세트 도입 완료 — Stage 2 → Stage 1로 앞당김)
 - [ ] Play Store 등록 (개인 계정, $25, Closed Testing 20명 14일)
 - [ ] iOS App Store ($99/년, PWA→iOS는 까다로움, 토스 미니앱 트랙이 더 현실적일 수도)
 - [ ] Search Console 등록 후 데이터 분석 (4~8주 누적 후)
@@ -185,14 +186,19 @@ GTM 컨테이너 `GTM-PR2K864P`에 GA4 페이지뷰 태그 등록 + 게시 완�
 - `NAVER_CLIENT_ID`, `NAVER_CLIENT_SECRET`
 - `NEXT_PUBLIC_GTM_ID` (선택 — 미설정 시 코드 기본값 `GTM-PR2K864P`)
 - `NEXT_PUBLIC_GOOGLE_OAUTH_ENABLED` (현재 비활성)
+- `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` (Web Push)
+- `CRON_SECRET` (Vercel cron 인증 — ingest + notify-deadline 공유)
 
 ### DB (Supabase) 마이그레이션 현황
-- 013까지 모두 실행 완료 (2026-05-25)
+- 014까지 모두 실행 완료 (2026-05-25)
+- 014: `posts.deadline_unknown` boolean 추가 — 마감 미정 카드 처리
 
 ### Vercel
-- Hobby plan, daily cron 21:00 KST (`vercel.json`)
+- Hobby plan, cron 2개 (Vercel cron 표준 = UTC 기준):
+  - `/api/cron/ingest` — `0 21 * * *` UTC = **06:00 KST** (핸드오프 초안 "21:00 KST" 표기는 사실 UTC 시간이었음 — INFRA 검토 권장)
+  - `/api/cron/notify-deadline` — `0 0 * * *` UTC = **09:00 KST** (마감 1일 전 카드 푸시 발송)
 - Server Action body limit 10MB
-- maxDuration 60s
+- maxDuration 60s (cron route는 300s까지 가능)
 
 ### Repo
 - GitHub `umbbaradar-ui/umbba-radar` (public, Vercel 자동 배포)
@@ -220,16 +226,33 @@ GTM 컨테이너 `GTM-PR2K864P`에 GA4 페이지뷰 태그 등록 + 게시 완�
 | 매니페스트 | `src/app/manifest.ts` |
 | robots/sitemap | `src/app/robots.ts`, `src/app/sitemap.ts` |
 | GTM/SEO 메타 | `src/app/layout.tsx` |
-| 알림 페이지 | `src/app/(web)/notifications/` |
+| 알림 페이지 | `src/app/(web)/notifications/` (page.tsx + _components/NotificationsList.tsx) |
+| 알림 서버 함수 | `src/modules/personalization/service-server.ts` (getNotifications/getRecentMatchingCards/getInterestedDeadlineSoon) |
+| Web Push 모듈 | `src/modules/notification/` (push-service.ts + actions.ts + ui/PushToggle.tsx) |
+| Web Push cron | `src/app/api/cron/notify-deadline/route.ts` |
+| Service Worker | `public/sw.js` (push + notificationclick 핸들러) |
 | 내 레이더 | `src/app/(web)/my/page.tsx` + `src/modules/personalization/ui/MyRadarTabs.tsx` |
 | 시기 매칭 | `src/shared/utils/stages.ts` + `src/shared/utils/stage-visuals.ts` |
 | PWA 감지 | `src/shared/utils/pwa.ts` |
 | AI 프롬프트 | `src/modules/ingestion/normalizer.ts`, `vision-extractor.ts` |
 | 타입 정의 | `src/shared/types/post.ts` |
-| 마이그레이션 | `supabase/migrations/011/012/013_*.sql` |
+| 마이그레이션 | `supabase/migrations/011/012/013/014_*.sql` |
 | 아이콘 생성 스크립트 | `scripts/generate-pwa-icons.mjs` |
 
 ---
 
+## 🔄 이번 세션(2026-05-25 후반) 추가 변경 요약
+
+1. **`stages.ts` newborn 출산 전 버퍼 제거** (`minMonths: -3 → 0`)
+   - 임신 중 부모가 신생아 전용 카드 매칭에서 제외 (신청 조건 "이미 태어난 아기" 케이스 보호)
+2. **알림 시스템 4종 개선** (`getRecentMatchingCards`/`getInterestedDeadlineSoon`/`NotificationsList`)
+   - 마감 임박 7→3일, 가입 이후 카드만, 같은 D-day 내 아이 매칭 우선, 본 항목 페이드
+3. **Web Push 풀세트** (notification 모듈 신규 + sw.js 확장 + /me 토글 + notify-deadline cron)
+   - 마감 1일 전 자동 푸시. 사용자 수동 옵트인. iOS 16.4+ PWA 안내.
+4. **마감일 미정 카드 처리** (마이그레이션 014 + PostForm 체크박스 + PostCard/상세 안내 + AI 통합)
+   - 등록 +7일 자동 종료. UI에 `~D-N` amber 톤. 푸시 알림 제외. AI 추출 실패도 동일 처리.
+
+---
+
 > 이 문서는 살아있는 인수인계서입니다. 다음 세션에서 변경된 정책·완료된 액션은 갱신 또는 제거해주세요.
-> 마지막 갱신: 2026-05-25 (사용자 액션 1·2·3 완료 반영 + deprecated 라벨 일괄 제거 후속 정리)
+> 마지막 갱신: 2026-05-25 (014 실행 완료 + Web Push 풀세트·알림 개선·마감 미정 처리까지 반영)
