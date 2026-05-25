@@ -40,11 +40,13 @@ export type StageCategory =
   | 'all_ages'    // 전연령
 
 // 2026-05 분류 체계 간소화 (migration 011): free_trial+experience_group+sponsored→experience, follow/lottery/gov_support 제거
+// 2026-05 후반: form 추가 — 네이버폼/구글폼/자체폼 등 별도 작성 필수인 카드 식별 (진입장벽 인지)
 export type TypeTag =
   | 'regram'       // 리그램
   | 'experience'   // 체험단
   | 'kids_model'   // 키즈모델
   | 'supporters'   // 서포터즈
+  | 'form'         // 폼 작성 필수 (네이버폼/구글폼/자체폼)
 
 export interface Post {
   id: string
@@ -96,6 +98,7 @@ export const TYPE_LABELS: Record<TypeTag, string> = {
   experience: '체험단',
   kids_model: '키즈모델',
   supporters: '서포터즈',
+  form: '폼 작성',
 }
 
 export const ACTIVE_TYPE_TAGS: readonly TypeTag[] = [
@@ -103,4 +106,5 @@ export const ACTIVE_TYPE_TAGS: readonly TypeTag[] = [
   'experience',
   'kids_model',
   'supporters',
+  'form',
 ] as const

@@ -39,7 +39,7 @@ const VISION_SYSTEM_PROMPT = `당신은 한국 육아 정보 큐레이션 사이
   "body": string,                           // 한 줄 요약 (예: "댓글 + 친구 태그 → 30명 추첨")
   "kind": "recruiting" | "review" | "group_buy",
   "stage_categories": Array<"pregnancy"|"newborn"|"infant"|"toddler"|"elementary"|"all_ages">,
-  "type_tags": Array<"regram"|"experience"|"kids_model"|"supporters">,
+  "type_tags": Array<"regram"|"experience"|"kids_model"|"supporters"|"form">,
   "topic": "parenting" | "living",          // 콘텐츠 주제 (필수)
   "deadline": string | null                 // ISO 8601 with +09:00. 명확히 적혀있을 때만, 아니면 null
 }
@@ -54,6 +54,8 @@ const VISION_SYSTEM_PROMPT = `당신은 한국 육아 정보 큐레이션 사이
 - experience: 체험단 — 제품/서비스 받고 후기·SNS 게시 의무 있음 (무료체험·협찬·체험단 모두 통합)
 - kids_model: 키즈모델·아동 모델 — 아이가 화보·광고 촬영 참여
 - supporters: 서포터즈 — 장기 SNS 활동(주 N회 게시 등) 약속하고 제품/혜택 수령
+- form: 별도 폼 작성 필수 — "구글폼/네이버폼/자체 신청서/카카오톡 채널 신청서" 등 외부 폼 URL 작성을 거쳐야 신청 완료되는 경우. 댓글·DM만으로 신청 가능하면 form 아님
+※ form은 다른 태그와 직교적이라 자유롭게 조합 가능 (예: experience + form)
 ※ "팔로우만", "추첨 방식", "정부 지원사업"은 type_tags에 포함하지 마세요 (분류 의미 없음)
 
 # topic (콘텐츠 주제, 필수 — 둘 중 하나)
