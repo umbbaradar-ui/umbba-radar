@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.umbba_radar.twa",
+      "sha256_cert_fingerprints": [
+        "69:BD:89:57:B6:08:98:4D:31:28:4F:4E:44:45:B9:A4:06:89:ED:67:47:4D:B3:2B:C7:5E:18:BA:C5:FD:AD:0B"
+      ]
+    }
+  }
+]
