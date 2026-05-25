@@ -4,6 +4,10 @@
     {
       "path": "/api/cron/ingest",
       "schedule": "0 21 * * *"
+    },
+    {
+      "path": "/api/cron/notify-deadline",
+      "schedule": "0 0 * * *"
     }
   ]
 }

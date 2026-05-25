@@ -14,6 +14,10 @@ import {
   getUserProfile,
 } from "@/modules/user/service-server";
 import { signOutAction } from "@/modules/user/actions";
+import { PushToggle } from "@/modules/notification/ui/PushToggle";
+
+// VAPID 공개 키 — env 미설정 시 PushToggle이 'unsupported' 처리
+const VAPID_PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ?? "";
 
 export const dynamic = "force-dynamic";
 
@@ -91,6 +95,11 @@ export default async function MePage({ searchParams }: PageProps) {
         >
           🗓️ 지난 이벤트
         </Link>
+      </section>
+
+      {/* 푸시 알림 토글 */}
+      <section className="mb-5">
+        <PushToggle vapidPublicKey={VAPID_PUBLIC_KEY} />
       </section>
 
       {/* 자녀·역할 수정 */}
