@@ -190,8 +190,9 @@ GTM 컨테이너 `GTM-PR2K864P`에 GA4 페이지뷰 태그 등록 + 게시 완�
 - `CRON_SECRET` (Vercel cron 인증 — ingest + notify-deadline 공유)
 
 ### DB (Supabase) 마이그레이션 현황
-- 014까지 모두 실행 완료 (2026-05-25)
-- 014: `posts.deadline_unknown` boolean 추가 — 마감 미정 카드 처리
+- 015까지 모두 실행 완료 (2026-05-25)
+- 014: `posts.deadline_unknown` boolean — 마감 미정 카드 처리
+- 015: `posts.search_keywords` TEXT + pg_trgm + GIN trigram 인덱스 4종 — 동의어 검색
 
 ### Vercel
 - Hobby plan, cron 2개 (Vercel cron 표준 = UTC 기준):
@@ -251,8 +252,18 @@ GTM 컨테이너 `GTM-PR2K864P`에 GA4 페이지뷰 태그 등록 + 게시 완�
    - 마감 1일 전 자동 푸시. 사용자 수동 옵트인. iOS 16.4+ PWA 안내.
 4. **마감일 미정 카드 처리** (마이그레이션 014 + PostForm 체크박스 + PostCard/상세 안내 + AI 통합)
    - 등록 +7일 자동 종료. UI에 `~D-N` amber 톤. 푸시 알림 제외. AI 추출 실패도 동일 처리.
+5. **루트 OG 이미지에 곰돌이 마스코트** (`src/app/opengraph-image.tsx`)
+   - ♥ 텍스트 → bear-mascot.png. node:fs + base64 data URL (runtime=nodejs).
+   - SNS 공유 미리보기에 일관된 브랜드 정체성. 캐시는 각 플랫폼 디버거로 무효화.
+6. **`form` type_tag 추가** (post.ts + normalizer + vision-extractor)
+   - 네이버폼/구글폼/자체폼 식별 — DB 마이그레이션 불필요(TEXT[]).
+   - AI에 "댓글·DM은 form 아님" 명시. 다른 태그와 직교 조합 가능.
+7. **검색 동의어 매칭** (마이그레이션 015 + 4컬럼 OR + AI 자동 동의어)
+   - `search_keywords` 컬럼 + pg_trgm + GIN trigram 인덱스 4종.
+   - 관리자 폼에 "검색 키워드" textarea (콤마 구분). AI가 1~3개 자동 생성.
+   - 4컬럼 OR(title/brand/body/search_keywords) ILIKE 매칭.
 
 ---
 
 > 이 문서는 살아있는 인수인계서입니다. 다음 세션에서 변경된 정책·완료된 액션은 갱신 또는 제거해주세요.
-> 마지막 갱신: 2026-05-25 (014 실행 완료 + Web Push 풀세트·알림 개선·마감 미정 처리까지 반영)
+> 마지막 갱신: 2026-05-25 (015 실행 완료 + OG 곰돌이·form 태그·검색 동의어까지 반영)
