@@ -20,10 +20,17 @@ export default async function WebLayout({
 
   return (
     <>
+      {/* fixed 컴포넌트는 wrapper 밖 (body 직속 자식) — 어떤 부모의 stacking
+          context에도 영향 안 받게. 특히 BottomTabNav가 컨텐츠와 함께 스크롤
+          되는 모바일 브라우저 버그 회피. */}
       <SplashScreen />
       <ServiceWorkerRegister />
       <InstallBanner />
       {user && <MigrationOnLogin userId={user.id} />}
+
+      {/* 본문 wrapper — sticky footer 패턴 (이전엔 body가 flex였으나
+          fixed 자식 호환성 위해 wrapper로 분리) */}
+      <div className="flex min-h-dvh flex-col">
 
       {/* 데스크탑 상단 네비 (md+에서만 보임) */}
       <nav className="sticky top-0 z-20 hidden border-b border-amber-100 bg-white/85 backdrop-blur md:block">
@@ -79,8 +86,8 @@ export default async function WebLayout({
         </div>
       </div>
 
-      {/* 본문 — 모바일은 하단 탭에 가려지지 않게 pb-20 */}
-      <div className="pb-20 md:pb-0">{children}</div>
+      {/* 본문 — flex-1로 footer를 하단으로 밀고, 모바일은 하단 탭에 가려지지 않게 pb-20 */}
+      <div className="flex-1 pb-20 md:pb-0">{children}</div>
 
       {/* 데스크탑 푸터 (모바일에선 하단 탭이 푸터 역할) */}
       <footer className="mx-auto hidden max-w-6xl px-4 py-10 text-center text-xs text-slate-400 md:block">
@@ -104,7 +111,10 @@ export default async function WebLayout({
         </p>
       </footer>
 
-      {/* 모바일 하단 탭 네비 */}
+      </div>
+      {/* /본문 wrapper — BottomTabNav는 wrapper 밖, body 직속 자식으로 마운트 */}
+
+      {/* 모바일 하단 탭 네비 (fixed, viewport 기준 고정) */}
       <BottomTabNav user={user} />
     </>
   );

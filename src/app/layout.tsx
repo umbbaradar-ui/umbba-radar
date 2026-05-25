@@ -146,7 +146,11 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
           </Script>
         )}
       </head>
-      <body className="min-h-full flex flex-col bg-amber-50/40">
+      {/* body는 일반 block — flex container일 경우 일부 모바일 브라우저에서
+          자식의 position: fixed containing block이 깨져 BottomTabNav 등이
+          스크롤과 함께 움직이는 현상 있음. sticky footer 패턴은 (web)/layout
+          내부 wrapper에서 처리. */}
+      <body className="min-h-dvh bg-amber-50/40">
         {/* GTM noscript fallback — JS 차단 사용자도 페이지뷰 추적 */}
         {GTM_ENABLED && (
           <noscript>
