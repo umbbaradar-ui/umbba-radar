@@ -50,8 +50,15 @@ export default function manifest(): ExtendedManifest {
     categories: ["lifestyle", "shopping", "parenting"],
     // PWA shortcuts: Android 홈 아이콘 길게 누르면 뜨는 빠른 메뉴
     // (iOS Safari는 미지원 — Android·일부 데스크탑만 적용)
-    // 자주 가는 4곳 직행. 각 96×96 고유 아이콘 (scripts/generate-shortcut-icons.mjs로 생성).
+    // 운영 데이터 기반: 키즈모델 카드 비중 낮아서 홈화면으로 교체 (2026-05-26).
     shortcuts: [
+      {
+        name: "홈화면 (오늘의 카드)",
+        short_name: "홈",
+        description: "오늘 모은 협찬·체험단 카드",
+        url: "/",
+        icons: [{ src: "/icons/shortcut-home.png", sizes: "96x96", type: "image/png" }],
+      },
       {
         name: "내 레이더 (관심·신청 카드)",
         short_name: "내 레이더",
@@ -65,13 +72,6 @@ export default function manifest(): ExtendedManifest {
         description: "체험단·협찬 신청 가능 카드",
         url: "/?type=experience",
         icons: [{ src: "/icons/shortcut-experience.png", sizes: "96x96", type: "image/png" }],
-      },
-      {
-        name: "키즈모델만 보기",
-        short_name: "키즈모델",
-        description: "키즈모델·아동 모델 모집 카드",
-        url: "/?type=kids_model",
-        icons: [{ src: "/icons/shortcut-kids-model.png", sizes: "96x96", type: "image/png" }],
       },
       {
         name: "혜택 제보하기",

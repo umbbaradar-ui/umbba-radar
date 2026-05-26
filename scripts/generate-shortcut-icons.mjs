@@ -39,6 +39,12 @@ function makeSvg(symbolMarkup) {
 }
 
 const SHORTCUTS = {
+  // 홈화면 — 집 (지붕 + 몸체 + 문)
+  "shortcut-home.png": `
+    <path d="M48 18 L 80 44 L 80 78 L 16 78 L 16 44 Z" fill="${FG}"/>
+    <rect x="40" y="54" width="16" height="24" fill="${BG}"/>
+  `,
+
   // 내 레이더 — 하트 (브랜드 정체성)
   "shortcut-my.png": `<path d="M48 76 C 24 60, 16 44, 24 32 C 32 22, 44 24, 48 36 C 52 24, 64 22, 72 32 C 80 44, 72 60, 48 76 Z" fill="${FG}"/>`,
 
@@ -51,20 +57,15 @@ const SHORTCUTS = {
     <path d="M48 40 C 60 28, 68 36, 60 40 L 48 40 Z" fill="${FG}"/>
   `,
 
-  // 키즈모델 — 카메라 (몸체 + 렌즈 + 상단 뷰파인더)
-  "shortcut-kids-model.png": `
-    <rect x="18" y="34" width="60" height="42" rx="6" fill="${FG}"/>
-    <rect x="36" y="28" width="24" height="10" rx="2" fill="${FG}"/>
-    <circle cx="48" cy="55" r="12" fill="${BG}"/>
-    <circle cx="48" cy="55" r="7" fill="${FG}"/>
-  `,
-
   // 제보 — 종이비행기
   "shortcut-submit.png": `
     <path d="M16 48 L 80 22 L 64 80 L 48 56 L 16 48 Z" fill="${FG}"/>
     <path d="M48 56 L 80 22" stroke="${BG}" stroke-width="2" fill="none"/>
   `,
 };
+
+// 사용 안 하는 shortcut-kids-model.png는 public/icons/에 잔존해도 무해 (manifest 미참조).
+// 깔끔히 정리하려면 수동 삭제 가능.
 
 async function ensureDir(dir) {
   await mkdir(dir, { recursive: true });
