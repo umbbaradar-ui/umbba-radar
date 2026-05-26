@@ -1,0 +1,22 @@
+# umbba-cli — Python 빌드 산출물 + 비밀
+
+# 환경 비밀 (절대 git X)
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+*.egg-info/
+.venv/
+venv/
+env/
+
+# CLI 작업 산출물
+*.log
+urls.txt
+output/
+downloads/
