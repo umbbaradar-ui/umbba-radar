@@ -110,29 +110,37 @@ export function AIExtractPanel({
       </div>
 
       {mode === "url" ? (
-        <div className="flex gap-2">
-          <input
-            type="url"
-            value={url}
-            onChange={(e) => setUrl(e.target.value)}
-            disabled={pending}
-            placeholder="https://www.instagram.com/p/..."
-            className="flex-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-rose-400 disabled:opacity-60"
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                e.preventDefault();
-                handleUrlExtract();
-              }
-            }}
-          />
-          <button
-            type="button"
-            onClick={handleUrlExtract}
-            disabled={pending}
-            className="shrink-0 rounded-lg bg-rose-500 px-4 py-2 text-xs font-bold text-white hover:bg-rose-600 disabled:opacity-60"
-          >
-            {pending ? "분석 중…" : "추출"}
-          </button>
+        <div className="space-y-2">
+          <div className="flex gap-2">
+            <input
+              type="url"
+              value={url}
+              onChange={(e) => setUrl(e.target.value)}
+              disabled={pending}
+              placeholder="https://www.instagram.com/p/..."
+              className="flex-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-rose-400 disabled:opacity-60"
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  handleUrlExtract();
+                }
+              }}
+            />
+            <button
+              type="button"
+              onClick={handleUrlExtract}
+              disabled={pending}
+              className="shrink-0 rounded-lg bg-rose-500 px-4 py-2 text-xs font-bold text-white hover:bg-rose-600 disabled:opacity-60"
+            >
+              {pending ? "분석 중…" : "추출"}
+            </button>
+          </div>
+
+          {/* 인스타 URL일 때 — 외부 다운로드 도구 1클릭 패널
+              (서버 측 자동 추출은 차단됨 → 사용자가 외부 도구 거쳐서 이미지 받아오는 흐름 자동화) */}
+          {/^https?:\/\/(www\.)?(instagram\.com|instagr\.am)/i.test(url) && (
+            <InstagramTools url={url} />
+          )}
         </div>
       ) : (
         <div>
@@ -173,5 +181,77 @@ export function AIExtractPanel({
         💡 <strong>인스타 URL은 거의 차단됨</strong> → 스크린샷 업로드를 기본으로 사용하세요. 추출 결과는 자동 입력되며 검토·수정 후 발행. HEIC·JPG·PNG·WEBP 모두 지원 (변환 불필요).
       </p>
     </section>
+  );
+}
+
+// ============================================
+// 인스타 다운로드 도구 1클릭 패널
+// URL을 클립보드에 복사 + 외부 도구 새 탭으로 오픈 → 사용자 시간 단축
+// ============================================
+function InstagramTools({ url }: { url: string }) {
+  const [copied, setCopied] = useState<string | null>(null);
+
+  async function openTool(toolUrl: string, label: string) {
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(label);
+      setTimeout(() => setCopied(null), 2500);
+    } catch {
+      // 클립보드 권한 거부돼도 새 탭은 열어줌
+    }
+    window.open(toolUrl, "_blank", "noopener,noreferrer");
+  }
+
+  return (
+    <div className="rounded-lg bg-amber-50 px-3 py-2.5 text-[11px] leading-relaxed text-amber-800">
+      <p className="mb-1.5 font-semibold">
+        💡 인스타 자동 추출은 차단됨 — 아래 도구로 이미지부터 다운받으세요
+      </p>
+      <p className="mb-2 text-amber-700">
+        버튼 클릭 시 <strong>위 URL이 클립보드에 자동 복사</strong> + 외부 도구
+        새 탭으로 오픈. 새 탭에서 붙여넣고 다운 → 위 &quot;📷 스크린샷으로 추출&quot;
+        탭에 업로드하면 AI 분석 끝.
+      </p>
+      <div className="flex flex-wrap gap-2">
+        <button
+          type="button"
+          onClick={() =>
+            openTool(
+              "https://ko.savefrom.net/137kq/download-from-instagram",
+              "savefrom"
+            )
+          }
+          className="rounded-md bg-white px-3 py-1.5 font-semibold text-amber-800 shadow-sm hover:bg-amber-100"
+        >
+          📥 savefrom <span className="text-amber-600">(JPG 다운)</span>
+        </button>
+        <button
+          type="button"
+          onClick={() =>
+            openTool("https://www.iloveimg.com/ko/convert-to-jpg", "iloveimg")
+          }
+          className="rounded-md bg-white px-3 py-1.5 font-semibold text-amber-800 shadow-sm hover:bg-amber-100"
+        >
+          🔄 iloveimg <span className="text-amber-600">(HEIC·WEBP→JPG)</span>
+        </button>
+        <button
+          type="button"
+          onClick={() =>
+            openTool(
+              "https://gramfetchr.com/ko/thumbnail-downloader",
+              "gramfetchr"
+            )
+          }
+          className="rounded-md bg-white px-3 py-1.5 font-semibold text-amber-800 shadow-sm hover:bg-amber-100"
+        >
+          🎬 gramfetchr <span className="text-amber-600">(영상 썸네일)</span>
+        </button>
+      </div>
+      {copied && (
+        <p className="mt-2 font-semibold text-emerald-700">
+          ✓ URL 복사 완료 → {copied} 새 탭에서 붙여넣기 (Ctrl/Cmd+V)
+        </p>
+      )}
+    </div>
   );
 }
