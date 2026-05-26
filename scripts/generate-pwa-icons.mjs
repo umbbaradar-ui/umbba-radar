@@ -42,15 +42,21 @@ async function ensureDir(file) {
 }
 
 /**
- * 마스코트 PNG의 검정 배경을 알파 0(투명)으로 처리한 버전.
- * (원본 assets/bear-mascot-source.png 외곽이 #000000 → 어떤 캔버스 위에 올려도
- *  검정 액자처럼 보이는 문제 해결)
+ * 마스코트 PNG의 검정 배경 + 안티앨리어싱 영역을 알파 0으로 처리.
  *
- * threshold = RGB 각 채널 모두 10 미만이면 알파 0.
- * 곰돌이 눈동자는 안티앨리어싱으로 미세한 갈색·회색이라 영향 없음.
+ * 진짜 #000000뿐 아니라 외곽 안티앨리어싱(어두운 회색~흑갈색)도 함께 제거하려면
+ * threshold를 충분히 올려야 함. 단 곰돌이 눈동자(중앙)는 보호해야 함.
+ *
+ * 전략 (이중 조건):
+ *   1. RGB 각 채널 < DARK_THRESHOLD (= 어두운 픽셀)
+ *   2. 중심에서 SAFE_RADIUS 밖 (= 곰돌이 본체 영역 아님)
+ *   → 둘 다 만족하면 알파 0
  *
  * 한 번 처리한 결과는 모듈 변수에 캐시해서 모든 아이콘 생성에서 재사용.
  */
+const DARK_THRESHOLD = 70; // 검정 + 안티앨리어싱 회색 흑갈색까지 포함
+const SAFE_RADIUS_RATIO = 0.42; // 중심에서 42% 이내는 곰돌이 본체 (눈동자 보호)
+
 let _mascotTransparentCache = null;
 async function loadMascotTransparent() {
   if (_mascotTransparentCache) return _mascotTransparentCache;
@@ -60,10 +66,25 @@ async function loadMascotTransparent() {
     .raw()
     .toBuffer({ resolveWithObject: true });
 
-  // RGBA per pixel — 검정 픽셀의 알파만 0으로
-  for (let i = 0; i < data.length; i += 4) {
-    if (data[i] < 10 && data[i + 1] < 10 && data[i + 2] < 10) {
-      data[i + 3] = 0;
+  const cx = info.width / 2;
+  const cy = info.height / 2;
+  const safeRadiusSq = (info.width * SAFE_RADIUS_RATIO) ** 2;
+
+  for (let y = 0; y < info.height; y++) {
+    for (let x = 0; x < info.width; x++) {
+      const i = (y * info.width + x) * 4;
+      const r = data[i];
+      const g = data[i + 1];
+      const b = data[i + 2];
+
+      if (r < DARK_THRESHOLD && g < DARK_THRESHOLD && b < DARK_THRESHOLD) {
+        const dx = x - cx;
+        const dy = y - cy;
+        // 중심 안쪽(곰돌이 본체)이면 보존, 외곽이면 알파 0
+        if (dx * dx + dy * dy > safeRadiusSq) {
+          data[i + 3] = 0;
+        }
+      }
     }
   }
 
