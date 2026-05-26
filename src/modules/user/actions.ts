@@ -1,18 +1,60 @@
 "use server";
 
 // ============================================
-// User Server Actions — 로그아웃, 자녀 정보 저장
+// User Server Actions — 로그아웃, 자녀 정보 저장, 계정 삭제
 // ============================================
 
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { getServerSupabase } from "@/shared/db/supabase-ssr";
+import { supabaseServer } from "@/shared/db/supabase-server";
 
 export async function signOutAction(): Promise<void> {
   const supabase = await getServerSupabase();
   await supabase.auth.signOut();
   revalidatePath("/", "layout");
   redirect("/");
+}
+
+/**
+ * 계정 영구 삭제 — auth.users 삭제 → FK ON DELETE CASCADE로 자동 삭제:
+ *   - children (008)
+ *   - user_profiles (009)
+ *   - push_subscriptions (009)
+ *   - user_post_status (소유 마이그레이션 추적)
+ *   - 익명 events (user_id NULL로 변환됨, 통계는 익명화 유지)
+ *
+ * service_role 키로 admin.deleteUser 호출. 호출자 = 본인 user.id 확인 후 본인 계정만 삭제.
+ * 삭제 성공 시 모든 세션 invalidate → client가 다음 페이지 로드 시 자동 로그아웃 상태.
+ */
+export type DeleteAccountResult =
+  | { ok: true }
+  | { ok: false; error: string };
+
+export async function deleteAccountAction(): Promise<DeleteAccountResult> {
+  const supabase = await getServerSupabase();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: "로그인이 필요해요" };
+
+  try {
+    const { error } = await supabaseServer.auth.admin.deleteUser(user.id);
+    if (error) return { ok: false, error: error.message };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : String(e) };
+  }
+
+  // 서버 측 세션 쿠키도 명시적으로 제거 (admin.deleteUser가 세션 invalidate해도
+  // SSR 쿠키는 stale로 남아있을 수 있어 다음 요청에서 깜빡임 방지)
+  try {
+    await supabase.auth.signOut();
+  } catch {
+    // 이미 user 삭제됐으면 signOut 자체가 에러날 수 있음 — 무시
+  }
+
+  revalidatePath("/", "layout");
+  return { ok: true };
 }
 
 interface ChildInput {

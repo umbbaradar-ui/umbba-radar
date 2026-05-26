@@ -18,8 +18,9 @@ import {
 } from "@/shared/types/post";
 import { ImageUploadField } from "./ImageUploadField";
 
-/** UNKNOWN_DEADLINE_DAYS와 동기화 (actions.ts) — UI 라벨에 노출하는 기간 */
-const UNKNOWN_DAYS_LABEL = 7;
+/** 마감 미정 카드의 자동 종료 기간 선택지 (actions.ts와 동기화) */
+const UNKNOWN_DAYS_OPTIONS = [1, 3, 7] as const;
+const DEFAULT_UNKNOWN_DAYS = 7;
 
 export interface PostFormDefaults {
   kind?: string;
@@ -80,8 +81,9 @@ export function PostForm({ post, defaults, action, submitLabel, errorMessage }: 
     is_sponsored: defaults?.is_sponsored ?? post?.is_sponsored ?? false,
   };
 
-  // 마감 미정 토글 — 체크 시 datetime input 비활성화 + 시각적 흐림
+  // 마감 미정 토글 — 체크 시 datetime input 비활성화 + 노출 기간 라디오 노출
   const [deadlineUnknown, setDeadlineUnknown] = useState(v.deadline_unknown);
+  const [unknownDays, setUnknownDays] = useState<number>(DEFAULT_UNKNOWN_DAYS);
 
   return (
     <form action={action} className="space-y-6">
@@ -184,22 +186,46 @@ export function PostForm({ post, defaults, action, submitLabel, errorMessage }: 
           />
           {/* 마감 미정 토글 — 체크 시 등록일 +N일을 자동으로 deadline에 저장
               (사용자에게는 "추정 마감" 라벨로 표시, 푸시 알림은 제외) */}
-          <label className="mt-2 flex items-start gap-2 rounded-lg bg-amber-50/60 px-3 py-2 text-xs text-amber-800">
-            <input
-              type="checkbox"
-              name="deadline_unknown"
-              checked={deadlineUnknown}
-              onChange={(e) => setDeadlineUnknown(e.target.checked)}
-              className="mt-0.5 h-4 w-4"
-            />
-            <span>
-              <strong>마감일 미정</strong> (체크 시 등록일 +{UNKNOWN_DAYS_LABEL}일 후 자동 종료)
-              <br />
-              <span className="text-amber-700/80">
-                * 정확한 마감은 본문에 적어주세요. 푸시 알림은 발송되지 않아요.
+          <div className="mt-2 rounded-lg bg-amber-50/60 px-3 py-2 text-xs text-amber-800">
+            <label className="flex items-start gap-2">
+              <input
+                type="checkbox"
+                name="deadline_unknown"
+                checked={deadlineUnknown}
+                onChange={(e) => setDeadlineUnknown(e.target.checked)}
+                className="mt-0.5 h-4 w-4"
+              />
+              <span>
+                <strong>마감일 미정</strong> (체크 시 등록일 +N일 후 자동 종료)
+                <br />
+                <span className="text-amber-700/80">
+                  * 정확한 마감은 본문에 적어주세요. 푸시 알림은 발송되지 않아요.
+                </span>
               </span>
-            </span>
-          </label>
+            </label>
+            {/* 노출 기간 라디오 — 체크박스 활성 시에만 노출 */}
+            {deadlineUnknown && (
+              <div className="mt-2 flex items-center gap-3 border-t border-amber-200/60 pt-2">
+                <span className="font-medium">노출 기간:</span>
+                {UNKNOWN_DAYS_OPTIONS.map((d) => (
+                  <label
+                    key={d}
+                    className="flex items-center gap-1 rounded-md px-2 py-0.5 has-[:checked]:bg-amber-200/60 has-[:checked]:font-bold"
+                  >
+                    <input
+                      type="radio"
+                      name="unknown_days"
+                      value={d}
+                      checked={unknownDays === d}
+                      onChange={() => setUnknownDays(d)}
+                      className="h-3.5 w-3.5"
+                    />
+                    {d}일
+                  </label>
+                ))}
+              </div>
+            )}
+          </div>
         </Field>
 
         <Field label="후기 작성자 핸들 (review일 때만)">

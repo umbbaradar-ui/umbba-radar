@@ -35,10 +35,11 @@ async function ensureAdmin(): Promise<void> {
   }
 }
 
-/** 마감일 미정 카드의 자동 종료 기간 (등록일 + N일).
- *  "use server" 파일은 모듈 레벨 export로 함수만 허용 → 내부 const로 보관.
- *  변경 시 UI 라벨(PostForm UNKNOWN_DAYS_LABEL)·ingestion service의 상수와 동기화 필요. */
-const UNKNOWN_DEADLINE_DAYS = 7;
+/** 마감일 미정 카드의 자동 종료 기간 — 관리자 폼에서 1/3/7일 중 선택.
+ *  잘못된 값(또는 미입력)이면 DEFAULT로 fallback.
+ *  변경 시 PostForm UNKNOWN_DAYS_OPTIONS·ingestion service 상수와 동기화. */
+const UNKNOWN_DAYS_OPTIONS = [1, 3, 7] as const;
+const DEFAULT_UNKNOWN_DAYS = 7;
 
 function parseFormToPost(formData: FormData): PostInsertInput {
   const get = (k: string) => formData.get(k)?.toString().trim() ?? "";
@@ -53,8 +54,13 @@ function parseFormToPost(formData: FormData): PostInsertInput {
 
   let deadline: string | null;
   if (deadlineUnknown) {
-    // 마감 미정 → 등록(=now) +N일을 deadline에 자동 채움 (모든 정렬/만료 로직 그대로 사용)
-    const ms = Date.now() + UNKNOWN_DEADLINE_DAYS * 24 * 60 * 60 * 1000;
+    // 노출 기간 1/3/7일 중 선택. 잘못된 값이면 DEFAULT
+    const rawDays = Number(formData.get("unknown_days") ?? DEFAULT_UNKNOWN_DAYS);
+    const days = (UNKNOWN_DAYS_OPTIONS as readonly number[]).includes(rawDays)
+      ? rawDays
+      : DEFAULT_UNKNOWN_DAYS;
+    // 마감 미정 → 등록(=now) +days일을 deadline에 자동 채움 (모든 정렬/만료 로직 그대로 사용)
+    const ms = Date.now() + days * 24 * 60 * 60 * 1000;
     deadline = new Date(ms).toISOString();
   } else {
     const deadlineRaw = get("deadline");

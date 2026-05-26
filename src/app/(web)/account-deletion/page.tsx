@@ -64,14 +64,37 @@ export default function AccountDeletionPage() {
 
         <Step
           num="A"
-          title="(권장) 운영팀에 이메일 요청"
+          title="(권장) 앱 안에서 직접 삭제 — 즉시 처리"
+          steps={[
+            "엄빠레이더 앱 또는 웹에서 로그인",
+            <>
+              하단 <strong>내 레이더</strong> 탭 →{" "}
+              <strong>마이페이지</strong> 진입
+            </>,
+            <>
+              스크롤 끝까지 → <strong>계정 영구 삭제하기</strong> 버튼
+            </>,
+            "2단계 확인 후 즉시 영구 삭제 (복구 불가)",
+          ]}
+        >
+          <a
+            href="/me"
+            className="mt-3 inline-flex items-center gap-2 rounded-xl bg-rose-500 px-5 py-3 text-sm font-bold text-white hover:bg-rose-600"
+          >
+            🗑 마이페이지로 이동
+          </a>
+        </Step>
+
+        <Step
+          num="B"
+          title="운영팀에 이메일 요청 — 영업일 3일 이내"
           steps={[
             <>
-              아래 버튼을 눌러 메일 앱을 엽니다. 또는{" "}
+              위 A 방법이 어렵거나 로그인이 불가능한 경우{" "}
               <code className="rounded bg-slate-100 px-1.5 py-0.5">
                 {SUPPORT_EMAIL}
               </code>{" "}
-              로 직접 보내셔도 됩니다.
+              로 메일을 보내주세요.
             </>,
             "메일 본문에 가입한 이메일 주소를 적어주세요 (계정 확인용).",
             "운영팀이 본인 확인 후 영업일 기준 3일 이내에 삭제 처리합니다.",
@@ -80,31 +103,10 @@ export default function AccountDeletionPage() {
         >
           <a
             href={mailto}
-            className="mt-3 inline-flex items-center gap-2 rounded-xl bg-rose-500 px-5 py-3 text-sm font-bold text-white hover:bg-rose-600"
+            className="mt-3 inline-flex items-center gap-2 rounded-xl bg-white px-5 py-3 text-sm font-bold text-slate-700 hover:bg-slate-50"
           >
             ✉️ 삭제 요청 메일 작성하기
           </a>
-        </Step>
-
-        <Step
-          num="B"
-          title="(예정) 앱 안에서 직접 삭제"
-          steps={[
-            "엄빠레이더 앱 또는 웹 로그인",
-            <>
-              하단 <strong>내 레이더</strong> 탭 →{" "}
-              <strong>마이페이지</strong> 진입
-            </>,
-            <>
-              화면 하단 <strong>계정 삭제</strong> 버튼 (도입 예정)
-            </>,
-            "최종 확인 후 즉시 삭제",
-          ]}
-        >
-          <p className="mt-2 text-xs text-amber-700">
-            앱 내 자동 삭제 기능은 2026년 6월 도입 예정. 그 전까지는 위 A
-            방법(이메일)으로 요청해주세요.
-          </p>
         </Step>
       </Section>
 

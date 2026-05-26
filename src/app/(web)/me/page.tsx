@@ -15,6 +15,7 @@ import {
 } from "@/modules/user/service-server";
 import { signOutAction } from "@/modules/user/actions";
 import { PushToggle } from "@/modules/notification/ui/PushToggle";
+import { AccountDeleteSection } from "@/modules/user/ui/AccountDeleteSection";
 
 // VAPID 공개 키 — env 미설정 시 PushToggle이 'unsupported' 처리
 const VAPID_PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ?? "";
@@ -124,6 +125,9 @@ export default async function MePage({ searchParams }: PageProps) {
         initialChildren={initialChildren}
         isEditMode
       />
+
+      {/* 계정 삭제 (위험 zone) — 페이지 하단 */}
+      <AccountDeleteSection />
 
       <p className="mt-6 text-center">
         <Logo size={20} className="inline-block text-slate-300" />

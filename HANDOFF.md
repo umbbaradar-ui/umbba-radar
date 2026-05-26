@@ -242,28 +242,57 @@ GTM 컨테이너 `GTM-PR2K864P`에 GA4 페이지뷰 태그 등록 + 게시 완�
 
 ---
 
-## 🔄 이번 세션(2026-05-25 후반) 추가 변경 요약
+## 🔄 이번 세션(2026-05-25 ~ 2026-05-26) 추가 변경 요약
 
 1. **`stages.ts` newborn 출산 전 버퍼 제거** (`minMonths: -3 → 0`)
    - 임신 중 부모가 신생아 전용 카드 매칭에서 제외 (신청 조건 "이미 태어난 아기" 케이스 보호)
 2. **알림 시스템 4종 개선** (`getRecentMatchingCards`/`getInterestedDeadlineSoon`/`NotificationsList`)
    - 마감 임박 7→3일, 가입 이후 카드만, 같은 D-day 내 아이 매칭 우선, 본 항목 페이드
+   - 빨간 점 동기화 버그 수정 (custom event + storage + focus 3종 listen)
 3. **Web Push 풀세트** (notification 모듈 신규 + sw.js 확장 + /me 토글 + notify-deadline cron)
    - 마감 1일 전 자동 푸시. 사용자 수동 옵트인. iOS 16.4+ PWA 안내.
 4. **마감일 미정 카드 처리** (마이그레이션 014 + PostForm 체크박스 + PostCard/상세 안내 + AI 통합)
-   - 등록 +7일 자동 종료. UI에 `~D-N` amber 톤. 푸시 알림 제외. AI 추출 실패도 동일 처리.
-5. **루트 OG 이미지에 곰돌이 마스코트** (`src/app/opengraph-image.tsx`)
-   - ♥ 텍스트 → bear-mascot.png. node:fs + base64 data URL (runtime=nodejs).
-   - SNS 공유 미리보기에 일관된 브랜드 정체성. 캐시는 각 플랫폼 디버거로 무효화.
-6. **`form` type_tag 추가** (post.ts + normalizer + vision-extractor)
-   - 네이버폼/구글폼/자체폼 식별 — DB 마이그레이션 불필요(TEXT[]).
-   - AI에 "댓글·DM은 form 아님" 명시. 다른 태그와 직교 조합 가능.
+   - 등록 +N일 자동 종료 (관리자가 1/3/7일 라디오로 선택, default 7일).
+   - UI에 `~D-N` amber 톤. 푸시 알림 제외. AI 추출 실패도 동일 처리.
+5. **OG 이미지 곰돌이 마스코트 통일** (루트 + 카드별)
+   - 루트 OG: bear-mascot.png 합성, 레이더 원 3겹.
+   - 카드별 OG: 썸네일 없을 때 곰돌이 fallback + 하단 워터마크.
+   - node:fs + base64 data URL (runtime=nodejs) 패턴.
+6. **`form` type_tag 추가** — 네이버폼/구글폼/자체폼 식별 (DB 마이그레이션 불필요, TEXT[]).
 7. **검색 동의어 매칭** (마이그레이션 015 + 4컬럼 OR + AI 자동 동의어)
    - `search_keywords` 컬럼 + pg_trgm + GIN trigram 인덱스 4종.
-   - 관리자 폼에 "검색 키워드" textarea (콤마 구분). AI가 1~3개 자동 생성.
-   - 4컬럼 OR(title/brand/body/search_keywords) ILIKE 매칭.
+   - 관리자 폼 + AI가 1~3개 자동 생성. 4컬럼 OR ILIKE.
+8. **Play Store 배포 인프라 풀세트**
+   - `/account-deletion` 페이지 신규 (Google Play 2024년 정책 필수).
+   - `/me`에 **앱 내 계정 영구 삭제 버튼** (Server Action + 2단 확인, FK CASCADE 활용).
+   - `/privacy` + `/terms` 광고 도입 사전 고지 조항 추가 (재동의 면제 효과).
+   - 운영 이메일 `umbba.radar@gmail.com` 전 영역 통일.
+   - `PLAY_STORE_LISTING.md` 자세한 설명·짧은 설명·데이터 보안 표 초안.
+   - Feature graphic 1024×500 (`public/feature-graphic.png`) 생성 스크립트.
+   - `assetlinks.json` 배포 (TWA 도메인 검증) — SHA-256 `69:BD:89:...:AD:0B`.
+9. **PWA manifest 풀세트**
+   - `share_target` (인스타·카톡 → /submit 자동 prefill).
+   - `shortcuts` 4종 재구성 (홈 / 내 레이더 / 체험단 / 제보 — 키즈모델 운영가치 낮아 제거).
+   - 각 shortcut 96×96 고유 SVG 아이콘.
+   - 메인 PWA 아이콘 둥근 사각형 마스크 + 투명 외각.
+   - 곰돌이 source PNG의 검정 외각을 알파 처리 (이중 액자 + 검정 모서리 진짜 원인 제거).
+
+---
+
+## 📦 Play Store 출시 진행 상태 (2026-05-26 기준)
+
+- ✅ Play Console 앱 생성 (`com.umbba_radar.twa`)
+- ✅ 앱 콘텐츠 8개 필수 항목 (단 데이터 보안 "사진 공유" 잘못 체크 — 정정 필요)
+- ✅ 스토어 등록정보 입력 ("검토를 위해 전송 준비 완료")
+- ✅ 내부 테스트 트랙 .aab 업로드 (versionCode 2)
+- ⏸️ **새 .aab 빌드 대기** (versionCode 3) — 누적된 manifest·아이콘 변경 반영용
+  - PWA Builder 재방문 → Options → version code 3 + Signing key "Use mine"
+  - signing.keystore 보관 위치: 사용자 다운로드 + 비밀번호 매니저
+  - keystore 비밀번호: signing-key-info.txt 참조 (repo에 절대 X — .gitignore 안전장치 있음)
+- ⏸️ 공개 테스트 트랙 (Open Testing) — 트랙 만들고 옵트인 URL 모집 (12명 활성·14일)
+- ⏸️ 프로덕션 출시 신청 (14일 카운트 후)
 
 ---
 
 > 이 문서는 살아있는 인수인계서입니다. 다음 세션에서 변경된 정책·완료된 액션은 갱신 또는 제거해주세요.
-> 마지막 갱신: 2026-05-25 (015 실행 완료 + OG 곰돌이·form 태그·검색 동의어까지 반영)
+> 마지막 갱신: 2026-05-26 (Play Store 진행 + 마감 미정 입력화 + 계정 삭제 기능 + OG 카드별 곰돌이)
