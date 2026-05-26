@@ -1,3 +1,5 @@
 gallery-dl>=1.27.0
 requests>=2.31.0
 python-dotenv>=1.0.0
+# 영상 게시물(Reels) 다운로드용 — gallery-dl이 fallback으로 호출
+yt-dlp>=2024.0.0

@@ -52,6 +52,12 @@ REQUEST_TIMEOUT = 60  # Vercel maxDuration과 일치
 # 차단 회피용 약한 backoff (각 URL 사이 짧은 sleep)
 SLEEP_BETWEEN_URLS = float(os.getenv("UMBBA_SLEEP", "2.0"))
 
+# 인스타 로그인 쿠키 — 둘 중 하나
+#   UMBBA_COOKIES_FILE: cookies.txt 형식 파일 경로 (Firefox 확장으로 export)
+#   UMBBA_COOKIES_BROWSER: 브라우저 이름 (firefox·chrome·edge — DPAPI 이슈로 Chrome 비추천)
+COOKIES_FILE = os.getenv("UMBBA_COOKIES_FILE", "").strip() or None
+COOKIES_BROWSER = os.getenv("UMBBA_COOKIES_BROWSER", "").strip() or None
+
 
 # ============================================
 # 타입
@@ -71,18 +77,30 @@ class DownloadedPost(TypedDict):
 GALLERY_DL_CMD = [sys.executable, "-m", "gallery_dl"]
 
 
+def build_gallery_dl_command(url: str, work_dir: Path) -> list[str]:
+    """gallery-dl 명령어 조립. 쿠키 옵션이 있으면 자동 추가."""
+    cmd = [
+        *GALLERY_DL_CMD,
+        "--write-metadata",
+        "--dest", str(work_dir),
+    ]
+    # 인스타 비로그인 차단 회피용 쿠키
+    if COOKIES_FILE:
+        cmd += ["--cookies", COOKIES_FILE]
+    elif COOKIES_BROWSER:
+        cmd += ["--cookies-from-browser", COOKIES_BROWSER]
+    cmd.append(url)
+    return cmd
+
+
 def download_post(url: str, work_dir: Path) -> Optional[DownloadedPost]:
     """gallery-dl로 인스타 게시물 이미지·메타 다운"""
     try:
         # --write-metadata: 캡션·메타를 .json 파일로 저장
         # --dest: 출력 디렉토리
+        # 쿠키: UMBBA_COOKIES_FILE 또는 UMBBA_COOKIES_BROWSER (인스타 로그인 차단 회피)
         result = subprocess.run(
-            [
-                *GALLERY_DL_CMD,
-                "--write-metadata",
-                "--dest", str(work_dir),
-                url,
-            ],
+            build_gallery_dl_command(url, work_dir),
             capture_output=True,
             text=True,
             timeout=60,

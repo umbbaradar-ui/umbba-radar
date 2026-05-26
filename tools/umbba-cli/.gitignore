@@ -5,6 +5,11 @@
 .env.*
 !.env.example
 
+# 인스타 로그인 쿠키 (계정 자격 정보 — 절대 git X)
+cookies.txt
+*.cookies.txt
+instagram*.txt
+
 # Python
 __pycache__/
 *.py[cod]
