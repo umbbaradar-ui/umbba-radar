@@ -80,6 +80,12 @@ export default async function AdminDashboard({ searchParams }: PageProps) {
             </Link>
           )}
           <Link
+            href="/admin/bulk-ingest"
+            className="rounded-xl bg-rose-100 px-4 py-2 text-sm font-bold text-rose-700 transition hover:bg-rose-200"
+          >
+            ⚡ URL 일괄 등록
+          </Link>
+          <Link
             href="/admin/new"
             className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-bold text-white transition hover:bg-slate-800"
           >

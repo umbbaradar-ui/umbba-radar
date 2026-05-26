@@ -250,6 +250,123 @@ export async function deletePostAction(id: string): Promise<void> {
 }
 
 // ============================================
+// URL 일괄 등록 — Phase 1.5 자동화
+// 발견·등록 작업과 이미지·캡션 채우기 작업 분리
+// URL만 줄바꿈으로 여러 개 입력 → 각 URL을 source_url로 draft 자동 생성
+// 큐(/admin/queue)에서 사용자가 이후 단계 처리 (이미지·캡션·AI 분류)
+// ============================================
+
+export interface BulkIngestResult {
+  total: number;
+  created: number;
+  duplicates: string[]; // 중복 URL 목록
+  invalid: string[]; // 형식 오류 URL 목록
+  errors: Array<{ url: string; message: string }>;
+}
+
+export async function bulkIngestUrlsAction(
+  rawText: string
+): Promise<BulkIngestResult> {
+  await ensureAdmin();
+
+  // 1) 줄바꿈·쉼표 분리 + 중복 제거 + URL 형식 검증
+  const urls = Array.from(
+    new Set(
+      rawText
+        .split(/[\n,]+/)
+        .map((s) => s.trim())
+        .filter(Boolean)
+    )
+  );
+
+  const result: BulkIngestResult = {
+    total: urls.length,
+    created: 0,
+    duplicates: [],
+    invalid: [],
+    errors: [],
+  };
+
+  if (urls.length === 0) return result;
+
+  // 2) 형식 검증 — http/https + 인스타·블로그 등 흔한 도메인 허용
+  const validUrls: string[] = [];
+  for (const url of urls) {
+    try {
+      const u = new URL(url);
+      if (u.protocol !== "http:" && u.protocol !== "https:") {
+        result.invalid.push(url);
+        continue;
+      }
+      validUrls.push(url);
+    } catch {
+      result.invalid.push(url);
+    }
+  }
+
+  if (validUrls.length === 0) return result;
+
+  // 3) DB에 이미 등록된 URL 확인 (중복 스킵)
+  const { data: existing } = await supabaseServer
+    .from("posts")
+    .select("source_url")
+    .in("source_url", validUrls);
+
+  const existingSet = new Set(
+    (existing ?? []).map((p) => (p as { source_url: string }).source_url)
+  );
+  const newUrls = validUrls.filter((u) => {
+    if (existingSet.has(u)) {
+      result.duplicates.push(u);
+      return false;
+    }
+    return true;
+  });
+
+  if (newUrls.length === 0) {
+    revalidatePath("/admin");
+    revalidatePath("/admin/queue");
+    return result;
+  }
+
+  // 4) 일괄 insert — 각 URL을 source_url로 draft 생성
+  //    title은 임시 (관리자가 큐에서 채움), 다른 필드 모두 비어둠
+  const rows = newUrls.map((url) => ({
+    title: "(자동 등록 — 큐에서 정리 필요)",
+    brand_name: null,
+    thumbnail_url: null,
+    source_url: url,
+    body: null,
+    deadline: null,
+    deadline_unknown: false,
+    reviewer_handle: null,
+    stage_categories: [],
+    type_tags: [],
+    topic: "parenting",
+    is_sponsored: false,
+    status: "draft" as const,
+    source_type: "admin" as const,
+  }));
+
+  const { error: insertError } = await supabaseServer
+    .from("posts")
+    .insert(rows);
+
+  if (insertError) {
+    result.errors.push({
+      url: `(${newUrls.length}건 일괄)`,
+      message: insertError.message,
+    });
+    return result;
+  }
+
+  result.created = newUrls.length;
+  revalidatePath("/admin");
+  revalidatePath("/admin/queue");
+  return result;
+}
+
+// ============================================
 // 이미지 업로드 — Supabase Storage 'card-images' 버킷
 // 관리자 인증 필수. 5MB 이하 이미지 한 장 업로드 → public URL 반환
 // ============================================
