@@ -6,12 +6,15 @@
 // ============================================
 
 import { useState } from "react";
+import type { Post } from "@/shared/types/post";
 import { AIExtractPanel } from "./AIExtractPanel";
 import { PostForm, type PostFormDefaults } from "./PostForm";
 import type { AIExtractResponse } from "../ai-extract-actions";
 import type { VisionExtractResult } from "@/modules/ingestion/vision-extractor";
 
 interface Props {
+  /** 수정 모드 — 기존 카드 prefill (AI 추출 결과가 들어오면 그게 우선) */
+  post?: Post;
   action: (formData: FormData) => Promise<void> | void;
   extractFromImage: (formData: FormData) => Promise<AIExtractResponse>;
   extractFromUrl: (url: string) => Promise<AIExtractResponse>;
@@ -20,6 +23,7 @@ interface Props {
 }
 
 export function PostFormWithAI({
+  post,
   action,
   extractFromImage,
   extractFromUrl,
@@ -76,6 +80,7 @@ export function PostFormWithAI({
 
       <PostForm
         key={version}
+        post={post}
         action={action}
         defaults={defaults}
         submitLabel={submitLabel}

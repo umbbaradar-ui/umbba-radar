@@ -1,11 +1,24 @@
 // ============================================
 // 카드 수정 페이지 — /admin/[id]/edit
+//
+// PostFormWithAI 사용 — 기존 카드 prefill + AI 추출 가능.
+// 빈 draft (URL 일괄 등록으로 만든 것)도 여기서:
+//   - 외부 도구 1클릭으로 이미지 다운
+//   - "📷 스크린샷으로 추출" → Gemini Vision으로 자동 채움
+//   - 검수 후 발행
 // ============================================
 
 import { notFound } from "next/navigation";
 import { getPostForAdmin } from "@/modules/curation/service";
 import { updatePostAction } from "@/modules/curation/actions";
-import { PostForm } from "@/modules/curation/ui/PostForm";
+import {
+  extractFromImageAction,
+  extractFromUrlAction,
+} from "@/modules/curation/ai-extract-actions";
+import { PostFormWithAI } from "@/modules/curation/ui/PostFormWithAI";
+
+// Gemini Vision API는 이미지 1장당 5~20초. Hobby plan 60초까지.
+export const maxDuration = 60;
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -33,7 +46,8 @@ export default async function EditPostPage({ params, searchParams }: PageProps) 
             카드 수정
           </h1>
           <p className="mt-1 truncate text-xs text-slate-500">
-            ID: <code>{id}</code>
+            ID: <code>{id}</code> · 상태:{" "}
+            <strong className="text-slate-700">{post.status}</strong>
           </p>
         </div>
         <a
@@ -46,9 +60,11 @@ export default async function EditPostPage({ params, searchParams }: PageProps) 
         </a>
       </header>
 
-      <PostForm
+      <PostFormWithAI
         post={post}
         action={boundAction}
+        extractFromImage={extractFromImageAction}
+        extractFromUrl={extractFromUrlAction}
         submitLabel="수정 저장"
         errorMessage={errorMessage}
       />
