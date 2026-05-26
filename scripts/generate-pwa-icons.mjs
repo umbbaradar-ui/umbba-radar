@@ -28,9 +28,10 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, "..");
 const SOURCE = resolve(ROOT, "assets/bear-mascot-source.png");
 
-// 배경 톤 — shortcuts 아이콘과 통일 (rose-500 진한 핑크)
-const BRAND_BG = { r: 251, g: 113, b: 133, alpha: 1 }; // #FB7185 (rose-500)
-// 옅은 톤 (스플래시·SNS OG 등에서만 사용)
+// 배경 톤 — 곰돌이 마스코트와 어울리는 옅은 핑크
+// (진한 rose-500은 갈색 곰돌이와 색 충돌. shortcuts는 흰색 심볼이라 진한 톤 OK였음)
+const BRAND_BG = { r: 255, g: 228, b: 236, alpha: 1 }; // #FFE4EC (rose-100, OG 이미지 안쪽 원과 통일)
+// 평면 SNS OG용 (더 옅은 톤)
 const SOFT_BG = { r: 255, g: 245, b: 248, alpha: 1 }; // #FFF5F8 (pink-50)
 const TRANSPARENT = { r: 0, g: 0, b: 0, alpha: 0 };
 const MASKABLE_SAFE_AREA = 0.8; // 중앙 80%에만 마스코트, 양옆 10%씩 패딩
