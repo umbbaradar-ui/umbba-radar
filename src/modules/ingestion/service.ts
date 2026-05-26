@@ -155,7 +155,8 @@ export async function runIngestion(): Promise<IngestionStats> {
         body: norm.body?.slice(0, 2000) ?? null,
         search_keywords: searchKeywords,
         source_url: item.link,
-        kind: norm.kind,
+        // 자동수집은 운영 정책상 무조건 'recruiting' (Vision이 group_buy 반환해도 강제)
+        kind: "recruiting" as const,
         stage_categories: norm.stage_categories ?? [],
         type_tags: norm.type_tags ?? [],
         topic: norm.topic === "living" ? "living" : "parenting",

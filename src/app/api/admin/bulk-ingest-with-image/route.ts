@@ -164,6 +164,7 @@ export async function POST(
     const { data: inserted, error: insertError } = await supabaseServer
       .from("posts")
       .insert({
+        kind: "recruiting" as const, // 자동수집은 무조건 모집중
         title: "(CLI 등록 — Vision 실패, 큐에서 정리)",
         brand_name: null,
         thumbnail_url: thumbnailUrl,
@@ -202,6 +203,8 @@ export async function POST(
   const { data: inserted, error: insertError } = await supabaseServer
     .from("posts")
     .insert({
+      // 자동수집은 무조건 모집중 — Vision이 group_buy 반환해도 운영 정책상 recruiting
+      kind: "recruiting" as const,
       title: vis.title.slice(0, 120),
       brand_name: vis.brand_name,
       thumbnail_url: thumbnailUrl,

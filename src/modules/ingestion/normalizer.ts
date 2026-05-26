@@ -21,7 +21,7 @@ export interface NormalizerInput {
   postdate: string; // YYYYMMDD
 }
 
-export type Kind = "recruiting" | "review" | "group_buy";
+export type Kind = "recruiting" | "group_buy";
 export type Stage =
   | "pregnancy"
   | "newborn"
@@ -69,7 +69,7 @@ const SYSTEM_PROMPT = `당신은 한국 육아 정보 큐레이션 사이트 "�
       "brand_name": string | null,
       "body": string,                     // 한 줄 요약 (예: "댓글 + 친구 태그 → 30명 추첨")
       "search_keywords": string | null,   // 동의어·유사어 콤마 구분 1~3개 (아래 가이드 참조)
-      "kind": "recruiting" | "review" | "group_buy",
+      "kind": "recruiting" | "group_buy",
       "stage_categories": Array<"pregnancy"|"newborn"|"infant"|"toddler"|"elementary"|"all_ages">,
       "type_tags": Array<"regram"|"experience"|"kids_model"|"supporters"|"form">,
       "topic": "parenting" | "living",     // 콘텐츠 주제 (필수, 둘 중 하나)
@@ -80,9 +80,9 @@ const SYSTEM_PROMPT = `당신은 한국 육아 정보 큐레이션 사이트 "�
 }
 
 # 분류
-- recruiting: 신청·모집 공고
-- review: 사용 후기 (유용한 정보 있어야 함)
-- group_buy: 공동구매
+- recruiting: 신청·모집 공고 (대부분 이걸로 — 후기·체험단·이벤트 모두 recruiting)
+- group_buy: 공동구매 ("공구"·"공동구매" 명시된 경우만)
+※ review 옵션 제거. 후기형도 recruiting으로 통일.
 
 # stage_categories (시기, 복수 선택 가능)
 - pregnancy: 임신중

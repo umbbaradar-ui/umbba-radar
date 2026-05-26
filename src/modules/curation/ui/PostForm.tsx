@@ -97,11 +97,11 @@ export function PostForm({ post, defaults, action, submitLabel, errorMessage }: 
         <Field label="종류 (kind)">
           <select
             name="kind"
-            defaultValue={v.kind}
+            // 기존 'review' 카드는 자동으로 'recruiting'으로 보여줌 (review 옵션 제거)
+            defaultValue={v.kind === "review" ? "recruiting" : v.kind}
             className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
           >
             <option value="recruiting">모집중 (recruiting)</option>
-            <option value="review">후기 (review)</option>
             <option value="group_buy">공구 (group_buy)</option>
             <option value="sponsored_ad">광고 (sponsored_ad)</option>
           </select>

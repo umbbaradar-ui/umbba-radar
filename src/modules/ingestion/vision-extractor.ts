@@ -17,7 +17,7 @@ export interface VisionExtractResult {
   body: string;
   /** 검색 매칭용 동의어·유사어 (콤마 구분, 1~3개) */
   search_keywords: string | null;
-  kind: "recruiting" | "review" | "group_buy";
+  kind: "recruiting" | "group_buy";
   stage_categories: string[];
   type_tags: string[];
   topic: "parenting" | "living";
@@ -40,7 +40,7 @@ const VISION_SYSTEM_PROMPT = `당신은 한국 육아 정보 큐레이션 사이
   "brand_name": string | null,              // 브랜드명. 명확히 보이는 경우만, 아니면 null
   "body": string,                           // 한 줄 요약 (예: "댓글 + 친구 태그 → 30명 추첨")
   "search_keywords": string | null,         // 동의어·유사어 콤마 구분 1~3개 (아래 가이드 참조)
-  "kind": "recruiting" | "review" | "group_buy",
+  "kind": "recruiting" | "group_buy",
   "stage_categories": Array<"pregnancy"|"newborn"|"infant"|"toddler"|"elementary"|"all_ages">,
   "type_tags": Array<"regram"|"experience"|"kids_model"|"supporters"|"form">,
   "topic": "parenting" | "living",          // 콘텐츠 주제 (필수)
@@ -48,9 +48,9 @@ const VISION_SYSTEM_PROMPT = `당신은 한국 육아 정보 큐레이션 사이
 }
 
 # kind 분류
-- recruiting: 신청·모집 공고
-- review: 사용 후기 (유용한 정보 있어야 함)
-- group_buy: 공동구매
+- recruiting: 신청·모집 공고 (대부분 이걸로 분류 — 후기·체험단·이벤트 모두 모집중으로)
+- group_buy: 공동구매 (드물게, "공구" "공동구매" 명시된 경우만)
+※ review 옵션은 제거. 후기형 게시물도 recruiting으로 분류.
 
 # type_tags (복수 선택 가능, 해당 없으면 빈 배열)
 - regram: 본인 피드에 리그램(재게시) 필수로 명시된 경우만
