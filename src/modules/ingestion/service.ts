@@ -152,7 +152,7 @@ export async function runIngestion(): Promise<IngestionStats> {
       const { error: insertError } = await supabaseServer.from("posts").insert({
         title: norm.title.slice(0, 120),
         brand_name: norm.brand_name,
-        body: norm.body?.slice(0, 500) ?? null,
+        body: norm.body?.slice(0, 2000) ?? null,
         search_keywords: searchKeywords,
         source_url: item.link,
         kind: norm.kind,

@@ -168,7 +168,8 @@ export async function POST(
         brand_name: null,
         thumbnail_url: thumbnailUrl,
         source_url: url,
-        body: caption?.slice(0, 500) ?? null,
+        // 인스타 캡션 길이는 평균 1000~2000자. 너무 짧게 자르면 신청방법·이벤트 정보 손실
+        body: caption?.slice(0, 2000) ?? null,
         deadline: null,
         deadline_unknown: false,
         stage_categories: [],
@@ -205,7 +206,8 @@ export async function POST(
       brand_name: vis.brand_name,
       thumbnail_url: thumbnailUrl,
       source_url: url,
-      body: body_text?.slice(0, 500) ?? null,
+      // 인스타 캡션은 평균 1000~2000자. 본문에 신청방법·이벤트 정보 보존
+      body: body_text?.slice(0, 2000) ?? null,
       deadline: vis.deadline,
       deadline_unknown: deadlineUnknown,
       stage_categories: vis.stage_categories ?? [],

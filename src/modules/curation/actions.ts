@@ -392,7 +392,7 @@ export async function bulkIngestUrlsAction(
           brand_name: vis.brand_name,
           thumbnail_url: thumbnailUrl,
           source_url: url,
-          body: vis.body?.slice(0, 500) ?? null,
+          body: vis.body?.slice(0, 2000) ?? null,
           deadline: vis.deadline,
           deadline_unknown: !vis.deadline,
           reviewer_handle: null,
