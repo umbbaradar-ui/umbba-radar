@@ -31,6 +31,7 @@ const EXTERNAL_TOOLS = [
 
 export function BulkIngestForm() {
   const [rawText, setRawText] = useState("");
+  const [autoExtract, setAutoExtract] = useState(true);
   const [result, setResult] = useState<BulkIngestResult | null>(null);
   const [pending, startTransition] = useTransition();
 
@@ -39,10 +40,10 @@ export function BulkIngestForm() {
     setResult(null);
     if (!rawText.trim()) return;
     startTransition(async () => {
-      const r = await bulkIngestUrlsAction(rawText);
+      const r = await bulkIngestUrlsAction(rawText, { autoExtract });
       setResult(r);
-      if (r.created > 0) {
-        setRawText(""); // 성공 시 입력란 비움
+      if (r.created > 0 || r.extracted > 0) {
+        setRawText("");
       }
     });
   }
@@ -73,13 +74,38 @@ export function BulkIngestForm() {
           </p>
         </div>
 
+        {/* 자동 분류 옵션 */}
+        <label className="flex items-start gap-2 rounded-xl bg-amber-50/60 px-3 py-2 text-xs text-amber-800">
+          <input
+            type="checkbox"
+            checked={autoExtract}
+            onChange={(e) => setAutoExtract(e.target.checked)}
+            className="mt-0.5 h-4 w-4"
+            disabled={pending}
+          />
+          <span>
+            <strong>🤖 자동 AI 분류 시도</strong> (네이버 블로그·일반 URL은
+            제목·캡션·시기·이미지까지 자동 채워짐)
+            <br />
+            <span className="text-amber-700/80">
+              * Vercel timeout 회피로 한 번에 최대 <strong>5개만 자동 추출</strong>,
+              나머지는 빈 draft. 인스타는 차단돼서 자동 분류 거의 실패 →
+              단순 draft 생성. 큰 묶음은 5개씩 끊어서 반복 권장.
+            </span>
+          </span>
+        </label>
+
         <div className="flex items-center justify-between gap-3">
           <button
             type="submit"
             disabled={pending || urlCount === 0}
             className="rounded-xl bg-slate-900 px-5 py-2.5 text-sm font-bold text-white shadow-sm hover:bg-slate-800 disabled:opacity-60"
           >
-            {pending ? "등록 중…" : `${urlCount}개 일괄 등록`}
+            {pending
+              ? autoExtract
+                ? "AI 분류 + 등록 중… (최대 30초)"
+                : "등록 중…"
+              : `${urlCount}개 ${autoExtract ? "자동 분류 + " : ""}일괄 등록`}
           </button>
           {urlCount > 100 && (
             <p className="text-xs text-amber-700">
@@ -96,17 +122,43 @@ export function BulkIngestForm() {
           <h2 className="mb-2 text-sm font-bold text-slate-900">처리 결과</h2>
           <div className="space-y-2 text-xs leading-relaxed text-slate-700">
             <p>
-              총 입력: <strong>{result.total}개</strong> · 생성:{" "}
-              <strong className="text-emerald-600">
-                {result.created}개
-              </strong>{" "}
-              · 중복 스킵:{" "}
+              총 입력: <strong>{result.total}개</strong>
+              {result.extracted > 0 && (
+                <>
+                  {" "}· 🤖 AI 분류 완료:{" "}
+                  <strong className="text-emerald-700">
+                    {result.extracted}개
+                  </strong>
+                </>
+              )}
+              {" "}· 빈 draft:{" "}
+              <strong className="text-slate-600">{result.created}개</strong>
+              {" "}· 중복 스킵:{" "}
               <span className="text-amber-700">
                 {result.duplicates.length}개
-              </span>{" "}
-              · 형식 오류:{" "}
+              </span>
+              {" "}· 형식 오류:{" "}
               <span className="text-rose-600">{result.invalid.length}개</span>
             </p>
+
+            {result.extractFailed.length > 0 && (
+              <details className="rounded-lg bg-slate-50 px-3 py-2">
+                <summary className="cursor-pointer font-semibold text-slate-600">
+                  자동 분류 실패 ({result.extractFailed.length}개) — 단순 draft로
+                  생성됨
+                </summary>
+                <ul className="mt-1 space-y-0.5 pl-4 text-slate-500">
+                  {result.extractFailed.map((u) => (
+                    <li key={u} className="break-all">
+                      · {u}
+                    </li>
+                  ))}
+                </ul>
+                <p className="mt-1 text-[10px] text-slate-500">
+                  대부분 인스타 차단. 큐에서 이미지 다운받아 수동 분류하세요.
+                </p>
+              </details>
+            )}
 
             {result.duplicates.length > 0 && (
               <details className="rounded-lg bg-amber-50/60 px-3 py-2">

@@ -251,21 +251,63 @@ export async function deletePostAction(id: string): Promise<void> {
 
 // ============================================
 // URL 일괄 등록 — Phase 1.5 자동화
-// 발견·등록 작업과 이미지·캡션 채우기 작업 분리
-// URL만 줄바꿈으로 여러 개 입력 → 각 URL을 source_url로 draft 자동 생성
-// 큐(/admin/queue)에서 사용자가 이후 단계 처리 (이미지·캡션·AI 분류)
+//
+// 두 모드:
+//   1) autoExtract=false (기본·빠름): source_url만 박힌 draft 일괄 생성. 무제한.
+//   2) autoExtract=true (AI 분류 시도): 각 URL에 extractFromUrl 호출 → 성공이면 풍부한 draft.
+//      Vercel Hobby plan 60초 timeout 우회용으로 한 번 호출당 MAX_AUTO_EXTRACT개만 처리.
+//      나머지는 단순 draft. 사용자가 작은 묶음으로 반복 호출.
+//
+// 인스타 URL은 서버 측 차단 → 자동 추출 거의 실패 → 단순 draft로 fallback.
+// 네이버 블로그·일반 URL은 자동 추출 잘 됨 → 풍부한 draft 즉시 생성.
 // ============================================
+
+import { extractFromUrl as visionExtractFromUrl } from "@/modules/ingestion/vision-extractor";
+
+const MAX_AUTO_EXTRACT = 5; // Vercel Hobby 60s timeout 안전 범위
 
 export interface BulkIngestResult {
   total: number;
+  /** 단순 draft 생성 (URL만, 자동 추출 안 시도하거나 실패) */
   created: number;
-  duplicates: string[]; // 중복 URL 목록
-  invalid: string[]; // 형식 오류 URL 목록
+  /** 자동 추출 성공해서 풍부한 draft 생성 (이미지·제목·캡션·태그 채워짐) */
+  extracted: number;
+  duplicates: string[];
+  invalid: string[];
+  /** 자동 추출 시도했지만 실패한 URL — 단순 draft로 폴백 (사용자에게 안내용) */
+  extractFailed: string[];
   errors: Array<{ url: string; message: string }>;
 }
 
+/** Vision 추출 이미지를 Storage에 업로드 → 공개 URL */
+async function uploadExtractedImage(
+  bytes: Uint8Array,
+  mime: string
+): Promise<string | null> {
+  const ext = mime.includes("png")
+    ? "png"
+    : mime.includes("webp")
+      ? "webp"
+      : mime.includes("gif")
+        ? "gif"
+        : "jpg";
+  const filename = `bulk-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+  const { error } = await supabaseServer.storage
+    .from("card-images")
+    .upload(filename, Buffer.from(bytes), {
+      contentType: mime,
+      cacheControl: "31536000",
+    });
+  if (error) return null;
+  const {
+    data: { publicUrl },
+  } = supabaseServer.storage.from("card-images").getPublicUrl(filename);
+  return publicUrl;
+}
+
 export async function bulkIngestUrlsAction(
-  rawText: string
+  rawText: string,
+  options: { autoExtract?: boolean } = {}
 ): Promise<BulkIngestResult> {
   await ensureAdmin();
 
@@ -282,8 +324,10 @@ export async function bulkIngestUrlsAction(
   const result: BulkIngestResult = {
     total: urls.length,
     created: 0,
+    extracted: 0,
     duplicates: [],
     invalid: [],
+    extractFailed: [],
     errors: [],
   };
 
@@ -329,38 +373,86 @@ export async function bulkIngestUrlsAction(
     return result;
   }
 
-  // 4) 일괄 insert — 각 URL을 source_url로 draft 생성
-  //    title은 임시 (관리자가 큐에서 채움), 다른 필드 모두 비어둠
-  const rows = newUrls.map((url) => ({
-    title: "(자동 등록 — 큐에서 정리 필요)",
-    brand_name: null,
-    thumbnail_url: null,
-    source_url: url,
-    body: null,
-    deadline: null,
-    deadline_unknown: false,
-    reviewer_handle: null,
-    stage_categories: [],
-    type_tags: [],
-    topic: "parenting",
-    is_sponsored: false,
-    status: "draft" as const,
-    source_type: "admin" as const,
-  }));
+  // 4) 자동 추출 시도 (옵션) — 최대 MAX_AUTO_EXTRACT개만, 나머지는 단순 draft
+  const autoExtract = Boolean(options.autoExtract);
+  const toAutoExtract = autoExtract ? newUrls.slice(0, MAX_AUTO_EXTRACT) : [];
+  const toSimpleDraft = autoExtract ? newUrls.slice(MAX_AUTO_EXTRACT) : newUrls;
 
-  const { error: insertError } = await supabaseServer
-    .from("posts")
-    .insert(rows);
-
-  if (insertError) {
-    result.errors.push({
-      url: `(${newUrls.length}건 일괄)`,
-      message: insertError.message,
-    });
-    return result;
+  // 4-A) 자동 추출 그룹 — 각 URL에 extractFromUrl 호출 + Storage 업로드 + 풍부 draft
+  for (const url of toAutoExtract) {
+    try {
+      const { result: vis, imageBytes, imageMime } = await visionExtractFromUrl(url);
+      if (vis && imageBytes && vis.is_actual_event) {
+        const thumbnailUrl = await uploadExtractedImage(
+          imageBytes,
+          imageMime || "image/jpeg"
+        );
+        const { error } = await supabaseServer.from("posts").insert({
+          title: vis.title.slice(0, 120),
+          brand_name: vis.brand_name,
+          thumbnail_url: thumbnailUrl,
+          source_url: url,
+          body: vis.body?.slice(0, 500) ?? null,
+          deadline: vis.deadline,
+          deadline_unknown: !vis.deadline,
+          reviewer_handle: null,
+          stage_categories: vis.stage_categories ?? [],
+          type_tags: vis.type_tags ?? [],
+          topic: vis.topic === "living" ? "living" : "parenting",
+          is_sponsored: false,
+          status: "draft" as const,
+          source_type: "admin" as const,
+        });
+        if (error) {
+          result.errors.push({ url, message: error.message });
+        } else {
+          result.extracted++;
+        }
+      } else {
+        // 추출 실패 → 단순 draft로 fallback
+        result.extractFailed.push(url);
+        toSimpleDraft.push(url);
+      }
+    } catch (e) {
+      console.error("[bulkIngest] extract failed:", url, e);
+      result.extractFailed.push(url);
+      toSimpleDraft.push(url);
+    }
   }
 
-  result.created = newUrls.length;
+  // 4-B) 단순 draft 그룹 — URL만 박힌 채로 일괄 insert
+  if (toSimpleDraft.length > 0) {
+    const rows = toSimpleDraft.map((url) => ({
+      title: "(자동 등록 — 큐에서 정리 필요)",
+      brand_name: null,
+      thumbnail_url: null,
+      source_url: url,
+      body: null,
+      deadline: null,
+      deadline_unknown: false,
+      reviewer_handle: null,
+      stage_categories: [],
+      type_tags: [],
+      topic: "parenting",
+      is_sponsored: false,
+      status: "draft" as const,
+      source_type: "admin" as const,
+    }));
+
+    const { error: insertError } = await supabaseServer
+      .from("posts")
+      .insert(rows);
+
+    if (insertError) {
+      result.errors.push({
+        url: `(${toSimpleDraft.length}건 일괄)`,
+        message: insertError.message,
+      });
+    } else {
+      result.created = toSimpleDraft.length;
+    }
+  }
+
   revalidatePath("/admin");
   revalidatePath("/admin/queue");
   return result;
