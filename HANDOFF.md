@@ -145,6 +145,7 @@ GTM 컨테이너 `GTM-PR2K864P`에 GA4 페이지뷰 태그 등록 + 게시 완�
 | 분류 변경 시 | 마이그레이션 SQL + deprecated fallback 동시 → 무중단 |
 | 커밋 메시지 | 한국어, 담당자 prefix (`feat(FRONT,PROFILE): ...`), HEREDOC |
 | **자동 커밋·푸시** | 빌드 성공 후 묻지 말고 자동 (사용자 피드백 — `~/.claude/.../memory/feedback_auto_commit_push.md`) |
+| **운영·자동화 논의 범위** | **인스타만 다룸**. 네이버 블로그 등 다른 소스는 사용자가 명시적으로 언급할 때까지 거론·질문 X (2026-05-26 결정) |
 
 ---
 
