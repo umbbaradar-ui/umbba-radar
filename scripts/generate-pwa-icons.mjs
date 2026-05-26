@@ -28,7 +28,10 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, "..");
 const SOURCE = resolve(ROOT, "assets/bear-mascot-source.png");
 
-const BRAND_BG = { r: 255, g: 245, b: 248, alpha: 1 }; // #FFF5F8 (pink-50)
+// 배경 톤 — shortcuts 아이콘과 통일 (rose-500 진한 핑크)
+const BRAND_BG = { r: 251, g: 113, b: 133, alpha: 1 }; // #FB7185 (rose-500)
+// 옅은 톤 (스플래시·SNS OG 등에서만 사용)
+const SOFT_BG = { r: 255, g: 245, b: 248, alpha: 1 }; // #FFF5F8 (pink-50)
 const TRANSPARENT = { r: 0, g: 0, b: 0, alpha: 0 };
 const MASKABLE_SAFE_AREA = 0.8; // 중앙 80%에만 마스코트, 양옆 10%씩 패딩
 const ROUNDED_RADIUS_RATIO = 0.22; // iOS·Android 일반 둥근 사각형 비율 (22%)
@@ -70,14 +73,15 @@ async function generateAny(size, outPath) {
   console.log(`✓ ${outPath} (${size}×${size}, any rounded, alpha)`);
 }
 
-/** any purpose (정사각형 + 핑크 배경) — 스플래시·SNS 공유용
+/** any purpose (정사각형 + 옅은 핑크 배경) — 스플래시·SNS 공유용
  *  bear-mascot.png는 SplashScreen·OG 이미지에서 정사각형 그대로 사용
- *  (둥근 마스크 적용하면 OG 이미지 안에서 모서리 어색)
+ *  (둥근 마스크 적용하면 OG 이미지 안에서 모서리 어색).
+ *  배경은 옅은 핑크(SOFT_BG) — OG 이미지의 그라데이션 배경과 자연스럽게 섞임.
  */
 async function generateAnyFlat(size, outPath) {
   await ensureDir(outPath);
   await sharp(SOURCE)
-    .resize(size, size, { fit: "contain", background: BRAND_BG })
+    .resize(size, size, { fit: "contain", background: SOFT_BG })
     .png({ compressionLevel: 9, quality: 90 })
     .toFile(outPath);
   console.log(`✓ ${outPath} (${size}×${size}, any flat, no alpha)`);
