@@ -199,13 +199,14 @@ def upload_to_api(url: str, post: DownloadedPost) -> dict:
 # 메인
 # ============================================
 def parse_urls(file_path: Path) -> list[str]:
-    """파일에서 URL 목록 — 줄바꿈, 주석(#) 제외"""
+    """파일에서 URL 목록 — 줄바꿈, 주석(#) 제외.
+    utf-8-sig 인코딩 사용 — PowerShell `Out-File -Encoding utf8`이 BOM 붙이는 케이스 대응."""
     if not file_path.exists():
         print(f"❌ 파일이 없어요: {file_path}")
         sys.exit(1)
     urls = []
-    for raw_line in file_path.read_text(encoding="utf-8").splitlines():
-        line = raw_line.strip()
+    for raw_line in file_path.read_text(encoding="utf-8-sig").splitlines():
+        line = raw_line.strip().lstrip("﻿")  # 추가 BOM safety net
         if not line or line.startswith("#"):
             continue
         if not line.startswith(("http://", "https://")):
