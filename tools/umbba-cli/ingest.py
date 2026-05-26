@@ -25,7 +25,6 @@ import argparse
 import base64
 import json
 import os
-import shutil
 import subprocess
 import sys
 import tempfile
@@ -65,20 +64,21 @@ class DownloadedPost(TypedDict):
 
 # ============================================
 # gallery-dl wrapping
+#
+# sys.executable + "-m gallery_dl" 호출 → PATH 무관하게 동작.
+# (Windows pip 설치 시 Scripts 폴더가 PATH에 없는 경우 흔함)
 # ============================================
+GALLERY_DL_CMD = [sys.executable, "-m", "gallery_dl"]
+
+
 def download_post(url: str, work_dir: Path) -> Optional[DownloadedPost]:
     """gallery-dl로 인스타 게시물 이미지·메타 다운"""
-    if shutil.which("gallery-dl") is None:
-        print("    ❌ gallery-dl 미설치. pip install gallery-dl")
-        return None
-
     try:
         # --write-metadata: 캡션·메타를 .json 파일로 저장
         # --dest: 출력 디렉토리
-        # -o cookies-from-browser=none: 쿠키 사용 X (공개 게시물만 가능)
         result = subprocess.run(
             [
-                "gallery-dl",
+                *GALLERY_DL_CMD,
                 "--write-metadata",
                 "--dest", str(work_dir),
                 url,
