@@ -41,9 +41,45 @@ async function ensureDir(file) {
   await mkdir(dirname(file), { recursive: true });
 }
 
-/** any purpose (둥근 사각형 + 투명 배경)
- *  PNG 자체가 둥근 사각형 모양 + 외각 알파 0 → Play Store·OS launcher가 클립할 때
- *  검정/회색 모서리 안 보임. 자체 둥근 모서리라 어디서 표시되든 일관된 모양.
+/**
+ * 마스코트 PNG의 검정 배경을 알파 0(투명)으로 처리한 버전.
+ * (원본 assets/bear-mascot-source.png 외곽이 #000000 → 어떤 캔버스 위에 올려도
+ *  검정 액자처럼 보이는 문제 해결)
+ *
+ * threshold = RGB 각 채널 모두 10 미만이면 알파 0.
+ * 곰돌이 눈동자는 안티앨리어싱으로 미세한 갈색·회색이라 영향 없음.
+ *
+ * 한 번 처리한 결과는 모듈 변수에 캐시해서 모든 아이콘 생성에서 재사용.
+ */
+let _mascotTransparentCache = null;
+async function loadMascotTransparent() {
+  if (_mascotTransparentCache) return _mascotTransparentCache;
+
+  const { data, info } = await sharp(SOURCE)
+    .ensureAlpha()
+    .raw()
+    .toBuffer({ resolveWithObject: true });
+
+  // RGBA per pixel — 검정 픽셀의 알파만 0으로
+  for (let i = 0; i < data.length; i += 4) {
+    if (data[i] < 10 && data[i + 1] < 10 && data[i + 2] < 10) {
+      data[i + 3] = 0;
+    }
+  }
+
+  _mascotTransparentCache = await sharp(data, {
+    raw: { width: info.width, height: info.height, channels: 4 },
+  })
+    .png()
+    .toBuffer();
+
+  return _mascotTransparentCache;
+}
+
+/** any purpose (둥근 사각형 + 투명 배경 + 곰돌이만)
+ *  - 캔버스: 둥근 사각형 핑크, 외각 알파 0
+ *  - 곰돌이: 검정 배경 제거된 투명 PNG → 핑크 위에 곰만 자연스럽게
+ *  - 결과: 단일 핑크 톤 + 곰돌이, 이중 액자·검정 모서리 없음
  */
 async function generateAny(size, outPath) {
   await ensureDir(outPath);
@@ -54,48 +90,66 @@ async function generateAny(size, outPath) {
     <rect width="${size}" height="${size}" rx="${radius}" ry="${radius}"
           fill="rgb(${BRAND_BG.r},${BRAND_BG.g},${BRAND_BG.b})"/>
   </svg>`;
-  const bg = await sharp(Buffer.from(bgSvg))
-    .png()
-    .toBuffer();
+  const bg = await sharp(Buffer.from(bgSvg)).png().toBuffer();
 
-  // 2. 마스코트 — 캔버스 85% 크기로 안에 들어감
+  // 2. 곰돌이 (검정 배경 알파 처리됨) — 캔버스 85% 크기로
+  const transparentMascot = await loadMascotTransparent();
   const innerSize = Math.round(size * 0.85);
   const innerOffset = Math.round((size - innerSize) / 2);
-  const mascot = await sharp(SOURCE)
+  const mascot = await sharp(transparentMascot)
     .resize(innerSize, innerSize, { fit: "contain", background: TRANSPARENT })
     .png()
     .toBuffer();
 
-  // 3. 합성 — 둥근 핑크 배경 위에 마스코트, 외각은 SVG의 알파 0 유지
+  // 3. 합성 — 핑크 배경 위에 곰돌이만 (검정 X)
   await sharp(bg)
     .composite([{ input: mascot, top: innerOffset, left: innerOffset }])
     .png({ compressionLevel: 9, quality: 90 })
     .toFile(outPath);
-  console.log(`✓ ${outPath} (${size}×${size}, any rounded, alpha)`);
+  console.log(`✓ ${outPath} (${size}×${size}, any rounded, alpha, bg-removed)`);
 }
 
 /** any purpose (정사각형 + 옅은 핑크 배경) — 스플래시·SNS 공유용
- *  bear-mascot.png는 SplashScreen·OG 이미지에서 정사각형 그대로 사용
- *  (둥근 마스크 적용하면 OG 이미지 안에서 모서리 어색).
+ *  bear-mascot.png는 SplashScreen·OG 이미지에서 정사각형 그대로 사용.
  *  배경은 옅은 핑크(SOFT_BG) — OG 이미지의 그라데이션 배경과 자연스럽게 섞임.
+ *  곰돌이는 검정 배경 제거된 버전 사용.
  */
 async function generateAnyFlat(size, outPath) {
   await ensureDir(outPath);
-  await sharp(SOURCE)
-    .resize(size, size, { fit: "contain", background: SOFT_BG })
+  const transparentMascot = await loadMascotTransparent();
+  await sharp({
+    create: {
+      width: size,
+      height: size,
+      channels: 4,
+      background: SOFT_BG,
+    },
+  })
+    .composite([
+      {
+        input: await sharp(transparentMascot)
+          .resize(size, size, { fit: "contain", background: TRANSPARENT })
+          .png()
+          .toBuffer(),
+      },
+    ])
     .png({ compressionLevel: 9, quality: 90 })
     .toFile(outPath);
-  console.log(`✓ ${outPath} (${size}×${size}, any flat, no alpha)`);
+  console.log(`✓ ${outPath} (${size}×${size}, any flat, no alpha, bg-removed)`);
 }
 
-/** maskable purpose — 중앙 80%에 마스코트, 주변 핑크 배경 패딩 */
+/** maskable purpose — 정사각형 + 핑크 배경 + 중앙 80%에 곰돌이만
+ *  Android 어댑티브 OS가 다양한 모양(원/사각/물방울)으로 자르므로 알파 X 정사각형.
+ *  곰돌이는 검정 배경 제거된 버전 사용 (이중 액자 X)
+ */
 async function generateMaskable(size, outPath) {
   await ensureDir(outPath);
   const innerSize = Math.round(size * MASKABLE_SAFE_AREA);
   const padding = Math.round((size - innerSize) / 2);
 
-  const inner = await sharp(SOURCE)
-    .resize(innerSize, innerSize, { fit: "contain", background: BRAND_BG })
+  const transparentMascot = await loadMascotTransparent();
+  const inner = await sharp(transparentMascot)
+    .resize(innerSize, innerSize, { fit: "contain", background: TRANSPARENT })
     .png()
     .toBuffer();
 
