@@ -1,13 +1,15 @@
 // ============================================
-// 계정·데이터 삭제 안내 — /account-deletion
+// 회원 탈퇴 안내 — /account-deletion
 //
 // Google Play 정책(2024년~) 필수:
 //   "사용자가 계정 및 관련 데이터의 삭제를 요청할 수 있는 링크"를
 //   Play Console 스토어 등록정보에 반드시 등록해야 함.
+//   → URL은 /account-deletion 유지 (정책 표준 키워드와 일치).
+//   → UI 표현은 "탈퇴"로 통일 (한국 사용자 친화).
 //
 // 요건:
 //   1. 앱/개발자 이름 명시
-//   2. 삭제 요청 단계를 눈에 띄게
+//   2. 탈퇴 요청 단계를 눈에 띄게
 //   3. 삭제되는 데이터 유형 + 보관 항목·기간 명시
 //
 // 운영 이메일: umbba.radar@gmail.com (고정)
@@ -16,19 +18,19 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "계정 삭제 — 엄빠레이더",
+  title: "회원 탈퇴 — 엄빠레이더",
   description:
-    "엄빠레이더 계정과 관련 데이터(자녀 정보·관심 카드·알림 구독 등) 삭제 요청 안내.",
+    "엄빠레이더 회원 탈퇴 안내. 계정과 관련 데이터(자녀 정보·관심 카드·알림 구독 등)는 즉시 영구 삭제됩니다.",
 };
 
-// 운영 이메일 (개인정보·계정 삭제·기타 문의 공식 채널)
+// 운영 이메일 (개인정보·탈퇴·기타 문의 공식 채널)
 const SUPPORT_EMAIL = "umbba.radar@gmail.com";
 
 export default function AccountDeletionPage() {
-  const subject = encodeURIComponent("[엄빠레이더] 계정 삭제 요청");
+  const subject = encodeURIComponent("[엄빠레이더] 회원 탈퇴 요청");
   const body = encodeURIComponent(
     "안녕하세요, 엄빠레이더 운영팀.\n\n" +
-      "다음 계정에 대한 삭제를 요청합니다.\n\n" +
+      "다음 계정의 탈퇴를 요청합니다.\n\n" +
       "가입 이메일: \n" +
       "가입 방법(이메일/구글): \n" +
       "추가 요청 사항(있다면): \n\n" +
@@ -40,7 +42,7 @@ export default function AccountDeletionPage() {
     <main className="mx-auto max-w-3xl px-5 py-8 text-sm leading-relaxed text-slate-700">
       <header className="mb-8">
         <h1 className="text-2xl font-extrabold tracking-tight text-slate-900">
-          계정 삭제 안내
+          회원 탈퇴 안내
         </h1>
         <p className="mt-2 text-xs text-slate-500">
           앱 이름: <strong>엄빠레이더</strong> · 개발자: 엄빠레이더 운영팀 ·
@@ -50,21 +52,21 @@ export default function AccountDeletionPage() {
 
       <Section title="요약">
         <p>
-          엄빠레이더 계정과 모든 관련 데이터(자녀 정보·관심 카드·신청 기록·
-          푸시 알림 구독 등)는 사용자 요청 시 <strong>즉시 영구 삭제</strong>됩니다.
-          삭제 후엔 복구할 수 없으니 신중히 결정해주세요.
+          엄빠레이더는 회원 탈퇴 시 계정과 모든 관련 데이터(자녀 정보·관심 카드·
+          신청 기록·푸시 알림 구독 등)를 <strong>즉시 영구 삭제</strong>합니다.
+          탈퇴 후엔 복구할 수 없으니 신중히 결정해주세요.
         </p>
       </Section>
 
-      <Section title="1. 삭제 요청 방법">
+      <Section title="1. 탈퇴 방법">
         <p className="mb-3">
-          현재 두 가지 경로로 삭제를 요청할 수 있어요. 어느 쪽이든 결과는
-          동일합니다.
+          두 가지 경로 중 편하신 쪽으로 진행하시면 됩니다. 결과는 동일하게
+          모든 데이터가 영구 삭제됩니다.
         </p>
 
         <Step
           num="A"
-          title="(권장) 앱 안에서 직접 삭제 — 즉시 처리"
+          title="(권장) 앱 안에서 직접 탈퇴 — 즉시 처리"
           steps={[
             "엄빠레이더 앱 또는 웹에서 로그인",
             <>
@@ -72,7 +74,7 @@ export default function AccountDeletionPage() {
               <strong>마이페이지</strong> 진입
             </>,
             <>
-              스크롤 끝까지 → <strong>계정 영구 삭제하기</strong> 버튼
+              스크롤 끝까지 → <strong>탈퇴하기</strong> 버튼
             </>,
             "2단계 확인 후 즉시 영구 삭제 (복구 불가)",
           ]}
@@ -97,7 +99,7 @@ export default function AccountDeletionPage() {
               로 메일을 보내주세요.
             </>,
             "메일 본문에 가입한 이메일 주소를 적어주세요 (계정 확인용).",
-            "운영팀이 본인 확인 후 영업일 기준 3일 이내에 삭제 처리합니다.",
+            "운영팀이 본인 확인 후 영업일 기준 3일 이내에 탈퇴 처리합니다.",
             "처리 완료 시 동일 이메일로 결과 안내드립니다.",
           ]}
         >
@@ -105,12 +107,12 @@ export default function AccountDeletionPage() {
             href={mailto}
             className="mt-3 inline-flex items-center gap-2 rounded-xl bg-white px-5 py-3 text-sm font-bold text-slate-700 hover:bg-slate-50"
           >
-            ✉️ 삭제 요청 메일 작성하기
+            ✉️ 탈퇴 요청 메일 작성하기
           </a>
         </Step>
       </Section>
 
-      <Section title="2. 삭제되는 데이터 (영구 삭제, 복구 불가)">
+      <Section title="2. 탈퇴 시 삭제되는 데이터 (영구 삭제, 복구 불가)">
         <ul className="list-disc space-y-1.5 pl-5">
           <li>로그인 계정 (이메일 / Google OAuth 연결 정보)</li>
           <li>이름·닉네임·프로필 이미지 URL</li>
@@ -126,7 +128,7 @@ export default function AccountDeletionPage() {
       <Section title="3. 보관되는 데이터 (사용자 식별 정보 제거 후)">
         <p className="mb-2">
           다음 항목은 서비스 운영·통계 목적으로 익명화된 상태로 보관됩니다.
-          삭제 후엔 어떤 방법으로도 사용자를 식별할 수 없습니다.
+          탈퇴 후엔 어떤 방법으로도 사용자를 식별할 수 없습니다.
         </p>
         <ul className="list-disc space-y-1.5 pl-5">
           <li>
@@ -147,7 +149,7 @@ export default function AccountDeletionPage() {
         </p>
       </Section>
 
-      <Section title="4. 삭제 후 재가입">
+      <Section title="4. 탈퇴 후 재가입">
         <p>
           동일 이메일로 다시 가입 가능합니다. 단, 이전 데이터(자녀 정보·
           관심 카드 등)는 복구되지 않고 새 계정으로 시작됩니다.
@@ -156,7 +158,7 @@ export default function AccountDeletionPage() {
 
       <Section title="5. 문의">
         <p>
-          삭제 처리·개인정보 관련 문의는{" "}
+          탈퇴 처리·개인정보 관련 문의는{" "}
           <a
             href={`mailto:${SUPPORT_EMAIL}`}
             className="font-semibold text-rose-600 underline"

@@ -206,7 +206,7 @@ export default function PrivacyPage() {
           로 보내주세요. 영업일 기준 3일 이내 답변드립니다.
         </p>
         <p className="mt-2">
-          계정 삭제 요청은{" "}
+          회원 탈퇴는{" "}
           <a
             href="/account-deletion"
             className="font-semibold text-slate-700 underline"

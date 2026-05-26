@@ -131,11 +131,14 @@ https://umbba-radar.com/privacy
 
 ---
 
-## 계정 삭제 안내 URL (Google Play 2024년~ 필수)
+## 계정 삭제(회원 탈퇴) 안내 URL (Google Play 2024년~ 필수)
 
 ```
 https://umbba-radar.com/account-deletion
 ```
+
+> URL은 Play 정책 표준 키워드 "account-deletion" 유지.
+> 페이지 안 UI 표현은 사용자 친화 "회원 탈퇴"로 통일.
 
 ---
 
