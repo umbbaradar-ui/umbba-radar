@@ -153,11 +153,14 @@ export function PostForm({ post, defaults, action, submitLabel, errorMessage }: 
         <Field label="신청 방법 / 후기 요약">
           <textarea
             name="body"
-            rows={4}
+            rows={14}
             defaultValue={v.body ?? ""}
             placeholder="예: 인스타 댓글 + 친구 태그 → 30명 추첨"
-            className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+            className="block w-full min-h-[320px] resize-y rounded-lg border border-slate-200 px-3 py-2 text-sm leading-relaxed"
           />
+          <p className="mt-1 text-[11px] text-slate-500">
+            CLI 자동 등록 시 인스타 캡션이 그대로 들어와요 (최대 2000자). 모서리 드래그로 더 늘릴 수 있어요.
+          </p>
         </Field>
 
         <Field label="검색 키워드 (동의어·유사어)">
