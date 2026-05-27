@@ -157,8 +157,12 @@ export async function POST(
     );
   }
 
-  // 6. Vision API 호출 (이미지 input)
-  const vis = await extractFromImageBytes(new Uint8Array(bytes), image_mime);
+  // 6. Vision API 호출 (이미지 + 캡션 input — 캡션을 1차 정보원으로 활용)
+  const vis = await extractFromImageBytes(
+    new Uint8Array(bytes),
+    image_mime,
+    caption ?? null
+  );
   if (!vis) {
     // Vision 실패 — 이미지만 박힌 단순 draft 저장 (사용자가 큐에서 정리)
     const { data: inserted, error: insertError } = await supabaseServer

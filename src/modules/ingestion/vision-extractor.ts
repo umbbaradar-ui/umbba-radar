@@ -46,13 +46,17 @@ export interface VisionExtractResult {
   deadline: string | null;
 }
 
-const VISION_SYSTEM_PROMPT = `당신은 한국 육아 정보 큐레이션 사이트 "엄빠레이더"의 이미지 분석 AI입니다.
-인스타그램·블로그에서 가져온 협찬·체험단·후기 이미지를 보고 구조화된 정보를 추출해주세요.
+const VISION_SYSTEM_PROMPT = `당신은 한국 육아 정보 큐레이션 사이트 "엄빠레이더"의 컨텐츠 분석 AI입니다.
+인스타그램에서 가져온 협찬·체험단·후기 게시물을 보고 구조화된 정보를 추출해주세요.
 
-이미지에서 다음을 모두 활용해 추출:
-- 이미지 안의 텍스트 (제품명, 이벤트명, 신청 방법, 마감일 등)
-- 시각적 정보 (제품 종류, 브랜드 로고, 인물 등)
-- 분위기·맥락 (모집 공고인지, 후기인지)
+# 정보원 우선순위 (중요)
+**사용자 메시지에 "[캡션]" 본문이 포함되어 있으면 그게 1차 정보원입니다.**
+1. **캡션 본문 (최우선)**: 정확한 제품명·브랜드명·마감일·시기·신청 방법이 글로 명시되어 있음
+2. **이미지 안의 텍스트** (보조): OCR 한계로 오타 가능, 캡션과 충돌하면 캡션 신뢰
+3. **이미지 시각 정보** (보조): 제품 종류·연령대·분위기 단서
+
+캡션이 짧거나 정보 부족할 때만 이미지에 의존하세요.
+캡션에 명시된 제품명·브랜드명·날짜는 절대 이미지 OCR 으로 덮어쓰지 마세요.
 
 # 출력 JSON
 {
@@ -66,21 +70,34 @@ const VISION_SYSTEM_PROMPT = `당신은 한국 육아 정보 큐레이션 사이
   "stage_categories": Array<"pregnancy"|"newborn"|"infant"|"toddler"|"elementary"|"all_ages">,
   "type_tags": Array<"regram"|"experience"|"kids_model"|"supporters"|"form">,
   "topic": "parenting" | "living",          // 콘텐츠 주제 (필수)
-  "deadline": string | null                 // ISO 8601 with +09:00. 명확히 적혀있을 때만, 아니면 null
+  "deadline": string | null                 // ISO 8601 with +09:00. 캡션에서 적극 추출, 없으면 null
 }
 
-# brand_name 표기 규칙 (한글 우선)
-- 한국 사용자가 검색·인지하기 쉬운 한글 표기 우선
-- 예: "BEBERO" → "베베로", "Kakao" → "카카오", "LG H&H" → "LG생활건강", "Pampers" → "팸퍼스"
-- 예외 (알파벳 약자가 보편적): LG, SK, GS, CJ, CU, GS25, NH, KB 등은 영문 유지
-- 한글 옆 영문 병기는 X (예: "베베로 (BEBERO)" 금지 — 한 가지 표기만)
-- 모호하면 한글 우선 (육아 사이트 디폴트)
+# deadline 추출 (캡션 본문 우선 적극 탐색)
+캡션에 자주 나오는 패턴:
+- "~까지", "마감: X월 Y일", "X월 Y일(요일) 자정", "X/Y 23:59", "선착순 N명 (~ 마감)"
+- "이번 주 일요일까지" → 게시일 기준 가장 가까운 일요일 23:59 KST 로 변환
+- "오늘부터 7일간", "1주일간" → 게시일 + 해당 기간
+- "당첨자 발표 X월 Y일" → 발표일 직전 또는 별도 추출 가능
+- 명시 없으면 null (자동으로 deadline_unknown 처리됨)
 
-# 제목 톤 일관성
-- 끝맺음: "신청", "모집", "증정", "체험단 모집", "후기 모집" 같은 명사·명사구로 종결
-- 불필요한 이모지·해시태그 제거 ("✨", "#육아맘" 등 X)
-- 마침표·물음표·느낌표 금지
-- 60자 이내 권장
+# 제목 작성 규칙 (가장 중요 — 캡션 우선)
+- **캡션에 명시된 핵심 제품·이벤트명을 그대로** 사용. 추측·요약 X.
+  - 좋은 예: "예비맘의 첫 병 이벤트" 캡션에 "신생아 젖병 2종 증정" 명시 → 제목: "신생아 젖병 2종 증정"
+  - 좋은 예: "콜라보 제품 증정" 캡션에 "만능 멀티 티슈 100매" 명시 → 제목: "만능 멀티 티슈 증정"
+  - 나쁜 예: 이미지의 헤드라인만 보고 "콜라보 제품 증정" 으로 끝냄 (제품 정체 누락)
+- 끝맺음: "신청", "모집", "증정", "체험단 모집", "후기 모집" 같은 명사구로 종결
+- 마케팅 수사 ("최고", "절대 놓치지 마세요") 제거하고 사실만
+- 이모지·해시태그·마침표·물음표·느낌표 금지
+- 50자 이내 권장 (모바일 카드 한 줄)
+
+# brand_name 표기 규칙 (캡션 우선·한글 우선)
+- **캡션에 @brand 또는 #브랜드 또는 본문 텍스트에 명시된 브랜드명을 그대로** 한글로
+- 이미지 OCR 만으로 추측 X (오타 위험: "순수아" → "순수다" 같은 OCR 오류 방지)
+- 한글 표기: "BEBERO" → "베베로", "Kakao" → "카카오", "Pampers" → "팸퍼스"
+- 예외 (알파벳 약자 보편): LG, SK, GS, CJ, CU, NH, KB 등 영문 유지
+- 한글 옆 영문 병기 X (예: "베베로 (BEBERO)" 금지)
+- 캡션·이미지 어디에도 브랜드 단서 없으면 null (추측보다 빈값이 나음)
 
 # kind 분류
 - recruiting: 신청·모집 공고 (대부분 이걸로 분류 — 후기·체험단·이벤트 모두 모집중으로)
@@ -110,13 +127,19 @@ const VISION_SYSTEM_PROMPT = `당신은 한국 육아 정보 큐레이션 사이
 - "조리원" → "산후조리원,산후도우미"
 - "유모차" → "스트롤러,유모차세트"
 
-# stage_categories
-- pregnancy: 임신중
-- newborn: 신생아 (~3개월)
-- infant: 영아 (~12개월)
-- toddler: 유아 (1~7세, 유치원 포함)
-- elementary: 초등생 (8~13세)
-- all_ages: 전연령 (특정 시기 무관, 식탁세트·청소기·가전·식품 등 가족 단위 제품. 이미지에서 시기 단서가 없으면 이걸 단독 선택)
+# stage_categories (캡션에서 시기 단서 적극 추출)
+- pregnancy: 임신중 — 산모·임산부·예비맘·태교·산후조리원
+- newborn: 신생아 0~3개월 — 신생아·산후·조리원·배냇·모빌·젖병(첫 단계)·분유(1단계)
+- infant: 영아 4~12개월 — 이유식·기저귀·옹알이·뒤집기·앉기·이가 나기·치발기·범퍼침대
+- toddler: 유아 1~7세 — 유치원·어린이집·식판·키즈카페·교구·동화책·말 트이기·배변훈련
+- elementary: 초등생 8~13세 — 초등학교·학용품·방과후·습관 만들기
+- all_ages: 전연령 — 식기·청소기·가전·식품·살림용품 등 **시기 무관 가족 단위 제품에만** 사용
+
+**시기 분류 룰 (중요)**:
+- 이유식·젖꼭지·치발기·기저귀 같은 키워드는 **절대 all_ages 단독 X** → 해당 시기 명시
+- 캡션에 "0~3개월", "백일 아기", "신생아용" 같은 직접 표현 있으면 그대로 매칭
+- 캡션에 시기 단서 없어도 제품 종류로 추론 가능하면 추론 (예: "이유식 큐브" → infant + toddler)
+- 정말 어른·가족 단위(공기청정기, 식기세트)일 때만 all_ages
 
 한국어 출력. JSON만 반환. 마크다운 백틱 금지.`;
 
@@ -145,13 +168,31 @@ function parseVisionJson(text: string): VisionExtractResult | null {
   }
 }
 
+/** caption 이 있으면 user message 에 prefix 로 붙일 텍스트 */
+function buildUserPrompt(caption: string | null | undefined): string {
+  const trimmed = caption?.trim();
+  if (!trimmed) {
+    return "캡션을 못 받았어요. 이미지만 보고 분석해 구조화된 JSON으로 정보를 반환해주세요. 마크다운 백틱 없이 JSON만.";
+  }
+  // 캡션이 너무 길면 token 절약 위해 자름 (2000자 = 약 1000 tokens)
+  const capped = trimmed.length > 2000 ? trimmed.slice(0, 2000) + "…" : trimmed;
+  return (
+    `다음 인스타그램 게시물의 [캡션] 본문이에요. ` +
+    `**캡션이 1차 정보원**이고 이미지는 보조입니다. ` +
+    `캡션의 제품명·브랜드명·마감일·시기 단서를 적극 활용해서 ` +
+    `구조화된 JSON 으로 반환해주세요. 마크다운 백틱 없이 JSON만.\n\n` +
+    `[캡션]\n${capped}`
+  );
+}
+
 /**
  * Gemini Vision 분기
  * HEIC, HEIF, JPEG, PNG, WEBP 모두 직접 지원
  */
 async function extractFromImageBytesGemini(
   imageBytes: Uint8Array,
-  mimeType: string
+  mimeType: string,
+  caption: string | null | undefined
 ): Promise<VisionExtractResult | null> {
   if (!GEMINI_API_KEY) {
     throw new Error(
@@ -169,7 +210,7 @@ async function extractFromImageBytesGemini(
       {
         role: "user",
         parts: [
-          { text: "이 이미지를 분석해 구조화된 JSON으로 정보를 반환해주세요." },
+          { text: buildUserPrompt(caption) },
           { inline_data: { mime_type: mimeType, data: base64 } },
         ],
       },
@@ -215,7 +256,8 @@ async function extractFromImageBytesGemini(
  */
 async function extractFromImageBytesClaude(
   imageBytes: Uint8Array,
-  mimeType: string
+  mimeType: string,
+  caption: string | null | undefined
 ): Promise<VisionExtractResult | null> {
   const client = getAnthropic();
 
@@ -261,7 +303,7 @@ async function extractFromImageBytesClaude(
             },
             {
               type: "text",
-              text: "이 이미지를 분석해 구조화된 JSON으로 정보를 반환해주세요. 마크다운 백틱 없이 JSON만.",
+              text: buildUserPrompt(caption),
             },
           ],
         },
@@ -293,17 +335,21 @@ async function extractFromImageBytesClaude(
 }
 
 /**
- * 이미지 바이트 + MIME → 구조화 결과
+ * 이미지 바이트 + MIME (+ 선택적 캡션) → 구조화 결과
  * VISION_PROVIDER env 로 Claude / Gemini 선택 (기본 claude)
+ *
+ * caption 이 주어지면 1차 정보원으로 활용 (이미지보다 우선) — 정확도 대폭 향상.
+ * CLI 가 gallery-dl 로 받은 인스타 캡션을 그대로 넘기는 게 권장.
  */
 export async function extractFromImageBytes(
   imageBytes: Uint8Array,
-  mimeType: string
+  mimeType: string,
+  caption?: string | null
 ): Promise<VisionExtractResult | null> {
   if (VISION_PROVIDER === "gemini") {
-    return extractFromImageBytesGemini(imageBytes, mimeType);
+    return extractFromImageBytesGemini(imageBytes, mimeType, caption);
   }
-  return extractFromImageBytesClaude(imageBytes, mimeType);
+  return extractFromImageBytesClaude(imageBytes, mimeType, caption);
 }
 
 interface UrlExtractOutput {
