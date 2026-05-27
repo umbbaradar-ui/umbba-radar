@@ -31,6 +31,11 @@ import tempfile
 from pathlib import Path
 from typing import Optional, TypedDict
 
+# Windows 콘솔(cp949) 이모지 깨짐 방지 — PowerShell·cmd·작업 스케줄러 모두 대응
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+
 try:
     import requests
     from dotenv import load_dotenv
