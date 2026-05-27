@@ -70,6 +70,12 @@ export default async function AdminPrivateLayout({
               통계
             </Link>
             <Link
+              href="/admin/users"
+              className="rounded-full px-3 py-1 text-xs font-medium text-slate-600 hover:bg-slate-100"
+            >
+              회원 관리
+            </Link>
+            <Link
               href="/admin/new"
               className="rounded-full px-3 py-1 text-xs font-medium text-slate-600 hover:bg-slate-100"
             >
