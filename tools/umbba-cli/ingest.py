@@ -625,8 +625,8 @@ def main() -> int:
     parser.add_argument(
         "--recent",
         type=int,
-        default=5,
-        help="--scan 모드에서 각 계정 최근 N개 게시물 검사 (기본 5)",
+        default=3,
+        help="--scan 모드에서 각 계정 최근 N개 게시물 검사 (기본 3, 봇 의심 완화)",
     )
     parser.add_argument(
         "--dry-run",
