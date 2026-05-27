@@ -40,7 +40,14 @@ export function FilterBar({
   function buildUrl(overrides: Partial<Record<string, string>>) {
     const current = { stage, type, topic, sort, q, ...overrides };
     const params = new URLSearchParams();
-    if (current.stage && current.stage !== "all") params.set("stage", current.stage);
+    // stage: 자녀 있는 사용자는 "all" 도 URL 에 명시해야 디폴트(my_child) fallback 무력화됨
+    // 자녀 없는 사용자는 "all" 이 진짜 디폴트라 URL 에서 생략
+    if (
+      current.stage &&
+      (current.stage !== "all" || hasChildren)
+    ) {
+      params.set("stage", current.stage);
+    }
     if (current.type && current.type !== "all") params.set("type", current.type);
     if (current.topic && current.topic !== "all") params.set("topic", current.topic);
     if (current.sort && current.sort !== "deadline_asc") params.set("sort", current.sort);
