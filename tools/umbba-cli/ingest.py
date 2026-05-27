@@ -400,8 +400,13 @@ def scan_one_account(username: str, recent: int) -> tuple[list[str], str | None]
     한 계정의 최근 N개 게시물 URL 추출 (gallery-dl --simulate)
     이미지 다운 X. JSON 메타만 stdout 으로 받음.
     반환: (urls, error_message_or_None)
+
+    중요:
+      - URL 은 반드시 /posts/ 까지 줘야 함 (그래야 개별 post 메타 추출)
+      - gallery-dl -j 출력은 indented JSON 한 덩어리 (줄 단위 X)
+        구조: [[type, ...], [type, ...], ...] — type=2 가 post 메타
     """
-    url = f"https://www.instagram.com/{username}/"
+    url = f"https://www.instagram.com/{username}/posts/"
     cmd = [
         *GALLERY_DL_CMD,
         "--simulate",
@@ -429,33 +434,46 @@ def scan_one_account(username: str, recent: int) -> tuple[list[str], str | None]
         last = err[-1] if err else "(에러 메시지 없음)"
         return [], last[:200]
 
-    # gallery-dl -j 출력은 각 줄이 JSON 배열 또는 객체
-    # post URL 추출: 'post_shortcode' 또는 'shortcode' 필드 우선, 없으면 'url'
+    # gallery-dl -j 출력 = 전체가 하나의 JSON 배열
+    # 각 entry = [type:int, url:str?, meta:dict?]
+    #   type=2: pre-download (post 메타)
+    #   type=3: file (개별 미디어 메타, post_url/post_shortcode 도 포함)
+    stdout = (result.stdout or "").strip()
+    if not stdout:
+        return [], None  # 게시물 0개 (정상 — 신규 계정 등)
+    try:
+        payload = json.loads(stdout)
+    except json.JSONDecodeError as e:
+        return [], f"JSON 파싱 실패: {e}"
+
     urls: list[str] = []
     seen = set()
-    for line in (result.stdout or "").splitlines():
-        line = line.strip()
-        if not line:
+    if not isinstance(payload, list):
+        return [], None
+
+    for entry in payload:
+        if not isinstance(entry, list):
             continue
-        try:
-            payload = json.loads(line)
-        except Exception:
-            continue
-        # gallery-dl -j 는 [step, url, meta] 형태 배열을 줄 단위로 출력
+        # meta dict 는 entry 중 dict 타입인 마지막 요소
         meta = None
-        if isinstance(payload, list) and len(payload) >= 3:
-            meta = payload[2]
-        elif isinstance(payload, dict):
-            meta = payload
-        if not isinstance(meta, dict):
+        for item in entry:
+            if isinstance(item, dict):
+                meta = item
+        if not meta:
             continue
-        shortcode = meta.get("post_shortcode") or meta.get("shortcode")
-        if not shortcode:
+        # post_url 또는 post_shortcode 에서 추출
+        post_url = meta.get("post_url")
+        if not post_url:
+            shortcode = meta.get("post_shortcode") or meta.get("shortcode")
+            if shortcode:
+                post_url = f"https://www.instagram.com/p/{shortcode}/"
+        if not post_url:
             continue
-        post_url = f"https://www.instagram.com/p/{shortcode}/"
-        if post_url not in seen:
-            seen.add(post_url)
-            urls.append(post_url)
+        if post_url in seen:
+            continue
+        seen.add(post_url)
+        urls.append(post_url)
+
     return urls, None
 
 
