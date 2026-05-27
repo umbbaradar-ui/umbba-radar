@@ -69,6 +69,19 @@ const VISION_SYSTEM_PROMPT = `당신은 한국 육아 정보 큐레이션 사이
   "deadline": string | null                 // ISO 8601 with +09:00. 명확히 적혀있을 때만, 아니면 null
 }
 
+# brand_name 표기 규칙 (한글 우선)
+- 한국 사용자가 검색·인지하기 쉬운 한글 표기 우선
+- 예: "BEBERO" → "베베로", "Kakao" → "카카오", "LG H&H" → "LG생활건강", "Pampers" → "팸퍼스"
+- 예외 (알파벳 약자가 보편적): LG, SK, GS, CJ, CU, GS25, NH, KB 등은 영문 유지
+- 한글 옆 영문 병기는 X (예: "베베로 (BEBERO)" 금지 — 한 가지 표기만)
+- 모호하면 한글 우선 (육아 사이트 디폴트)
+
+# 제목 톤 일관성
+- 끝맺음: "신청", "모집", "증정", "체험단 모집", "후기 모집" 같은 명사·명사구로 종결
+- 불필요한 이모지·해시태그 제거 ("✨", "#육아맘" 등 X)
+- 마침표·물음표·느낌표 금지
+- 60자 이내 권장
+
 # kind 분류
 - recruiting: 신청·모집 공고 (대부분 이걸로 분류 — 후기·체험단·이벤트 모두 모집중으로)
 - group_buy: 공동구매 (드물게, "공구" "공동구매" 명시된 경우만)
@@ -224,7 +237,16 @@ async function extractFromImageBytesClaude(
       model: CLAUDE_MODEL,
       max_tokens: 1024,
       temperature: 0.2,
-      system: VISION_SYSTEM_PROMPT,
+      // ephemeral cache_control → 5분 TTL 안에서 동일 system prompt 재사용 시
+      // cached input price 90% 할인 (Claude Sonnet 기준 $3 → $0.30/1M).
+      // CLI 가 배치 5개를 연속 호출하면 1번째만 정가, 2~5번째는 cache hit.
+      system: [
+        {
+          type: "text",
+          text: VISION_SYSTEM_PROMPT,
+          cache_control: { type: "ephemeral" },
+        },
+      ],
       messages: [
         {
           role: "user",
@@ -245,6 +267,15 @@ async function extractFromImageBytesClaude(
         },
       ],
     });
+
+    // 토큰 사용량 로깅 (캐시 hit 확인용)
+    const u = msg.usage;
+    console.log(
+      `[vision-extractor] Claude tokens: input=${u.input_tokens} ` +
+        `cache_create=${u.cache_creation_input_tokens ?? 0} ` +
+        `cache_read=${u.cache_read_input_tokens ?? 0} ` +
+        `output=${u.output_tokens}`
+    );
 
     const textBlock = msg.content.find((b) => b.type === "text");
     if (!textBlock || textBlock.type !== "text") {
