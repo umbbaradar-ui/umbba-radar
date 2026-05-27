@@ -328,6 +328,193 @@ def process_url(url: str, queue_id: str | None, dry_run: bool) -> str:
             return "failed"
 
 
+# ============================================
+# --scan 모드 — 활성 인스타 계정 순회 → 신규 게시물 URL 만 큐에 push
+# Claude 호출 안 함 (비용 0). 큐는 사용자가 수동으로 --pull 트리거.
+# ============================================
+
+def fetch_active_usernames() -> list[str]:
+    """서버에서 활성 모니터링 계정 목록 가져옴"""
+    if not API_TOKEN:
+        return []
+    try:
+        r = requests.get(
+            f"{API_URL}/api/admin/accounts/active",
+            headers={"Authorization": f"Bearer {API_TOKEN}"},
+            timeout=30,
+        )
+        data = r.json()
+        if not data.get("ok"):
+            print(f"❌ accounts/active 실패: {data.get('error', 'unknown')}")
+            return []
+        return data.get("usernames", [])
+    except requests.RequestException as e:
+        print(f"❌ accounts/active 네트워크 오류: {e}")
+        return []
+
+
+def report_account_scan(
+    username: str, new_count: int, error: str | None = None
+) -> None:
+    """스캔 결과를 서버에 보고 (last_scanned_at 등 업데이트)"""
+    if not API_TOKEN:
+        return
+    body = {"username": username, "new_count": new_count}
+    if error:
+        body["error"] = error[:500]
+    try:
+        requests.post(
+            f"{API_URL}/api/admin/accounts/report",
+            headers={
+                "Authorization": f"Bearer {API_TOKEN}",
+                "Content-Type": "application/json",
+            },
+            json=body,
+            timeout=30,
+        )
+    except requests.RequestException as e:
+        print(f"    ⚠️ 스캔 보고 실패: {e}")
+
+
+def push_urls_to_queue(urls: list[str]) -> dict:
+    """발견된 URL 목록을 큐에 추가 (이미 있는 건 서버에서 자동 스킵)"""
+    if not API_TOKEN or not urls:
+        return {"ok": False, "error": "no token or empty"}
+    try:
+        r = requests.post(
+            f"{API_URL}/api/admin/queue/add",
+            headers={
+                "Authorization": f"Bearer {API_TOKEN}",
+                "Content-Type": "application/json",
+            },
+            json={"urls": urls},
+            timeout=30,
+        )
+        return r.json()
+    except requests.RequestException as e:
+        return {"ok": False, "error": str(e)}
+
+
+def scan_one_account(username: str, recent: int) -> tuple[list[str], str | None]:
+    """
+    한 계정의 최근 N개 게시물 URL 추출 (gallery-dl --simulate)
+    이미지 다운 X. JSON 메타만 stdout 으로 받음.
+    반환: (urls, error_message_or_None)
+    """
+    url = f"https://www.instagram.com/{username}/"
+    cmd = [
+        *GALLERY_DL_CMD,
+        "--simulate",
+        "-j",  # JSON 메타만 stdout
+        "--range", f"1-{recent}",
+    ]
+    if COOKIES_FILE:
+        cmd += ["--cookies", COOKIES_FILE]
+    elif COOKIES_BROWSER:
+        cmd += ["--cookies-from-browser", COOKIES_BROWSER]
+    cmd.append(url)
+
+    try:
+        result = subprocess.run(
+            cmd, capture_output=True, text=True, timeout=60,
+            encoding="utf-8", errors="replace",
+        )
+    except subprocess.TimeoutExpired:
+        return [], "gallery-dl timeout (60s)"
+    except Exception as e:
+        return [], f"gallery-dl 실행 오류: {e}"
+
+    if result.returncode != 0:
+        err = (result.stderr or "").strip().splitlines()
+        last = err[-1] if err else "(에러 메시지 없음)"
+        return [], last[:200]
+
+    # gallery-dl -j 출력은 각 줄이 JSON 배열 또는 객체
+    # post URL 추출: 'post_shortcode' 또는 'shortcode' 필드 우선, 없으면 'url'
+    urls: list[str] = []
+    seen = set()
+    for line in (result.stdout or "").splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            payload = json.loads(line)
+        except Exception:
+            continue
+        # gallery-dl -j 는 [step, url, meta] 형태 배열을 줄 단위로 출력
+        meta = None
+        if isinstance(payload, list) and len(payload) >= 3:
+            meta = payload[2]
+        elif isinstance(payload, dict):
+            meta = payload
+        if not isinstance(meta, dict):
+            continue
+        shortcode = meta.get("post_shortcode") or meta.get("shortcode")
+        if not shortcode:
+            continue
+        post_url = f"https://www.instagram.com/p/{shortcode}/"
+        if post_url not in seen:
+            seen.add(post_url)
+            urls.append(post_url)
+    return urls, None
+
+
+def run_scan_mode(recent: int, dry_run: bool) -> int:
+    """매일 저녁용: 활성 계정 순회 → 신규 게시물 URL 큐 push (Claude 호출 X)"""
+    usernames = fetch_active_usernames()
+    if not usernames:
+        print("📡 활성 모니터링 계정 0개. /admin/accounts 에서 등록해주세요.")
+        return 0
+
+    print(f"🔭 스캔 시작: {len(usernames)}개 계정, 각 최근 {recent}개 게시물")
+    print(f"   API: {API_URL}")
+    if dry_run:
+        print(f"   모드: DRY RUN (큐 추가·서버 보고 X)")
+    print()
+
+    total_found = 0
+    total_added = 0
+    total_failed = 0
+
+    for i, username in enumerate(usernames, 1):
+        print(f"[{i}/{len(usernames)}] @{username}")
+        urls, err = scan_one_account(username, recent)
+        if err:
+            print(f"    ⚠ {err}")
+            total_failed += 1
+            if not dry_run:
+                report_account_scan(username, 0, err)
+        else:
+            print(f"    📡 게시물 {len(urls)}개 메타 fetch")
+            total_found += len(urls)
+            if urls and not dry_run:
+                push = push_urls_to_queue(urls)
+                if push.get("ok"):
+                    added = push.get("added", 0)
+                    total_added += added
+                    if added > 0:
+                        print(f"    ✨ 큐 추가: {added}개 신규 (나머지는 이미 있음)")
+                    else:
+                        print(f"    · 신규 없음 (모두 이미 등록)")
+                    report_account_scan(username, added, None)
+                else:
+                    print(f"    ❌ 큐 push 실패: {push.get('error')}")
+                    report_account_scan(username, 0, push.get("error"))
+            elif urls and dry_run:
+                for u in urls:
+                    print(f"      · {u}")
+
+        if i < len(usernames) and SLEEP_BETWEEN_URLS > 0:
+            import time
+            time.sleep(SLEEP_BETWEEN_URLS)
+
+    print()
+    print(f"✅ 스캔 완료: 게시물 {total_found}개 fetch, "
+          f"큐 신규 추가 {total_added}개, 실패 {total_failed}계정")
+    print(f"   처리 시작: py ingest.py --pull --limit 10")
+    return 0
+
+
 def run_file_mode(file_path: Path, dry_run: bool) -> int:
     """기존 모드: urls.txt 파일에서 읽어서 처리 (큐 미경유)"""
     urls = parse_urls(file_path)
@@ -407,10 +594,21 @@ def main() -> int:
         help="서버 ingest_queue 에서 todo N개 fetch → 처리 (작업 스케줄러 모드)",
     )
     parser.add_argument(
+        "--scan",
+        action="store_true",
+        help="활성 인스타 계정 순회 → 신규 게시물 URL 만 큐에 push (Claude 호출 X)",
+    )
+    parser.add_argument(
         "--limit",
         type=int,
         default=5,
         help="--pull 모드에서 한 번에 가져올 개수 (기본 5, 최대 20)",
+    )
+    parser.add_argument(
+        "--recent",
+        type=int,
+        default=5,
+        help="--scan 모드에서 각 계정 최근 N개 게시물 검사 (기본 5)",
     )
     parser.add_argument(
         "--dry-run",
@@ -423,12 +621,18 @@ def main() -> int:
         print("⚠️  .env에 ADMIN_CLI_TOKEN 설정 필요 (.env.example 참조)")
         return 1
 
+    if args.scan:
+        return run_scan_mode(
+            recent=min(max(args.recent, 1), 20),
+            dry_run=args.dry_run,
+        )
+
     if args.pull:
         return run_pull_mode(limit=min(max(args.limit, 1), 20),
                              dry_run=args.dry_run)
 
     if not args.file:
-        parser.error("파일 인자 또는 --pull 중 하나가 필요해요.")
+        parser.error("파일 인자 또는 --pull / --scan 중 하나가 필요해요.")
 
     return run_file_mode(args.file, dry_run=args.dry_run)
 

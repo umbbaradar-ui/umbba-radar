@@ -76,6 +76,12 @@ export default async function AdminPrivateLayout({
               회원 관리
             </Link>
             <Link
+              href="/admin/accounts"
+              className="rounded-full px-3 py-1 text-xs font-medium text-slate-600 hover:bg-slate-100"
+            >
+              팔로잉 계정
+            </Link>
+            <Link
               href="/admin/new"
               className="rounded-full px-3 py-1 text-xs font-medium text-slate-600 hover:bg-slate-100"
             >
