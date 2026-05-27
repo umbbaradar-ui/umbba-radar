@@ -1,21 +1,29 @@
 // ============================================
-// URL 일괄 등록 — /admin/bulk-ingest (Phase 1.5 자동화)
+// URL 큐 일괄 등록 — /admin/bulk-ingest
 //
-// 흐름:
-//   1) 발견한 인스타·블로그 URL들을 텍스트박스에 줄바꿈으로 입력
-//   2) "일괄 등록" 클릭 → 각 URL을 source_url로 draft 자동 생성
-//   3) 외부 도구 1클릭 패널 동시 노출 (savefrom/iloveimg/gramfetchr)
-//   4) /admin/queue에서 각 카드의 이미지·캡션·AI 분류 마무리
+// 흐름 (Phase 2 큐 자동화):
+//   1) 관리자가 인스타 URL 들을 textarea 에 줄바꿈으로 입력
+//   2) Server Action 이 URL 정규화 + 중복 제거 → ingest_queue 에 'todo' 로 저장
+//   3) 로컬 PC 의 CLI 가 1시간마다 'todo' N개를 pull → 다운로드 + Claude 분류 → 'done'/'failed'
+//   4) 결과 카드는 /admin/queue 의 검수 큐로 자동 진입 (pending)
 //
-// 단일 카드 작성(/admin/new)과 분리한 이유: 발견·등록 vs 정리 작업 머리 분리.
+// 이 페이지에서는 URL 입력 + 큐 상태 모니터링만 담당.
+// 실제 처리는 CLI 가 백그라운드로 진행.
 // ============================================
 
 import Link from "next/link";
 import { BulkIngestForm } from "./BulkIngestForm";
+import { QueueList } from "./QueueList";
+import { getQueueStats, listQueue } from "@/modules/ingestion/queue/repository";
 
 export const dynamic = "force-dynamic";
 
-export default function BulkIngestPage() {
+export default async function BulkIngestPage() {
+  const [stats, items] = await Promise.all([
+    getQueueStats(),
+    listQueue(100),
+  ]);
+
   return (
     <main className="mx-auto max-w-3xl px-5 py-6">
       <header className="mb-6">
@@ -26,46 +34,91 @@ export default function BulkIngestPage() {
           ← 관리자 홈
         </Link>
         <h1 className="mt-2 text-2xl font-extrabold tracking-tight text-slate-900">
-          URL 일괄 등록
+          URL 일괄 등록 큐
         </h1>
         <p className="mt-2 text-sm text-slate-600">
-          발견한 인스타·블로그 URL을 줄바꿈으로 한 번에 입력하세요. 각 URL이{" "}
-          <strong>draft 카드</strong>로 생성됩니다.{" "}
+          인스타 URL을 큐에 등록만 하시면, 로컬 CLI가 <strong>1시간마다 자동으로</strong> 5개씩
+          가져가 다운로드 + Claude 분류 + 카드 생성까지 처리합니다.
+        </p>
+        <p className="mt-1 text-xs text-slate-500">
+          처리된 카드는{" "}
           <Link
             href="/admin/queue"
             className="text-rose-600 underline hover:text-rose-700"
           >
             /admin/queue
           </Link>{" "}
-          에서 이미지·캡션·AI 분류를 이어 진행하세요.
+          (승인대기) 에 모입니다 → 검수 후 발행.
         </p>
       </header>
 
+      {/* 통계 카드 */}
+      <section className="mb-5 grid grid-cols-5 gap-2 text-center">
+        <StatCard label="대기" value={stats.todo} color="slate" />
+        <StatCard label="처리중" value={stats.processing} color="amber" />
+        <StatCard label="완료" value={stats.done} color="emerald" />
+        <StatCard label="중복" value={stats.duplicate} color="zinc" />
+        <StatCard label="실패" value={stats.failed} color="rose" />
+      </section>
+
       <BulkIngestForm />
 
+      <section className="mt-8">
+        <h2 className="mb-3 text-sm font-bold text-slate-900">
+          최근 큐 항목 (최대 100개)
+        </h2>
+        <QueueList items={items} />
+      </section>
+
       <section className="mt-6 rounded-2xl border border-slate-100 bg-white p-5 text-xs leading-relaxed text-slate-600 shadow-sm">
-        <h2 className="mb-2 text-sm font-bold text-slate-900">💡 사용 팁</h2>
+        <h2 className="mb-2 text-sm font-bold text-slate-900">💡 운영 흐름</h2>
         <ul className="space-y-1.5 pl-4 list-disc">
           <li>
-            인스타 게시물 URL 형식:{" "}
-            <code className="rounded bg-slate-100 px-1.5">
-              https://www.instagram.com/p/...
-            </code>
+            <strong>큐 등록</strong>: 인스타 URL 정규화 후 중복 제거 (이미 큐에
+            있거나 이미 카드로 등록된 URL은 자동 스킵).
           </li>
           <li>
-            <strong>중복 URL은 자동 스킵</strong>됩니다 (이미 등록된 URL은 결과에
-            표시).
+            <strong>CLI 자동 처리</strong>: 로컬 PC 의 Windows 작업 스케줄러가
+            1시간마다 <code className="rounded bg-slate-100 px-1">py ingest.py --pull</code>{" "}
+            실행. todo 5개 가져와서 처리 후 결과 보고.
           </li>
           <li>
-            등록된 카드는 모두 <strong>draft</strong> 상태로 시작. 큐에서 이미지
-            업로드 + AI 자동 분류 → 검수 후 published.
+            <strong>실패 항목</strong>: 인스타 비공개·삭제·쿠키 만료 등으로
+            실패하면 status=failed + 에러 메시지 기록. 재시도 버튼으로 다시 todo
+            화 가능.
           </li>
           <li>
-            한 번에 100건 정도까지는 안전. 너무 많으면 작은 묶음으로 나눠
-            진행하세요.
+            <strong>중복 항목</strong>: CLI 가 처리해보니 이미 같은 카드가 있어
+            건너뛴 경우 status=duplicate.
           </li>
         </ul>
       </section>
     </main>
+  );
+}
+
+function StatCard({
+  label,
+  value,
+  color,
+}: {
+  label: string;
+  value: number;
+  color: "slate" | "amber" | "emerald" | "zinc" | "rose";
+}) {
+  const colorMap = {
+    slate: "bg-slate-50 text-slate-700 border-slate-200",
+    amber: "bg-amber-50 text-amber-700 border-amber-200",
+    emerald: "bg-emerald-50 text-emerald-700 border-emerald-200",
+    zinc: "bg-zinc-50 text-zinc-600 border-zinc-200",
+    rose: "bg-rose-50 text-rose-700 border-rose-200",
+  } as const;
+  return (
+    <div className={`rounded-xl border px-2 py-3 ${colorMap[color]}`}>
+      <div className="text-[10px] font-semibold uppercase tracking-wider opacity-70">
+        {label}
+      </div>
+      <div className="mt-1 text-xl font-extrabold">{value}</div>
+    </div>
   );
 }

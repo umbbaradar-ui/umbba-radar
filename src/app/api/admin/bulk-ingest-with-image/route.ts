@@ -177,7 +177,8 @@ export async function POST(
         type_tags: [],
         topic: "parenting",
         is_sponsored: false,
-        status: "draft" as const,
+        // CLI 자동 생성은 운영자가 곧바로 검수할 수 있게 pending 으로
+        status: "pending" as const,
         source_type: "ingestion" as const,
       })
       .select("id")
@@ -217,7 +218,8 @@ export async function POST(
       type_tags: vis.type_tags ?? [],
       topic: vis.topic === "living" ? "living" : "parenting",
       is_sponsored: false,
-      status: "draft" as const,
+      // CLI 자동 생성은 운영자가 곧바로 검수할 수 있게 pending 으로
+      status: "pending" as const,
       source_type: "ingestion" as const,
     })
     .select("id")

@@ -222,11 +222,191 @@ def parse_urls(file_path: Path) -> list[str]:
     return result
 
 
+def pull_from_queue(limit: int) -> list[dict]:
+    """서버의 ingest_queue 에서 todo N개 atomic claim → [{id, url}, ...]"""
+    if not API_TOKEN:
+        print("⚠️  .env에 ADMIN_CLI_TOKEN 설정 필요")
+        return []
+    try:
+        r = requests.get(
+            f"{API_URL}/api/admin/queue/pull?limit={limit}",
+            headers={"Authorization": f"Bearer {API_TOKEN}"},
+            timeout=30,
+        )
+    except requests.RequestException as e:
+        print(f"❌ 큐 pull 네트워크 오류: {e}")
+        return []
+    try:
+        data = r.json()
+    except Exception:
+        print(f"❌ 큐 pull 응답 파싱 실패 (status={r.status_code})")
+        return []
+    if not data.get("ok"):
+        print(f"❌ 큐 pull 실패: {data.get('error', 'unknown')}")
+        return []
+    items = data.get("items", [])
+    reaped = data.get("reaped", 0)
+    if reaped:
+        print(f"   ↻ 죽은 processing {reaped}개 → todo 복귀")
+    return items
+
+
+def report_complete(queue_id: str, status: str, post_id: str | None = None,
+                    error: str | None = None) -> None:
+    """큐 항목 완료 보고: done/duplicate/failed"""
+    if not API_TOKEN:
+        return
+    body = {"id": queue_id, "status": status}
+    if post_id:
+        body["post_id"] = post_id
+    if error:
+        body["error"] = error[:500]
+    try:
+        requests.post(
+            f"{API_URL}/api/admin/queue/complete",
+            headers={
+                "Authorization": f"Bearer {API_TOKEN}",
+                "Content-Type": "application/json",
+            },
+            json=body,
+            timeout=30,
+        )
+    except requests.RequestException as e:
+        print(f"    ⚠️ 완료 보고 실패 (다음 pull 에서 자동 복구): {e}")
+
+
+def process_url(url: str, queue_id: str | None, dry_run: bool) -> str:
+    """URL 한 개 처리 → 'created' | 'duplicate' | 'failed' 반환"""
+    with tempfile.TemporaryDirectory(prefix="umbba-") as tmp:
+        work_dir = Path(tmp)
+
+        post = download_post(url, work_dir)
+        if not post:
+            if queue_id:
+                report_complete(queue_id, "failed",
+                                error="gallery-dl 다운로드 실패 (비공개·삭제·쿠키 만료 가능)")
+            return "failed"
+
+        print(
+            f"    📥 이미지 {post['image_path'].stat().st_size // 1024}KB "
+            f"+ 캡션 {len(post['caption'])}자"
+        )
+
+        if dry_run:
+            return "created"
+
+        result = upload_to_api(url, post)
+        if result.get("ok"):
+            status = result.get("status", "created")
+            post_id = result.get("post_id")
+            if status == "duplicate":
+                print(f"    🔁 중복 (post_id={post_id[:8] if post_id else '?'}...)")
+                if queue_id and post_id:
+                    report_complete(queue_id, "duplicate", post_id=post_id)
+                return "duplicate"
+            else:
+                ai = result.get("ai", {})
+                title = ai.get("title", "(분류 실패)")
+                conf = ai.get("confidence", 0)
+                print(
+                    f"    ✅ pending 생성 — \"{title[:40]}\""
+                    f"{f' (신뢰도 {conf:.0%})' if conf else ''}"
+                )
+                if queue_id:
+                    report_complete(queue_id, "done", post_id=post_id)
+                return "created"
+        else:
+            err = result.get("error", "unknown error")
+            print(f"    ❌ {err}")
+            if queue_id:
+                report_complete(queue_id, "failed", error=err)
+            return "failed"
+
+
+def run_file_mode(file_path: Path, dry_run: bool) -> int:
+    """기존 모드: urls.txt 파일에서 읽어서 처리 (큐 미경유)"""
+    urls = parse_urls(file_path)
+    if not urls:
+        print("❌ 처리할 URL 없음")
+        return 1
+
+    print(f"📋 {len(urls)}개 URL 처리 시작 (파일 모드)")
+    print(f"   API: {API_URL}")
+    if dry_run:
+        print(f"   모드: DRY RUN (다운만, API 호출 X)")
+    print()
+
+    counts = {"created": 0, "duplicate": 0, "failed": 0}
+    for i, url in enumerate(urls, 1):
+        print(f"[{i}/{len(urls)}] {url}")
+        status = process_url(url, queue_id=None, dry_run=dry_run)
+        counts[status] += 1
+        if i < len(urls) and SLEEP_BETWEEN_URLS > 0:
+            import time
+            time.sleep(SLEEP_BETWEEN_URLS)
+
+    print()
+    print(f"✅ 완료: {counts['created']}개 생성, {counts['duplicate']}개 중복, "
+          f"{counts['failed']}개 실패")
+    print(f"   검수: {API_URL}/admin/queue")
+    return 0 if counts["failed"] == 0 else 2
+
+
+def run_pull_mode(limit: int, dry_run: bool) -> int:
+    """폴링 모드: 서버 큐에서 todo N개 fetch → 처리 → 결과 보고"""
+    print(f"📡 큐 pull (limit={limit})")
+    print(f"   API: {API_URL}")
+
+    items = pull_from_queue(limit)
+    if not items:
+        print("   대기 큐 비어있음. 정상 종료.")
+        return 0
+
+    print(f"   가져온 항목: {len(items)}개")
+    if dry_run:
+        print(f"   모드: DRY RUN (다운만, 완료 보고 X)")
+    print()
+
+    counts = {"created": 0, "duplicate": 0, "failed": 0}
+    for i, item in enumerate(items, 1):
+        url = item["url"]
+        queue_id = item["id"]
+        print(f"[{i}/{len(items)}] {url}")
+        status = process_url(url, queue_id=None if dry_run else queue_id,
+                             dry_run=dry_run)
+        counts[status] += 1
+        if i < len(items) and SLEEP_BETWEEN_URLS > 0:
+            import time
+            time.sleep(SLEEP_BETWEEN_URLS)
+
+    print()
+    print(f"✅ 완료: {counts['created']}개 생성, {counts['duplicate']}개 중복, "
+          f"{counts['failed']}개 실패")
+    print(f"   검수: {API_URL}/admin/queue")
+    return 0 if counts["failed"] == 0 else 2
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="인스타 게시물 URL 일괄 → 엄빠레이더 draft 등록"
+        description="인스타 게시물 URL 일괄 → 엄빠레이더 pending 카드 등록"
     )
-    parser.add_argument("file", type=Path, help="URL 목록 텍스트 파일")
+    parser.add_argument(
+        "file",
+        type=Path,
+        nargs="?",
+        help="URL 목록 텍스트 파일 (파일 모드). --pull 사용 시 생략",
+    )
+    parser.add_argument(
+        "--pull",
+        action="store_true",
+        help="서버 ingest_queue 에서 todo N개 fetch → 처리 (작업 스케줄러 모드)",
+    )
+    parser.add_argument(
+        "--limit",
+        type=int,
+        default=5,
+        help="--pull 모드에서 한 번에 가져올 개수 (기본 5, 최대 20)",
+    )
     parser.add_argument(
         "--dry-run",
         action="store_true",
@@ -238,71 +418,14 @@ def main() -> int:
         print("⚠️  .env에 ADMIN_CLI_TOKEN 설정 필요 (.env.example 참조)")
         return 1
 
-    urls = parse_urls(args.file)
-    if not urls:
-        print("❌ 처리할 URL 없음")
-        return 1
+    if args.pull:
+        return run_pull_mode(limit=min(max(args.limit, 1), 20),
+                             dry_run=args.dry_run)
 
-    print(f"📋 {len(urls)}개 URL 처리 시작")
-    print(f"   API: {API_URL}")
-    if args.dry_run:
-        print(f"   모드: DRY RUN (다운만, API 호출 X)")
-    print()
+    if not args.file:
+        parser.error("파일 인자 또는 --pull 중 하나가 필요해요.")
 
-    success = 0
-    duplicate = 0
-    failed = 0
-
-    for i, url in enumerate(urls, 1):
-        print(f"[{i}/{len(urls)}] {url}")
-
-        # 각 URL마다 임시 작업 폴더 (다운 후 정리)
-        with tempfile.TemporaryDirectory(prefix="umbba-") as tmp:
-            work_dir = Path(tmp)
-
-            post = download_post(url, work_dir)
-            if not post:
-                failed += 1
-                continue
-
-            print(
-                f"    📥 이미지 {post['image_path'].stat().st_size // 1024}KB "
-                f"+ 캡션 {len(post['caption'])}자"
-            )
-
-            if args.dry_run:
-                success += 1
-                continue
-
-            result = upload_to_api(url, post)
-            if result.get("ok"):
-                status = result.get("status", "created")
-                if status == "duplicate":
-                    print(f"    🔁 중복 (post_id={result.get('post_id')[:8]}...)")
-                    duplicate += 1
-                else:
-                    ai = result.get("ai", {})
-                    title = ai.get("title", "(분류 실패)")
-                    conf = ai.get("confidence", 0)
-                    print(
-                        f"    ✅ draft 생성 — \"{title[:40]}\""
-                        f"{f' (신뢰도 {conf:.0%})' if conf else ''}"
-                    )
-                    success += 1
-            else:
-                print(f"    ❌ {result.get('error', 'unknown error')}")
-                failed += 1
-
-        # 다음 URL 전 짧은 sleep (rate limit 회피)
-        if i < len(urls) and SLEEP_BETWEEN_URLS > 0:
-            import time
-            time.sleep(SLEEP_BETWEEN_URLS)
-
-    # 결과 요약
-    print()
-    print(f"✅ 완료: {success}개 생성, {duplicate}개 중복, {failed}개 실패")
-    print(f"   검수: {API_URL}/admin/queue")
-    return 0 if failed == 0 else 2
+    return run_file_mode(args.file, dry_run=args.dry_run)
 
 
 if __name__ == "__main__":
