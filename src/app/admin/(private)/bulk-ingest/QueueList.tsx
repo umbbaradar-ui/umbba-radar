@@ -88,6 +88,17 @@ export function QueueList({ items }: { items: IngestQueueItem[] }) {
   );
 }
 
+function relativeTime(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime();
+  const m = Math.floor(diff / 60000);
+  if (m < 1) return "방금";
+  if (m < 60) return `${m}분 전`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}시간 전`;
+  const d = Math.floor(h / 24);
+  return `${d}일 전`;
+}
+
 function QueueRow({ item }: { item: IngestQueueItem }) {
   const [pending, startTransition] = useTransition();
   const status = STATUS_LABEL[item.status];
@@ -111,6 +122,11 @@ function QueueRow({ item }: { item: IngestQueueItem }) {
     });
   }
 
+  // 캡션 미리보기 (앞 200자, 줄바꿈 단일 공백으로)
+  const captionPreview = item.caption_preview
+    ? item.caption_preview.replace(/\s+/g, " ").slice(0, 200)
+    : null;
+
   return (
     <li className="flex items-start gap-3 px-4 py-3 text-xs">
       <span
@@ -120,16 +136,49 @@ function QueueRow({ item }: { item: IngestQueueItem }) {
       </span>
 
       <div className="min-w-0 flex-1">
+        {/* 계정명 + 게시일 (scan 으로 들어온 경우만 표시) */}
+        {(item.source_username || item.source_post_date) && (
+          <div className="mb-1 flex items-center gap-2 text-[11px] text-slate-700">
+            {item.source_username && (
+              <a
+                href={`https://www.instagram.com/${item.source_username}/`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-bold text-slate-900 hover:text-rose-600"
+              >
+                @{item.source_username}
+              </a>
+            )}
+            {item.source_post_date && (
+              <span
+                className="text-slate-500"
+                title={new Date(item.source_post_date).toLocaleString("ko-KR")}
+              >
+                · {relativeTime(item.source_post_date)} 게시
+              </span>
+            )}
+          </div>
+        )}
+
+        {/* 캡션 미리보기 */}
+        {captionPreview && (
+          <p className="mb-1 line-clamp-2 text-[12px] leading-relaxed text-slate-700">
+            {captionPreview}
+          </p>
+        )}
+
+        {/* URL (작게 — 클릭은 가능하지만 메인 정보 아님) */}
         <a
           href={item.url}
           target="_blank"
           rel="noopener noreferrer"
-          className="block truncate text-slate-800 hover:text-rose-600"
+          className="block truncate text-[10px] text-slate-400 hover:text-rose-600 font-mono"
           title={item.url}
         >
           {item.url}
         </a>
-        <div className="mt-0.5 flex flex-wrap gap-x-2 gap-y-0.5 text-[10px] text-slate-500">
+
+        <div className="mt-1 flex flex-wrap gap-x-2 gap-y-0.5 text-[10px] text-slate-500">
           <span>등록 {createdAt}</span>
           {item.attempts > 0 && <span>시도 {item.attempts}회</span>}
           {item.post_id && (

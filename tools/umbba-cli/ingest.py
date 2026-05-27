@@ -376,9 +376,10 @@ def report_account_scan(
         print(f"    ⚠️ 스캔 보고 실패: {e}")
 
 
-def push_urls_to_queue(urls: list[str]) -> dict:
-    """발견된 URL 목록을 큐에 추가 (이미 있는 건 서버에서 자동 스킵)"""
-    if not API_TOKEN or not urls:
+def push_urls_to_queue(items: list[dict]) -> dict:
+    """발견된 게시물 메타를 큐에 추가 (이미 있는 건 서버에서 자동 스킵)
+    items[i] = { url, source_username?, source_post_date?, caption_preview? }"""
+    if not API_TOKEN or not items:
         return {"ok": False, "error": "no token or empty"}
     try:
         r = requests.post(
@@ -387,7 +388,7 @@ def push_urls_to_queue(urls: list[str]) -> dict:
                 "Authorization": f"Bearer {API_TOKEN}",
                 "Content-Type": "application/json",
             },
-            json={"urls": urls},
+            json={"urls": items},
             timeout=30,
         )
         return r.json()
@@ -395,11 +396,12 @@ def push_urls_to_queue(urls: list[str]) -> dict:
         return {"ok": False, "error": str(e)}
 
 
-def scan_one_account(username: str, recent: int) -> tuple[list[str], str | None]:
+def scan_one_account(username: str, recent: int) -> tuple[list[dict], str | None]:
     """
-    한 계정의 최근 N개 게시물 URL 추출 (gallery-dl --simulate)
+    한 계정의 최근 N개 게시물 메타 추출 (gallery-dl --simulate)
     이미지 다운 X. JSON 메타만 stdout 으로 받음.
-    반환: (urls, error_message_or_None)
+    반환: (items, error_message_or_None)
+      items[i] = { url, source_username, source_post_date, caption_preview }
 
     중요:
       - URL 은 반드시 /posts/ 까지 줘야 함 (그래야 개별 post 메타 추출)
@@ -446,7 +448,7 @@ def scan_one_account(username: str, recent: int) -> tuple[list[str], str | None]
     except json.JSONDecodeError as e:
         return [], f"JSON 파싱 실패: {e}"
 
-    urls: list[str] = []
+    items: list[dict] = []
     seen = set()
     if not isinstance(payload, list):
         return [], None
@@ -472,9 +474,29 @@ def scan_one_account(username: str, recent: int) -> tuple[list[str], str | None]
         if post_url in seen:
             continue
         seen.add(post_url)
-        urls.append(post_url)
 
-    return urls, None
+        # 미리보기 메타 추출
+        description = meta.get("description") or ""
+        post_date_raw = meta.get("post_date") or meta.get("date") or None
+        # gallery-dl 의 post_date 는 "YYYY-MM-DD HH:MM:SS" 형식 (UTC).
+        # KST 기준으로 변환하려면 +09:00 더해야 하지만, 인스타가 이미 사용자 로컬 시간으로
+        # 줄 가능성 있어 일단 그대로 ISO 변환 (Postgres timestamptz 가 자동 처리)
+        post_date_iso = None
+        if isinstance(post_date_raw, str) and post_date_raw:
+            try:
+                # "YYYY-MM-DD HH:MM:SS" → "YYYY-MM-DDTHH:MM:SSZ"
+                post_date_iso = post_date_raw.replace(" ", "T") + "Z"
+            except Exception:
+                post_date_iso = None
+
+        items.append({
+            "url": post_url,
+            "source_username": username,
+            "source_post_date": post_date_iso,
+            "caption_preview": description[:500] if description else None,
+        })
+
+    return items, None
 
 
 def run_scan_mode(recent: int, dry_run: bool) -> int:
@@ -496,17 +518,17 @@ def run_scan_mode(recent: int, dry_run: bool) -> int:
 
     for i, username in enumerate(usernames, 1):
         print(f"[{i}/{len(usernames)}] @{username}")
-        urls, err = scan_one_account(username, recent)
+        items, err = scan_one_account(username, recent)
         if err:
             print(f"    ⚠ {err}")
             total_failed += 1
             if not dry_run:
                 report_account_scan(username, 0, err)
         else:
-            print(f"    📡 게시물 {len(urls)}개 메타 fetch")
-            total_found += len(urls)
-            if urls and not dry_run:
-                push = push_urls_to_queue(urls)
+            print(f"    📡 게시물 {len(items)}개 메타 fetch")
+            total_found += len(items)
+            if items and not dry_run:
+                push = push_urls_to_queue(items)
                 if push.get("ok"):
                     added = push.get("added", 0)
                     total_added += added
@@ -518,9 +540,10 @@ def run_scan_mode(recent: int, dry_run: bool) -> int:
                 else:
                     print(f"    ❌ 큐 push 실패: {push.get('error')}")
                     report_account_scan(username, 0, push.get("error"))
-            elif urls and dry_run:
-                for u in urls:
-                    print(f"      · {u}")
+            elif items and dry_run:
+                for it in items:
+                    caption = (it.get("caption_preview") or "").replace("\n", " ")[:60]
+                    print(f"      · {it['url']}  {caption}")
 
         if i < len(usernames) and SLEEP_BETWEEN_URLS > 0:
             import time

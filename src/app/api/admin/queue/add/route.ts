@@ -1,18 +1,19 @@
 // ============================================
 // CLI 전용 — POST /api/admin/queue/add
 // 스캔으로 발견한 URL 들을 ingest_queue 에 일괄 추가
-// Body: { urls: string[] }
+// Body: { urls: (string | { url, source_username?, source_post_date?, caption_preview? })[] }
 // 인증: Bearer ${ADMIN_CLI_TOKEN}
 // ============================================
 
 import { NextResponse } from "next/server";
 import { addUrlsToQueue } from "@/modules/ingestion/queue/repository";
+import type { UrlInput } from "@/modules/ingestion/queue/types";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 interface Body {
-  urls: string[];
+  urls: UrlInput[];
 }
 
 export async function POST(request: Request) {

@@ -20,7 +20,21 @@ export interface IngestQueueItem {
   claimed_at: string | null;
   processed_at: string | null;
   created_by: string | null;
+  /** scan 모드가 채움 — 검수 화면 미리보기용 */
+  source_username: string | null;
+  source_post_date: string | null;
+  caption_preview: string | null;
 }
+
+/** addUrlsToQueue 입력 — string 도 호환 (기존 textarea 등록 흐름) */
+export type UrlInput =
+  | string
+  | {
+      url: string;
+      source_username?: string | null;
+      source_post_date?: string | null;
+      caption_preview?: string | null;
+    };
 
 export interface AddUrlsResult {
   added: number;

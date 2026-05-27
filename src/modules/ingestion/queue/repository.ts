@@ -9,6 +9,7 @@ import type {
   IngestQueueItem,
   IngestQueueStatus,
   QueueStats,
+  UrlInput,
 } from "./types";
 
 /**
@@ -48,9 +49,10 @@ export function normalizeInstagramUrl(raw: string): string | null {
  * - 정규화 → 형식 무효한 것 제외
  * - 이미 ingest_queue 에 있는 동일 URL 스킵
  * - 이미 posts 에 같은 source_url 있는 건 스킵 (이미 등록된 카드)
+ * - 입력이 객체면 preview 정보 (source_username·post_date·caption_preview) 같이 저장
  */
 export async function addUrlsToQueue(
-  rawUrls: string[]
+  rawUrls: UrlInput[]
 ): Promise<AddUrlsResult> {
   const result: AddUrlsResult = {
     added: 0,
@@ -60,56 +62,83 @@ export async function addUrlsToQueue(
     invalidUrls: [],
   };
 
-  // 1) 정규화 + 중복 제거 (in-batch)
+  // 1) 정규화 + 중복 제거 (in-batch). preview 정보 함께 보존.
+  interface NormalizedItem {
+    url: string;
+    source_username: string | null;
+    source_post_date: string | null;
+    caption_preview: string | null;
+  }
   const seen = new Set<string>();
-  const normalized: string[] = [];
+  const normalized: NormalizedItem[] = [];
   for (const raw of rawUrls) {
-    const n = normalizeInstagramUrl(raw);
+    const isObject = typeof raw === "object" && raw !== null;
+    const rawUrl = isObject ? raw.url : raw;
+    const n = normalizeInstagramUrl(rawUrl);
     if (!n) {
-      if (raw.trim()) {
+      const display = (rawUrl ?? "").trim();
+      if (display) {
         result.invalid++;
-        result.invalidUrls.push(raw.trim().slice(0, 200));
+        result.invalidUrls.push(display.slice(0, 200));
       }
       continue;
     }
     if (seen.has(n)) continue;
     seen.add(n);
-    normalized.push(n);
+    normalized.push({
+      url: n,
+      source_username: isObject ? raw.source_username ?? null : null,
+      source_post_date: isObject ? raw.source_post_date ?? null : null,
+      caption_preview: isObject
+        ? raw.caption_preview?.slice(0, 500) ?? null
+        : null,
+    });
   }
 
   if (normalized.length === 0) return result;
+
+  const urlsOnly = normalized.map((n) => n.url);
 
   // 2) 이미 ingest_queue 에 있는 URL 제외
   const { data: existingQueue } = await supabaseServer
     .from("ingest_queue")
     .select("url")
-    .in("url", normalized);
+    .in("url", urlsOnly);
   const existingQueueSet = new Set((existingQueue ?? []).map((r) => r.url as string));
 
-  // 3) 이미 posts 에 있는 source_url 제외 (인스타는 source_url 에 원본 URL 저장)
-  // 정규화된 URL 과 비교하기 위해 posts.source_url 도 정규화 가능한 형태로 비교
-  // 실무: posts.source_url 은 다양한 형태로 들어있을 수 있어서 정확히 매칭 안 될 수도 있음
-  // 우선 정규화 URL 그대로 in() 으로 1차 매칭
+  // 3) 이미 posts 에 있는 source_url 제외
   const { data: existingPosts } = await supabaseServer
     .from("posts")
     .select("source_url")
-    .in("source_url", normalized);
+    .in("source_url", urlsOnly);
   const existingPostsSet = new Set(
     (existingPosts ?? []).map((r) => r.source_url as string)
   );
 
   // 4) 큐에 추가할 것만 추리기
-  const toInsert: { url: string; status: IngestQueueStatus }[] = [];
-  for (const url of normalized) {
-    if (existingQueueSet.has(url)) {
+  const toInsert: Array<{
+    url: string;
+    status: IngestQueueStatus;
+    source_username: string | null;
+    source_post_date: string | null;
+    caption_preview: string | null;
+  }> = [];
+  for (const item of normalized) {
+    if (existingQueueSet.has(item.url)) {
       result.skipped_duplicate_in_queue++;
       continue;
     }
-    if (existingPostsSet.has(url)) {
+    if (existingPostsSet.has(item.url)) {
       result.skipped_already_posted++;
       continue;
     }
-    toInsert.push({ url, status: "todo" });
+    toInsert.push({
+      url: item.url,
+      status: "todo",
+      source_username: item.source_username,
+      source_post_date: item.source_post_date,
+      caption_preview: item.caption_preview,
+    });
   }
 
   if (toInsert.length === 0) return result;
@@ -120,8 +149,6 @@ export async function addUrlsToQueue(
     .insert(toInsert, { count: "exact" });
 
   if (insertError) {
-    // unique 충돌이 race 로 끼는 경우 → ON CONFLICT DO NOTHING 흉내내려면 upsert
-    // 일단 에러 throw 로 사용자에게 노출
     throw new Error(`큐 저장 실패: ${insertError.message}`);
   }
 
