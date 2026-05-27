@@ -16,7 +16,6 @@ interface Props {
   /** 수정 모드 — 기존 카드 prefill (AI 추출 결과가 들어오면 그게 우선) */
   post?: Post;
   action: (formData: FormData) => Promise<void> | void;
-  extractFromImage: (formData: FormData) => Promise<AIExtractResponse>;
   extractFromUrl: (url: string) => Promise<AIExtractResponse>;
   submitLabel: string;
   errorMessage?: string | null;
@@ -25,7 +24,6 @@ interface Props {
 export function PostFormWithAI({
   post,
   action,
-  extractFromImage,
   extractFromUrl,
   submitLabel,
   errorMessage,
@@ -64,7 +62,6 @@ export function PostFormWithAI({
   return (
     <div className="space-y-5">
       <AIExtractPanel
-        extractFromImage={extractFromImage}
         extractFromUrl={extractFromUrl}
         onExtracted={handleExtracted}
       />

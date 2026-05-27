@@ -1,23 +1,17 @@
 // ============================================
 // 카드 수정 페이지 — /admin/[id]/edit
 //
-// PostFormWithAI 사용 — 기존 카드 prefill + AI 추출 가능.
-// 빈 draft (URL 일괄 등록으로 만든 것)도 여기서:
-//   - 외부 도구 1클릭으로 이미지 다운
-//   - "📷 스크린샷으로 추출" → Gemini Vision으로 자동 채움
-//   - 검수 후 발행
+// PostFormWithAI 사용 — 기존 카드 prefill + URL 추출 가능.
+// 인스타 다량 자동 등록은 CLI (tools/umbba-cli) 운영.
 // ============================================
 
 import { notFound } from "next/navigation";
 import { getPostForAdmin } from "@/modules/curation/service";
 import { updatePostAction } from "@/modules/curation/actions";
-import {
-  extractFromImageAction,
-  extractFromUrlAction,
-} from "@/modules/curation/ai-extract-actions";
+import { extractFromUrlAction } from "@/modules/curation/ai-extract-actions";
 import { PostFormWithAI } from "@/modules/curation/ui/PostFormWithAI";
 
-// Gemini Vision API는 이미지 1장당 5~20초. Hobby plan 60초까지.
+// Vision API는 이미지 1장당 5~20초. Hobby plan 60초까지.
 export const maxDuration = 60;
 
 interface PageProps {
@@ -63,7 +57,6 @@ export default async function EditPostPage({ params, searchParams }: PageProps) 
       <PostFormWithAI
         post={post}
         action={boundAction}
-        extractFromImage={extractFromImageAction}
         extractFromUrl={extractFromUrlAction}
         submitLabel="수정 저장"
         errorMessage={errorMessage}

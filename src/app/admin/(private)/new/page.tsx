@@ -1,16 +1,14 @@
 // ============================================
 // 새 카드 생성 페이지 — /admin/new
-// AI 자동 추출 (URL · 이미지 업로드) + 수동 폼 통합
+// AI 자동 추출 (URL) + 수동 폼 통합
+// 인스타 다량은 CLI 운영 (tools/umbba-cli) 권장
 // ============================================
 
 import { PostFormWithAI } from "@/modules/curation/ui/PostFormWithAI";
 import { createPostAction } from "@/modules/curation/actions";
-import {
-  extractFromImageAction,
-  extractFromUrlAction,
-} from "@/modules/curation/ai-extract-actions";
+import { extractFromUrlAction } from "@/modules/curation/ai-extract-actions";
 
-// Gemini Vision API는 이미지 1장당 5~20초 걸리는 경우 있음.
+// Vision API는 이미지 1장당 5~20초 걸리는 경우 있음.
 // Vercel 기본 10초 함수 타임아웃이면 self-fail. Hobby plan은 60초까지 가능.
 export const maxDuration = 60;
 
@@ -41,7 +39,6 @@ export default async function NewPostPage({ searchParams }: PageProps) {
 
       <PostFormWithAI
         action={createPostAction}
-        extractFromImage={extractFromImageAction}
         extractFromUrl={extractFromUrlAction}
         submitLabel="등록"
         errorMessage={errorMessage}
