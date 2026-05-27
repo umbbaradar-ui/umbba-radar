@@ -1,13 +1,35 @@
 // ============================================
-// Gemini Vision 기반 이미지 추출기
+// Vision 기반 이미지 추출기 (Claude / Gemini 양쪽 지원)
+// VISION_PROVIDER env 로 분기:
+//   - "claude" (기본): Anthropic Claude Sonnet 4.5 Vision 사용
+//   - "gemini": Google Gemini 2.0 Flash 사용
 // 인스타·블로그 스크린샷·OG 이미지에서 카드 메타데이터 자동 추출
-// HEIC·JPG·PNG·WEBP 모두 Gemini가 직접 처리 (별도 변환 불필요)
+// HEIC 는 Claude 미지원 (Gemini만 지원) — 인스타 OG는 JPG라 실무상 문제 없음
 // ============================================
 
 import "server-only";
+import Anthropic from "@anthropic-ai/sdk";
+
+const VISION_PROVIDER = (process.env.VISION_PROVIDER ?? "claude").toLowerCase();
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 const GEMINI_MODEL = "gemini-2.0-flash";
+
+const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
+const CLAUDE_MODEL = process.env.CLAUDE_VISION_MODEL ?? "claude-sonnet-4-5";
+
+let anthropicClient: Anthropic | null = null;
+function getAnthropic(): Anthropic {
+  if (!ANTHROPIC_API_KEY) {
+    throw new Error(
+      "ANTHROPIC_API_KEY env var is not configured. Set it in .env.local and Vercel."
+    );
+  }
+  if (!anthropicClient) {
+    anthropicClient = new Anthropic({ apiKey: ANTHROPIC_API_KEY });
+  }
+  return anthropicClient;
+}
 
 export interface VisionExtractResult {
   is_actual_event: boolean;
@@ -86,10 +108,35 @@ const VISION_SYSTEM_PROMPT = `당신은 한국 육아 정보 큐레이션 사이
 한국어 출력. JSON만 반환. 마크다운 백틱 금지.`;
 
 /**
- * 이미지 바이트 + MIME → 구조화 결과
- * Gemini는 HEIC, HEIF, JPEG, PNG, WEBP 모두 직접 지원
+ * 모델 응답 텍스트 → JSON 파싱 (마크다운 ```json 감싸짐 대응)
  */
-export async function extractFromImageBytes(
+function parseVisionJson(text: string): VisionExtractResult | null {
+  let body = text.trim();
+  // ```json ... ``` 형태로 감싸진 경우 제거
+  if (body.startsWith("```")) {
+    body = body
+      .replace(/^```(?:json)?\s*/i, "")
+      .replace(/```\s*$/i, "")
+      .trim();
+  }
+  try {
+    return JSON.parse(body) as VisionExtractResult;
+  } catch (err) {
+    console.error(
+      "[vision-extractor] JSON parse failed:",
+      err,
+      "raw:",
+      text.slice(0, 200)
+    );
+    return null;
+  }
+}
+
+/**
+ * Gemini Vision 분기
+ * HEIC, HEIF, JPEG, PNG, WEBP 모두 직접 지원
+ */
+async function extractFromImageBytesGemini(
   imageBytes: Uint8Array,
   mimeType: string
 ): Promise<VisionExtractResult | null> {
@@ -135,14 +182,97 @@ export async function extractFromImageBytes(
     const text: string | undefined =
       json.candidates?.[0]?.content?.parts?.[0]?.text;
     if (!text) {
-      console.error("[vision-extractor] No text in response:", JSON.stringify(json).slice(0, 200));
+      console.error(
+        "[vision-extractor] No text in Gemini response:",
+        JSON.stringify(json).slice(0, 200)
+      );
       return null;
     }
-    return JSON.parse(text) as VisionExtractResult;
+    return parseVisionJson(text);
   } catch (err) {
-    console.error("[vision-extractor] failed:", err);
+    console.error("[vision-extractor] Gemini failed:", err);
     return null;
   }
+}
+
+/**
+ * Claude Vision 분기
+ * 지원 MIME: image/jpeg, image/png, image/gif, image/webp
+ * HEIC/HEIF는 미지원이라 caller 쪽에서 변환하거나 Gemini로 fallback 필요
+ */
+async function extractFromImageBytesClaude(
+  imageBytes: Uint8Array,
+  mimeType: string
+): Promise<VisionExtractResult | null> {
+  const client = getAnthropic();
+
+  // Claude가 지원하는 MIME 타입으로 정규화
+  const SUPPORTED_CLAUDE_MIMES = new Set([
+    "image/jpeg",
+    "image/png",
+    "image/gif",
+    "image/webp",
+  ]);
+  const mediaType = SUPPORTED_CLAUDE_MIMES.has(mimeType)
+    ? (mimeType as "image/jpeg" | "image/png" | "image/gif" | "image/webp")
+    : "image/jpeg"; // 대부분 인스타 OG는 jpeg
+
+  const base64 = Buffer.from(imageBytes).toString("base64");
+
+  try {
+    const msg = await client.messages.create({
+      model: CLAUDE_MODEL,
+      max_tokens: 1024,
+      temperature: 0.2,
+      system: VISION_SYSTEM_PROMPT,
+      messages: [
+        {
+          role: "user",
+          content: [
+            {
+              type: "image",
+              source: {
+                type: "base64",
+                media_type: mediaType,
+                data: base64,
+              },
+            },
+            {
+              type: "text",
+              text: "이 이미지를 분석해 구조화된 JSON으로 정보를 반환해주세요. 마크다운 백틱 없이 JSON만.",
+            },
+          ],
+        },
+      ],
+    });
+
+    const textBlock = msg.content.find((b) => b.type === "text");
+    if (!textBlock || textBlock.type !== "text") {
+      console.error(
+        "[vision-extractor] Claude returned no text block:",
+        JSON.stringify(msg.content).slice(0, 200)
+      );
+      return null;
+    }
+    return parseVisionJson(textBlock.text);
+  } catch (err) {
+    console.error("[vision-extractor] Claude failed:", err);
+    return null;
+  }
+}
+
+/**
+ * 이미지 바이트 + MIME → 구조화 결과
+ * VISION_PROVIDER env 로 Claude / Gemini 선택 (기본 claude)
+ */
+export async function extractFromImageBytes(
+  imageBytes: Uint8Array,
+  mimeType: string
+): Promise<VisionExtractResult | null> {
+  if (VISION_PROVIDER === "gemini") {
+    return extractFromImageBytesGemini(imageBytes, mimeType);
+  }
+  return extractFromImageBytesClaude(imageBytes, mimeType);
 }
 
 interface UrlExtractOutput {
