@@ -336,6 +336,16 @@ def process_url(url: str, queue_id: str | None, dry_run: bool) -> str:
                 if queue_id and post_id:
                     report_complete(queue_id, "duplicate", post_id=post_id)
                 return "duplicate"
+            elif status == "skipped":
+                reason = result.get("reason", "AI 가 노이즈로 판단")
+                ai = result.get("ai", {})
+                title = ai.get("title", "")
+                print(f"    🚫 skip — {reason}")
+                if title:
+                    print(f"       (검토용: \"{title[:50]}\")")
+                if queue_id:
+                    report_complete(queue_id, "failed", error=f"AI skip: {reason}")
+                return "duplicate"  # 통계상 처리됨으로 (실패 X)
             else:
                 ai = result.get("ai", {})
                 title = ai.get("title", "(분류 실패)")

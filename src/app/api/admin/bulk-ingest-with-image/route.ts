@@ -33,8 +33,9 @@ interface RequestBody {
 
 interface SuccessResponse {
   ok: true;
-  status: "created" | "duplicate";
+  status: "created" | "duplicate" | "skipped";
   post_id?: string;
+  reason?: string; // skipped 사유 (is_actual_event=false 등)
   ai?: {
     title: string;
     confidence: number;
@@ -200,7 +201,18 @@ export async function POST(
     });
   }
 
-  // 7. Vision 성공 — 풍부한 draft
+  // 7. Vision 이 노이즈로 판단했으면 카드 생성 X (SYSTEM_PROMPT 의 skip 패턴 8종)
+  // is_actual_event=false → 운영 정책상 큐만 "skipped" 마킹하고 카드 X
+  if (!vis.is_actual_event || vis.confidence < 0.4) {
+    return NextResponse.json({
+      ok: true,
+      status: "skipped" as const,
+      reason: `is_actual_event=${vis.is_actual_event}, confidence=${vis.confidence.toFixed(2)}`,
+      ai: { title: vis.title, confidence: vis.confidence },
+    });
+  }
+
+  // 8. Vision 성공 — 풍부한 draft
   // 캡션이 명시적으로 들어왔으면 그것 우선 (사용자 직접 복사한 본문), 없으면 Vision body 사용
   const body_text = caption?.trim() || vis.body || null;
   const deadlineUnknown = !vis.deadline;
