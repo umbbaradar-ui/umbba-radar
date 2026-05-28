@@ -743,7 +743,7 @@ def _process_export(
     output_payload = {
         **(payload if isinstance(payload, dict) else {}),
         "items": enriched,
-        "enriched_at": __import__("datetime").datetime.utcnow().isoformat() + "Z",
+        "enriched_at": __import__("datetime").datetime.now(__import__("datetime").timezone.utc).isoformat().replace("+00:00", "Z"),
         "with_images": with_images,
     }
     output_file.write_text(
@@ -874,7 +874,7 @@ def run_import_mode(results_file: Path) -> int:
         try:
             backup_file.write_text(
                 json.dumps(
-                    {**payload, "items": items, "enriched_with_images_at": __import__("datetime").datetime.utcnow().isoformat() + "Z"},
+                    {**payload, "items": items, "enriched_with_images_at": __import__("datetime").datetime.now(__import__("datetime").timezone.utc).isoformat().replace("+00:00", "Z")},
                     ensure_ascii=False, indent=2
                 ),
                 encoding="utf-8",
