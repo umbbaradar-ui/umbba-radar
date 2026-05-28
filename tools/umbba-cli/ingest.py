@@ -556,6 +556,167 @@ def run_scan_mode(recent: int, dry_run: bool) -> int:
     return 0
 
 
+# ============================================
+# --export-todo 모드 — 로컬 분석 (Claude Code) 용 JSON export
+# 큐의 todo 항목들 + (옵션) 이미지를 Storage 에 업로드한 영구 URL
+# 결과: ./exports/todo-YYYYMMDD-HHMM.json
+# ============================================
+
+def fetch_export_todo() -> dict | None:
+    """서버에서 todo 큐 export JSON 가져옴 (어드민 cookie 인증)
+    CLI 에서 ADMIN_CLI_TOKEN Bearer 로 대신 인증할 수 있게 별도 endpoint 가
+    더 깔끔하나, 일단 todo 만 fetch 하는 우회로: pull endpoint 대신 별도 GET 사용
+
+    여기선 ADMIN_CLI_TOKEN 으로 인증되는 별도 endpoint 가 필요한데, export-todo
+    는 어드민 cookie 만 받음. 단순화를 위해 CLI 는 직접 큐 API 안 호출하고
+    사용자가 웹에서 [Export] 버튼으로 받은 파일을 CLI 에 path 로 줘서 처리
+    하는 방향이 더 안전.
+
+    이 함수는 placeholder. --export-todo 모드는 사용자가 받은 파일 경로를
+    --input 로 주는 방식으로 동작.
+    """
+    return None
+
+
+def upload_image_to_storage(image_path: Path) -> str | None:
+    """로컬 이미지 → Supabase Storage 업로드 → 영구 URL"""
+    if not API_TOKEN:
+        return None
+    try:
+        image_bytes = image_path.read_bytes()
+        image_b64 = base64.b64encode(image_bytes).decode("ascii")
+        ext = image_path.suffix.lower().lstrip(".")
+        mime = {
+            "jpg": "image/jpeg", "jpeg": "image/jpeg",
+            "png": "image/png", "webp": "image/webp",
+            "gif": "image/gif",
+        }.get(ext, "image/jpeg")
+        r = requests.post(
+            f"{API_URL}/api/admin/upload-image",
+            headers={
+                "Authorization": f"Bearer {API_TOKEN}",
+                "Content-Type": "application/json",
+            },
+            json={"image_base64": image_b64, "image_mime": mime},
+            timeout=60,
+        )
+        data = r.json()
+        if data.get("ok"):
+            return data.get("url")
+        return None
+    except Exception as e:
+        print(f"      ⚠ 이미지 업로드 실패: {e}")
+        return None
+
+
+def run_export_mode(
+    input_json: Path,
+    with_images: bool,
+    output_dir: Path,
+) -> int:
+    """
+    웹에서 [Export todo JSON] 버튼으로 받은 파일을 CLI 에 입력으로 줌
+    → (옵션) 각 항목의 이미지를 gallery-dl 로 다운 + Storage 업로드
+    → 영구 URL 포함된 새 JSON + 로컬 이미지 폴더 생성
+
+    사용 예:
+      py ingest.py --export-from todo-20260528.json --with-images
+      → exports/2026-05-28-1430/
+          todo-enriched.json   (이미지 url 포함)
+          images/              (Claude Code 가 로컬 path 로 분석할 수 있음)
+    """
+    if not input_json.exists():
+        print(f"❌ 입력 파일 없음: {input_json}")
+        return 1
+
+    try:
+        payload = json.loads(input_json.read_text(encoding="utf-8-sig"))
+    except Exception as e:
+        print(f"❌ JSON 파싱 실패: {e}")
+        return 1
+
+    items = payload.get("items", []) if isinstance(payload, dict) else payload
+    if not isinstance(items, list) or not items:
+        print("❌ items 배열 없음 또는 비어있음")
+        return 1
+
+    # 출력 폴더 (timestamp)
+    ts = __import__("datetime").datetime.now().strftime("%Y-%m-%d-%H%M")
+    work_dir = output_dir / ts
+    images_dir = work_dir / "images"
+    images_dir.mkdir(parents=True, exist_ok=True)
+
+    print(f"📦 export 시작: {len(items)}개 항목 → {work_dir}")
+    if with_images:
+        print(f"   이미지 다운 + Storage 업로드 모드 (C)")
+    else:
+        print(f"   텍스트만 (A 모드)")
+    print()
+
+    enriched = []
+    for i, item in enumerate(items, 1):
+        url = item.get("url")
+        queue_id = item.get("queue_id")
+        if not url:
+            continue
+        username = item.get("source_username") or "unknown"
+        print(f"[{i}/{len(items)}] @{username}  {url}")
+
+        enriched_item = dict(item)  # shallow copy
+
+        if with_images:
+            # gallery-dl 로 이미지 다운로드
+            with tempfile.TemporaryDirectory(prefix="umbba-export-") as tmp:
+                tmp_dir = Path(tmp)
+                post = download_post(url, tmp_dir)
+                if post:
+                    # 로컬에 영구 보존 (Claude Code 가 분석할 수 있게)
+                    local_dest = images_dir / f"{queue_id or i}{post['image_path'].suffix}"
+                    local_dest.write_bytes(post["image_path"].read_bytes())
+                    enriched_item["caption_full"] = post["caption"]
+                    enriched_item["local_image_path"] = str(local_dest.relative_to(work_dir))
+                    print(f"    📥 이미지 {local_dest.stat().st_size // 1024}KB → {local_dest.name}")
+
+                    # Storage 업로드 → 영구 URL
+                    storage_url = upload_image_to_storage(local_dest)
+                    if storage_url:
+                        enriched_item["thumbnail_url"] = storage_url
+                        print(f"    ☁️ Storage 업로드 OK")
+                    else:
+                        print(f"    ⚠ Storage 업로드 실패 — 로컬 path 만 사용")
+                else:
+                    print(f"    ⚠ 이미지 다운 실패 — 텍스트만 진행")
+
+        enriched.append(enriched_item)
+
+        if i < len(items) and SLEEP_BETWEEN_URLS > 0:
+            import time
+            time.sleep(SLEEP_BETWEEN_URLS)
+
+    # 결과 JSON 저장
+    output_file = work_dir / "todo-enriched.json"
+    output_payload = {
+        **(payload if isinstance(payload, dict) else {}),
+        "items": enriched,
+        "enriched_at": __import__("datetime").datetime.utcnow().isoformat() + "Z",
+        "with_images": with_images,
+    }
+    output_file.write_text(
+        json.dumps(output_payload, ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
+
+    print()
+    print(f"✅ export 완료")
+    print(f"   파일: {output_file}")
+    if with_images:
+        print(f"   이미지: {images_dir}")
+    print()
+    print(f"💡 다음: Claude Code 에서")
+    print(f'   "{output_file.name} 의 항목들 RULES.md 보고 분류해줘"')
+    return 0
+
+
 def run_file_mode(file_path: Path, dry_run: bool) -> int:
     """기존 모드: urls.txt 파일에서 읽어서 처리 (큐 미경유)"""
     urls = parse_urls(file_path)
@@ -652,6 +813,22 @@ def main() -> int:
         help="--scan 모드에서 각 계정 최근 N개 게시물 검사 (기본 3, 봇 의심 완화)",
     )
     parser.add_argument(
+        "--export-from",
+        type=Path,
+        help="로컬 분석 export 모드: 웹 [Export] 로 받은 todo-*.json 경로",
+    )
+    parser.add_argument(
+        "--with-images",
+        action="store_true",
+        help="--export-from 와 함께: 이미지도 다운 + Storage 업로드 (C 모드)",
+    )
+    parser.add_argument(
+        "--output-dir",
+        type=Path,
+        default=Path("./exports"),
+        help="--export-from 결과 저장 폴더 (기본 ./exports)",
+    )
+    parser.add_argument(
         "--dry-run",
         action="store_true",
         help="다운만 하고 API POST 안 함 (테스트용)",
@@ -668,12 +845,19 @@ def main() -> int:
             dry_run=args.dry_run,
         )
 
+    if args.export_from:
+        return run_export_mode(
+            input_json=args.export_from,
+            with_images=args.with_images,
+            output_dir=args.output_dir,
+        )
+
     if args.pull:
         return run_pull_mode(limit=min(max(args.limit, 1), 20),
                              dry_run=args.dry_run)
 
     if not args.file:
-        parser.error("파일 인자 또는 --pull / --scan 중 하나가 필요해요.")
+        parser.error("파일 인자 또는 --pull / --scan / --export-from 중 하나가 필요해요.")
 
     return run_file_mode(args.file, dry_run=args.dry_run)
 

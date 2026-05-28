@@ -14,6 +14,7 @@
 import Link from "next/link";
 import { BulkIngestForm } from "./BulkIngestForm";
 import { QueueList } from "./QueueList";
+import { LocalModePanel } from "./LocalModePanel";
 import { getQueueStats, listQueue } from "@/modules/ingestion/queue/repository";
 
 export const dynamic = "force-dynamic";
@@ -66,6 +67,10 @@ export default async function BulkIngestPage() {
       </section>
 
       <BulkIngestForm />
+
+      <div className="mt-6">
+        <LocalModePanel todoCount={stats.todo} />
+      </div>
 
       <section className="mt-8">
         <h2 className="mb-3 text-sm font-bold text-slate-900">
