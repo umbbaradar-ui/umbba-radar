@@ -37,11 +37,15 @@ export default async function BulkIngestPage() {
           URL 일괄 등록 큐
         </h1>
         <p className="mt-2 text-sm text-slate-600">
-          인스타 URL을 큐에 등록만 하시면, 로컬 CLI가 <strong>1시간마다 자동으로</strong> 5개씩
-          가져가 다운로드 + Claude 분류 + 카드 생성까지 처리합니다.
+          <strong>발견은 자동, 처리는 수동 (A모드)</strong> — CLI{" "}
+          <code className="rounded bg-slate-100 px-1">--scan</code> 이 인스타 신규
+          게시물 URL 만 큐에 쌓아둡니다. 캡션 미리보기 보고 노이즈는{" "}
+          <strong>[삭제]</strong> 로 거른 다음, 처리할 것만{" "}
+          <code className="rounded bg-slate-100 px-1">--pull</code> 로 분석
+          (카드당 ~24원).
         </p>
         <p className="mt-1 text-xs text-slate-500">
-          처리된 카드는{" "}
+          분석된 카드는{" "}
           <Link
             href="/admin/queue"
             className="text-rose-600 underline hover:text-rose-700"
