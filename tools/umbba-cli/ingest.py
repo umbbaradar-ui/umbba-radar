@@ -796,7 +796,16 @@ def run_auto_export_mode(with_images: bool, output_dir: Path) -> int:
 
 
 def run_import_mode(results_file: Path) -> int:
-    """Claude Code 가 만든 results.json 업로드 → posts 카드 일괄 생성"""
+    """Claude Code 가 만든 results.json 업로드 → posts 카드 일괄 생성
+
+    skip=false + thumbnail_url 없는 항목은 자동으로:
+      - 큐 항목의 source_url 조회 (API)
+      - gallery-dl 로 이미지 다운로드 (인스타 호출)
+      - Supabase Storage 업로드
+      - thumbnail_url 채워서 import
+
+    인스타 호출은 진짜 모집 (skip=false) 만 → 부담 최소화.
+    """
     if not results_file.exists():
         print(f"❌ 결과 파일 없음: {results_file}")
         return 1
@@ -816,6 +825,64 @@ def run_import_mode(results_file: Path) -> int:
 
     print(f"📤 import 시작: {len(items)}개 항목")
     print(f"   API: {API_URL}")
+
+    # skip=false + thumbnail_url 없는 항목이 있으면 큐 URL 매핑 한 번 받음
+    needs_image = [
+        it for it in items
+        if not it.get("skip") and not it.get("thumbnail_url")
+    ]
+    queue_url_map: dict[str, str] = {}
+    if needs_image:
+        print(f"   이미지 다운 필요: {len(needs_image)}개 (skip=false + 썸네일 X)")
+        print(f"   큐 URL 매핑 fetch …")
+        todo_payload = fetch_export_todo_via_api()
+        if todo_payload:
+            for ti in todo_payload.get("items", []):
+                qid = ti.get("queue_id")
+                url = ti.get("url")
+                if qid and url:
+                    queue_url_map[qid] = url
+
+        # 이미지 자동 다운 + 업로드
+        print()
+        for idx, item in enumerate(needs_image, 1):
+            qid = item.get("queue_id")
+            url = queue_url_map.get(qid)
+            if not url:
+                print(f"  [{idx}/{len(needs_image)}] {qid[:8]}… ⚠ 큐에 url 없음, 썸네일 NULL 로 진행")
+                continue
+
+            print(f"  [{idx}/{len(needs_image)}] {url}")
+            with tempfile.TemporaryDirectory(prefix="umbba-import-") as tmp:
+                post = download_post(url, Path(tmp))
+                if not post:
+                    print(f"    ⚠ 이미지 다운 실패 — 썸네일 NULL")
+                else:
+                    storage_url = upload_image_to_storage(post["image_path"])
+                    if storage_url:
+                        item["thumbnail_url"] = storage_url
+                        print(f"    ☁️ Storage 업로드 OK")
+                    else:
+                        print(f"    ⚠ Storage 업로드 실패 — 썸네일 NULL")
+
+            if idx < len(needs_image) and SLEEP_BETWEEN_URLS > 0:
+                import time
+                time.sleep(SLEEP_BETWEEN_URLS)
+
+        # 다음 단계 안내 / 결과 파일 백업 (썸네일 URL 채워진 상태)
+        backup_file = results_file.with_suffix(".with-images.json")
+        try:
+            backup_file.write_text(
+                json.dumps(
+                    {**payload, "items": items, "enriched_with_images_at": __import__("datetime").datetime.utcnow().isoformat() + "Z"},
+                    ensure_ascii=False, indent=2
+                ),
+                encoding="utf-8",
+            )
+            print(f"\n   썸네일 URL 추가본 저장: {backup_file}")
+        except Exception:
+            pass
+
     print()
 
     # 200개 단위 청크로 분할 (서버 endpoint 제한과 일치)
