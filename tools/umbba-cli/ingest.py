@@ -509,12 +509,22 @@ def scan_one_account(username: str, recent: int) -> tuple[list[dict], str | None
     return items, None
 
 
-def run_scan_mode(recent: int, dry_run: bool) -> int:
+def run_scan_mode(recent: int, dry_run: bool, max_accounts: int = 30) -> int:
     """매일 저녁용: 활성 계정 순회 → 신규 게시물 URL 큐 push (Claude 호출 X)"""
-    usernames = fetch_active_usernames()
-    if not usernames:
+    all_usernames = fetch_active_usernames()
+    if not all_usernames:
         print("📡 활성 모니터링 계정 0개. /admin/accounts 에서 등록해주세요.")
         return 0
+
+    # 인스타 봇 감지 완화 — 한 번에 max_accounts 까지만.
+    # listActiveUsernames 가 last_scanned_at nullsFirst·오래된 것부터 정렬해서 반환하므로
+    # 자연스럽게 며칠 사이클로 모든 계정 다 돌게 됨.
+    if len(all_usernames) > max_accounts:
+        print(f"⚠️  총 {len(all_usernames)}개 활성 계정 중 {max_accounts}개만 이번 회차 처리 (봇 의심 완화)")
+        print(f"   (last_scanned_at 오래된 순서. 다음 회차에 나머지 자동 우선 처리)")
+        usernames = all_usernames[:max_accounts]
+    else:
+        usernames = all_usernames
 
     print(f"🔭 스캔 시작: {len(usernames)}개 계정, 각 최근 {recent}개 게시물")
     print(f"   API: {API_URL}")
@@ -945,6 +955,12 @@ def main() -> int:
         help="--scan 모드에서 각 계정 최근 N개 게시물 검사 (기본 3, 봇 의심 완화)",
     )
     parser.add_argument(
+        "--max-accounts",
+        type=int,
+        default=30,
+        help="--scan 1회당 최대 계정 수 (기본 30). last_scanned_at 오래된 것부터. 인스타 봇 감지 완화.",
+    )
+    parser.add_argument(
         "--export-from",
         type=Path,
         help="로컬 분석 export 모드 (파일 입력): 웹 [Export] 로 받은 todo-*.json 경로",
@@ -986,6 +1002,7 @@ def main() -> int:
         return run_scan_mode(
             recent=min(max(args.recent, 1), 20),
             dry_run=args.dry_run,
+            max_accounts=min(max(args.max_accounts, 1), 200),
         )
 
     if args.auto_export:
