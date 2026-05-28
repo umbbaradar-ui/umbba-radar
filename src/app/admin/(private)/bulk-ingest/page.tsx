@@ -34,7 +34,7 @@ export default async function BulkIngestPage() {
           ← 관리자 홈
         </Link>
         <h1 className="mt-2 text-2xl font-extrabold tracking-tight text-slate-900">
-          URL 일괄 등록 큐
+          ① URL 큐 <span className="text-sm font-medium text-slate-400">(1차: URL 검수)</span>
         </h1>
         <p className="mt-2 text-sm text-slate-600">
           <strong>발견은 자동, 처리는 수동 (A모드)</strong> — CLI{" "}

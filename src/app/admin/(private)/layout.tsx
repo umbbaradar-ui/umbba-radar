@@ -53,10 +53,18 @@ export default async function AdminPrivateLayout({
               카드 목록
             </Link>
             <Link
+              href="/admin/bulk-ingest"
+              className="rounded-full px-3 py-1 text-xs font-medium text-slate-600 hover:bg-slate-100"
+              title="1차: 인스타 URL 검수 + Claude 분석 트리거"
+            >
+              ① URL 큐
+            </Link>
+            <Link
               href="/admin/queue"
               className="flex items-center gap-1 rounded-full px-3 py-1 text-xs font-medium text-slate-600 hover:bg-slate-100"
+              title="2차: Claude 분석 끝난 카드 검수 + 발행"
             >
-              <span>승인 대기함</span>
+              <span>② 카드 승인</span>
               {pendingCount > 0 && (
                 <span className="rounded-full bg-rose-500 px-1.5 py-0.5 text-[10px] font-bold text-white">
                   {pendingCount}

@@ -54,7 +54,7 @@ export default async function AdminQueuePage({ searchParams }: PageProps) {
 
       <header className="mb-6">
         <h1 className="text-xl font-extrabold tracking-tight text-slate-900">
-          승인 대기함
+          ② 카드 승인 <span className="text-sm font-medium text-slate-400">(2차: Claude 분석 후 검수)</span>
         </h1>
         <p className="mt-1 text-xs text-slate-500">
           {posts.length}건 대기 중 · 오래된 것부터
