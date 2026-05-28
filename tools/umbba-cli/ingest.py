@@ -538,7 +538,25 @@ def run_scan_mode(recent: int, dry_run: bool, max_accounts: int = 30) -> int:
 
     for i, username in enumerate(usernames, 1):
         print(f"[{i}/{len(usernames)}] @{username}")
-        items, err = scan_one_account(username, recent)
+        try:
+            items, err = scan_one_account(username, recent)
+        except Exception as e:
+            import traceback
+            tb = traceback.format_exc().splitlines()
+            last_line = tb[-1] if tb else str(e)
+            print(f"    💥 예외 발생: {last_line}")
+            total_failed += 1
+            if not dry_run:
+                try:
+                    report_account_scan(username, 0, f"unhandled: {last_line}"[:500])
+                except Exception:
+                    pass
+            # 다음 계정 계속 진행
+            if i < len(usernames) and SLEEP_BETWEEN_URLS > 0:
+                import time
+                time.sleep(SLEEP_BETWEEN_URLS)
+            continue
+
         if err:
             print(f"    ⚠ {err}")
             total_failed += 1
@@ -953,6 +971,12 @@ def main() -> int:
         type=int,
         default=3,
         help="--scan 모드에서 각 계정 최근 N개 게시물 검사 (기본 3, 봇 의심 완화)",
+    )
+    parser.add_argument(
+        "--max-accounts",
+        type=int,
+        default=30,
+        help="--scan 모드 한 번에 처리할 계정 수 (기본 30, 봇 의심 완화). 100+ 늘리려면 --max-accounts 200",
     )
     parser.add_argument(
         "--max-accounts",
