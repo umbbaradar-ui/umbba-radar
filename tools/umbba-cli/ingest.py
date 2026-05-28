@@ -493,7 +493,9 @@ def scan_one_account(username: str, recent: int) -> tuple[list[dict], str | None
             "url": post_url,
             "source_username": username,
             "source_post_date": post_date_iso,
-            "caption_preview": description[:500] if description else None,
+            # 캡션은 마감일·당첨자 발표 후반부 정보까지 보존하려 2000자
+            # (DB 컬럼·UI 도 동일 정책)
+            "caption_preview": description[:2000] if description else None,
         })
 
     return items, None

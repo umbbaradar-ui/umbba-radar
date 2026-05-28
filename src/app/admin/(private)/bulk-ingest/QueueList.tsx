@@ -122,10 +122,12 @@ function QueueRow({ item }: { item: IngestQueueItem }) {
     });
   }
 
-  // 캡션 미리보기 (앞 200자, 줄바꿈 단일 공백으로)
+  // 캡션 미리보기 — UI 는 200자만 (DB 에는 2000자 저장, Claude 분류 시 풀 활용)
   const captionPreview = item.caption_preview
     ? item.caption_preview.replace(/\s+/g, " ").slice(0, 200)
     : null;
+  const captionTruncated =
+    item.caption_preview && item.caption_preview.length > 200;
 
   return (
     <li className="flex items-start gap-3 px-4 py-3 text-xs">
@@ -160,10 +162,16 @@ function QueueRow({ item }: { item: IngestQueueItem }) {
           </div>
         )}
 
-        {/* 캡션 미리보기 */}
+        {/* 캡션 미리보기 — UI 200자, 전체는 분류 단계에서 활용 */}
         {captionPreview && (
-          <p className="mb-1 line-clamp-2 text-[12px] leading-relaxed text-slate-700">
+          <p
+            className="mb-1 line-clamp-2 text-[12px] leading-relaxed text-slate-700"
+            title={item.caption_preview ?? ""}
+          >
             {captionPreview}
+            {captionTruncated && (
+              <span className="text-slate-400"> …(전체 {item.caption_preview!.length}자)</span>
+            )}
           </p>
         )}
 

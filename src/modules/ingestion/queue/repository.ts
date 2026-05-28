@@ -89,8 +89,10 @@ export async function addUrlsToQueue(
       url: n,
       source_username: isObject ? raw.source_username ?? null : null,
       source_post_date: isObject ? raw.source_post_date ?? null : null,
+      // 캡션은 마감일·당첨자 발표 같은 후반 정보도 보존하려 2000자까지
+      // (UI 표시는 200자, 분류는 풀로 활용)
       caption_preview: isObject
-        ? raw.caption_preview?.slice(0, 500) ?? null
+        ? raw.caption_preview?.slice(0, 2000) ?? null
         : null,
     });
   }
