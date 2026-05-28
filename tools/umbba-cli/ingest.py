@@ -976,13 +976,7 @@ def main() -> int:
         "--max-accounts",
         type=int,
         default=30,
-        help="--scan 모드 한 번에 처리할 계정 수 (기본 30, 봇 의심 완화). 100+ 늘리려면 --max-accounts 200",
-    )
-    parser.add_argument(
-        "--max-accounts",
-        type=int,
-        default=30,
-        help="--scan 1회당 최대 계정 수 (기본 30). last_scanned_at 오래된 것부터. 인스타 봇 감지 완화.",
+        help="--scan 1회당 최대 계정 수 (기본 30). last_scanned_at 오래된 것부터. 인스타 봇 감지 완화. 한 번에 다 돌리려면 --max-accounts 200",
     )
     parser.add_argument(
         "--export-from",
