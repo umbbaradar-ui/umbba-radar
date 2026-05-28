@@ -20,15 +20,27 @@ export const dynamic = "force-dynamic";
 
 const ADMIN_COOKIE = "umbba-admin";
 
-export async function GET() {
-  const expected = process.env.ADMIN_PASSWORD;
-  const token = (await cookies()).get(ADMIN_COOKIE)?.value;
-  if (!expected || !token || token !== expected) {
+/**
+ * 어드민 cookie (웹 UI) 또는 Bearer ADMIN_CLI_TOKEN (CLI) 둘 다 허용
+ */
+async function isAuthorized(request: Request): Promise<boolean> {
+  const auth = request.headers.get("authorization");
+  if (auth) {
+    const expected = process.env.ADMIN_CLI_TOKEN;
+    return Boolean(expected && auth === `Bearer ${expected}`);
+  }
+  const cookieToken = (await cookies()).get(ADMIN_COOKIE)?.value;
+  const adminPw = process.env.ADMIN_PASSWORD;
+  return Boolean(adminPw && cookieToken && cookieToken === adminPw);
+}
+
+export async function GET(request: Request) {
+  if (!(await isAuthorized(request))) {
     return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
   }
 
-  // todo 상태만 필터
-  const all = await listQueue(500);
+  // todo 상태만 필터 (3일 이상 옛 항목도 포함하려 withinDays 크게)
+  const all = await listQueue(500, 30);
   const todos = all.filter((q) => q.status === "todo");
 
   const payload = {

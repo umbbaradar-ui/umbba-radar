@@ -611,32 +611,38 @@ def upload_image_to_storage(image_path: Path) -> str | None:
         return None
 
 
-def run_export_mode(
-    input_json: Path,
+def fetch_export_todo_via_api() -> dict | None:
+    """서버 API 에서 todo 큐 JSON 받아옴 (Bearer 인증).
+    웹 [Export todo JSON] 버튼이 다운로드해주는 것과 동일한 데이터."""
+    if not API_TOKEN:
+        print("❌ ADMIN_CLI_TOKEN 미설정")
+        return None
+    try:
+        r = requests.get(
+            f"{API_URL}/api/admin/queue/export-todo",
+            headers={"Authorization": f"Bearer {API_TOKEN}"},
+            timeout=60,
+        )
+    except requests.RequestException as e:
+        print(f"❌ export-todo 네트워크 오류: {e}")
+        return None
+    if r.status_code != 200:
+        print(f"❌ export-todo HTTP {r.status_code}: {r.text[:200]}")
+        return None
+    try:
+        return r.json()
+    except Exception as e:
+        print(f"❌ export-todo 응답 파싱 실패: {e}")
+        return None
+
+
+def _process_export(
+    payload: dict,
     with_images: bool,
     output_dir: Path,
+    source_label: str,
 ) -> int:
-    """
-    웹에서 [Export todo JSON] 버튼으로 받은 파일을 CLI 에 입력으로 줌
-    → (옵션) 각 항목의 이미지를 gallery-dl 로 다운 + Storage 업로드
-    → 영구 URL 포함된 새 JSON + 로컬 이미지 폴더 생성
-
-    사용 예:
-      py ingest.py --export-from todo-20260528.json --with-images
-      → exports/2026-05-28-1430/
-          todo-enriched.json   (이미지 url 포함)
-          images/              (Claude Code 가 로컬 path 로 분석할 수 있음)
-    """
-    if not input_json.exists():
-        print(f"❌ 입력 파일 없음: {input_json}")
-        return 1
-
-    try:
-        payload = json.loads(input_json.read_text(encoding="utf-8-sig"))
-    except Exception as e:
-        print(f"❌ JSON 파싱 실패: {e}")
-        return 1
-
+    """공통 export 로직: payload (dict) 받아서 이미지 다운/업로드 + JSON 저장"""
     items = payload.get("items", []) if isinstance(payload, dict) else payload
     if not isinstance(items, list) or not items:
         print("❌ items 배열 없음 또는 비어있음")
@@ -649,6 +655,7 @@ def run_export_mode(
     images_dir.mkdir(parents=True, exist_ok=True)
 
     print(f"📦 export 시작: {len(items)}개 항목 → {work_dir}")
+    print(f"   입력: {source_label}")
     if with_images:
         print(f"   이미지 다운 + Storage 업로드 모드 (C)")
     else:
@@ -715,8 +722,123 @@ def run_export_mode(
         print(f"   이미지: {images_dir}")
     print()
     print(f"💡 다음: Claude Code 에서")
-    print(f'   "{output_file.name} 의 항목들 RULES.md 보고 분류해줘"')
+    print(f'   "{output_file.name} 의 항목들 RULES.md 보고 분류해줘 → results.json"')
+    print(f'   그 다음: py ingest.py --import results.json')
     return 0
+
+
+def run_export_from_mode(
+    input_json: Path,
+    with_images: bool,
+    output_dir: Path,
+) -> int:
+    """파일 입력 모드 (--export-from <file>)"""
+    if not input_json.exists():
+        print(f"❌ 입력 파일 없음: {input_json}")
+        return 1
+    try:
+        payload = json.loads(input_json.read_text(encoding="utf-8-sig"))
+    except Exception as e:
+        print(f"❌ JSON 파싱 실패: {e}")
+        return 1
+    return _process_export(payload, with_images, output_dir, str(input_json))
+
+
+def run_auto_export_mode(with_images: bool, output_dir: Path) -> int:
+    """API 자동 호출 모드 (--auto-export)
+    서버에서 todo 큐 받아 → 이미지 처리 → JSON 저장. 사용자 손 없음."""
+    print(f"📡 서버에서 todo 큐 fetch (Bearer)")
+    payload = fetch_export_todo_via_api()
+    if payload is None:
+        return 1
+    count = payload.get("count", 0)
+    if count == 0:
+        print("   todo 0개. 처리할 게 없어요.")
+        return 0
+    print(f"   가져온 항목: {count}개")
+    return _process_export(payload, with_images, output_dir, f"API ({API_URL})")
+
+
+def run_import_mode(results_file: Path) -> int:
+    """Claude Code 가 만든 results.json 업로드 → posts 카드 일괄 생성"""
+    if not results_file.exists():
+        print(f"❌ 결과 파일 없음: {results_file}")
+        return 1
+    if not API_TOKEN:
+        print("❌ ADMIN_CLI_TOKEN 미설정")
+        return 1
+    try:
+        payload = json.loads(results_file.read_text(encoding="utf-8-sig"))
+    except Exception as e:
+        print(f"❌ JSON 파싱 실패: {e}")
+        return 1
+
+    items = payload.get("items", []) if isinstance(payload, dict) else payload
+    if not isinstance(items, list) or not items:
+        print("❌ items 배열 없음 또는 비어있음")
+        return 1
+
+    print(f"📤 import 시작: {len(items)}개 항목")
+    print(f"   API: {API_URL}")
+    print()
+
+    # 200개 단위 청크로 분할 (서버 endpoint 제한과 일치)
+    CHUNK = 200
+    total_created = 0
+    total_skipped = 0
+    total_failed = 0
+    all_errors = []
+
+    for offset in range(0, len(items), CHUNK):
+        chunk = items[offset:offset + CHUNK]
+        try:
+            r = requests.post(
+                f"{API_URL}/api/admin/queue/import-results",
+                headers={
+                    "Authorization": f"Bearer {API_TOKEN}",
+                    "Content-Type": "application/json",
+                },
+                json={"items": chunk},
+                timeout=90,
+            )
+        except requests.RequestException as e:
+            print(f"❌ 청크 {offset // CHUNK + 1} 네트워크 오류: {e}")
+            total_failed += len(chunk)
+            continue
+
+        if r.status_code != 200:
+            print(f"❌ HTTP {r.status_code}: {r.text[:200]}")
+            total_failed += len(chunk)
+            continue
+
+        data = r.json()
+        if not data.get("ok"):
+            print(f"❌ {data.get('error', 'unknown')}")
+            total_failed += len(chunk)
+            continue
+
+        created = data.get("created", 0)
+        skipped = data.get("skipped", 0)
+        failed = data.get("failed", 0)
+        total_created += created
+        total_skipped += skipped
+        total_failed += failed
+        all_errors.extend(data.get("errors", []))
+
+        print(f"   청크 {offset // CHUNK + 1}: 생성 {created}, 스킵 {skipped}, 실패 {failed}")
+
+    print()
+    print(f"✅ import 완료")
+    print(f"   카드 생성: {total_created}개")
+    print(f"   스킵 (skip true · 중복): {total_skipped}개")
+    print(f"   실패: {total_failed}개")
+    if all_errors:
+        print(f"   실패 상세 (최대 20개):")
+        for e in all_errors[:20]:
+            print(f"     · {e.get('queue_id', '?')[:8]}: {e.get('message', '')[:100]}")
+    print()
+    print(f"   검수: {API_URL}/admin/queue")
+    return 0 if total_failed == 0 else 2
 
 
 def run_file_mode(file_path: Path, dry_run: bool) -> int:
@@ -817,18 +939,29 @@ def main() -> int:
     parser.add_argument(
         "--export-from",
         type=Path,
-        help="로컬 분석 export 모드: 웹 [Export] 로 받은 todo-*.json 경로",
+        help="로컬 분석 export 모드 (파일 입력): 웹 [Export] 로 받은 todo-*.json 경로",
+    )
+    parser.add_argument(
+        "--auto-export",
+        action="store_true",
+        help="로컬 분석 export 모드 (API 자동): 서버 큐에서 todo 자동 fetch → 이미지 처리 → JSON 저장",
     )
     parser.add_argument(
         "--with-images",
         action="store_true",
-        help="--export-from 와 함께: 이미지도 다운 + Storage 업로드 (C 모드)",
+        help="--export-from / --auto-export 와 함께: 이미지도 다운 + Storage 업로드 (C 모드)",
     )
     parser.add_argument(
         "--output-dir",
         type=Path,
         default=Path("./exports"),
-        help="--export-from 결과 저장 폴더 (기본 ./exports)",
+        help="export 결과 저장 폴더 (기본 ./exports)",
+    )
+    parser.add_argument(
+        "--import",
+        dest="import_file",
+        type=Path,
+        help="Claude Code 가 만든 results.json 업로드 → 카드 자동 생성",
     )
     parser.add_argument(
         "--dry-run",
@@ -847,19 +980,30 @@ def main() -> int:
             dry_run=args.dry_run,
         )
 
+    if args.auto_export:
+        return run_auto_export_mode(
+            with_images=args.with_images,
+            output_dir=args.output_dir,
+        )
+
     if args.export_from:
-        return run_export_mode(
+        return run_export_from_mode(
             input_json=args.export_from,
             with_images=args.with_images,
             output_dir=args.output_dir,
         )
+
+    if args.import_file:
+        return run_import_mode(args.import_file)
 
     if args.pull:
         return run_pull_mode(limit=min(max(args.limit, 1), 20),
                              dry_run=args.dry_run)
 
     if not args.file:
-        parser.error("파일 인자 또는 --pull / --scan / --export-from 중 하나가 필요해요.")
+        parser.error(
+            "파일 인자 또는 --pull / --scan / --auto-export / --export-from / --import 중 하나가 필요해요."
+        )
 
     return run_file_mode(args.file, dry_run=args.dry_run)
 
