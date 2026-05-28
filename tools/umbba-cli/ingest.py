@@ -456,6 +456,14 @@ def scan_one_account(username: str, recent: int) -> tuple[list[dict], str | None
     for entry in payload:
         if not isinstance(entry, list):
             continue
+        # gallery-dl 는 에러를 [-1, {error, message}] 형태로 반환
+        # 예: HttpError 400 (쿠키 만료·차단), Login required, 비공개 등
+        if len(entry) >= 2 and entry[0] == -1 and isinstance(entry[1], dict):
+            err = entry[1]
+            err_type = err.get("error", "Unknown")
+            err_msg = err.get("message", "")
+            return [], f"{err_type}: {err_msg}"[:200]
+
         # meta dict 는 entry 중 dict 타입인 마지막 요소
         meta = None
         for item in entry:
