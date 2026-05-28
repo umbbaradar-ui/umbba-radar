@@ -159,18 +159,31 @@ export async function addUrlsToQueue(
 }
 
 /** 큐 전체 조회 (관리자 검수용) — 최신순 */
-export async function listQueue(limit = 100): Promise<IngestQueueItem[]> {
+/**
+ * 큐 항목 조회 (관리자 검수용)
+ * @param limit 최대 행 수 (기본 100)
+ * @param withinDays 최근 N일 이내 created_at 만 (기본 3일)
+ */
+export async function listQueue(
+  limit = 100,
+  withinDays = 3
+): Promise<IngestQueueItem[]> {
+  const cutoff = new Date(Date.now() - withinDays * 86400000).toISOString();
   const { data, error } = await supabaseServer
     .from("ingest_queue")
     .select("*")
+    .gte("created_at", cutoff)
     .order("created_at", { ascending: false })
     .limit(limit);
   if (error) throw new Error(error.message);
   return (data ?? []) as IngestQueueItem[];
 }
 
-/** 큐 상태 통계 */
-export async function getQueueStats(): Promise<QueueStats> {
+/**
+ * 큐 상태 통계 (최근 N일 이내, 기본 3일)
+ * 리스트와 동일한 시간 범위라 헤더 카운트와 리스트가 일치
+ */
+export async function getQueueStats(withinDays = 3): Promise<QueueStats> {
   const stats: QueueStats = {
     todo: 0,
     processing: 0,
@@ -180,6 +193,7 @@ export async function getQueueStats(): Promise<QueueStats> {
     total: 0,
   };
 
+  const cutoff = new Date(Date.now() - withinDays * 86400000).toISOString();
   const statuses: IngestQueueStatus[] = [
     "todo",
     "processing",
@@ -193,7 +207,8 @@ export async function getQueueStats(): Promise<QueueStats> {
       const { count } = await supabaseServer
         .from("ingest_queue")
         .select("id", { count: "exact", head: true })
-        .eq("status", s);
+        .eq("status", s)
+        .gte("created_at", cutoff);
       stats[s] = count ?? 0;
       stats.total += count ?? 0;
     })

@@ -39,8 +39,9 @@ const STATUS_LABEL: Record<
 };
 
 export function QueueList({ items }: { items: IngestQueueItem[] }) {
+  // 기본 = "대기" (검수 우선순위). 다른 status 보려면 탭 클릭.
   const [filter, setFilter] = useState<IngestQueueItem["status"] | "all">(
-    "all"
+    "todo"
   );
 
   const filtered = filter === "all" ? items : items.filter((i) => i.status === filter);
@@ -48,16 +49,17 @@ export function QueueList({ items }: { items: IngestQueueItem[] }) {
   if (items.length === 0) {
     return (
       <p className="rounded-xl bg-slate-50 px-4 py-8 text-center text-xs text-slate-500">
-        큐가 비어있어요. 위 폼에서 URL을 등록하면 여기에 표시됩니다.
+        최근 3일 큐가 비어있어요. 위 폼에서 URL을 등록하거나 --scan 을 돌리면
+        여기에 표시됩니다.
       </p>
     );
   }
 
   return (
     <div className="space-y-3">
-      {/* 필터 */}
+      {/* 필터 — 기본 '대기' */}
       <div className="flex flex-wrap gap-1.5">
-        {(["all", "todo", "processing", "done", "duplicate", "failed"] as const).map(
+        {(["todo", "processing", "done", "duplicate", "failed", "all"] as const).map(
           (f) => (
             <button
               key={f}
@@ -78,12 +80,18 @@ export function QueueList({ items }: { items: IngestQueueItem[] }) {
         )}
       </div>
 
-      {/* 리스트 */}
-      <ul className="divide-y divide-slate-100 overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm">
-        {filtered.map((item) => (
-          <QueueRow key={item.id} item={item} />
-        ))}
-      </ul>
+      {/* 비어있는 경우 (필터 결과) */}
+      {filtered.length === 0 ? (
+        <p className="rounded-xl bg-slate-50 px-4 py-6 text-center text-xs text-slate-500">
+          이 상태의 항목이 최근 3일 안에 없어요.
+        </p>
+      ) : (
+        <ul className="divide-y divide-slate-100 overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm">
+          {filtered.map((item) => (
+            <QueueRow key={item.id} item={item} />
+          ))}
+        </ul>
+      )}
     </div>
   );
 }

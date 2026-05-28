@@ -74,7 +74,10 @@ export default async function BulkIngestPage() {
 
       <section className="mt-8">
         <h2 className="mb-3 text-sm font-bold text-slate-900">
-          최근 큐 항목 (최대 100개)
+          최근 큐 항목{" "}
+          <span className="text-xs font-normal text-slate-400">
+            (최근 3일 · 기본 대기 탭, 다른 상태는 탭 클릭)
+          </span>
         </h2>
         <QueueList items={items} />
       </section>
