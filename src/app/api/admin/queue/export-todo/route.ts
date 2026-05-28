@@ -43,8 +43,13 @@ export async function GET(request: Request) {
   const all = await listQueue(500, 30);
   const todos = all.filter((q) => q.status === "todo");
 
+  // KST 기준 today (Claude 가 이벤트 만료 판단 시 사용)
+  const nowKST = new Date(Date.now() + 9 * 3600000);
+  const todayKST = nowKST.toISOString().slice(0, 10); // YYYY-MM-DD
+
   const payload = {
     exported_at: new Date().toISOString(),
+    today_kst: todayKST,
     count: todos.length,
     // Claude Code 가 읽고 처리할 형식
     items: todos.map((q) => ({
@@ -59,8 +64,9 @@ export async function GET(request: Request) {
       "각 item 을 분석해 카드 메타데이터를 채워주세요.",
       "결과는 results.items 배열에 같은 queue_id 로 매핑.",
       "분류 기준은 RULES.md 참조.",
-      "모집·체험단·이벤트 아닌 일상글은 skip: true 로 표시 (카드 생성 X).",
-      "신뢰도 0.5 미만이면 너님(사용자)에게 한 번 확인 받고 결정.",
+      "** 검수는 너님(Claude)이 책임 ** — RULES.md 의 'skip 적극 판단' 섹션 따라 노이즈는 무조건 skip:true.",
+      `오늘 날짜(KST) = ${todayKST}. 이 날짜 기준으로 이벤트 만료 여부 판단.`,
+      "신뢰도 0.5 미만이라도 명백한 노이즈면 skip 으로 처리 (사용자 확인 X).",
     ],
   };
 
