@@ -130,8 +130,35 @@ def download_post(url: str, work_dir: Path) -> Optional[DownloadedPost]:
     for meta_file in work_dir.rglob("*.json"):
         metadata_files.append(meta_file)
 
+    # 이미지 없음 = 영상(Reel) 게시물일 가능성
+    # gallery-dl 메타에 display_url (썸네일 URL) 이 들어있어 직접 다운
+    if not image_files and metadata_files:
+        for meta_file in metadata_files:
+            try:
+                meta = json.loads(meta_file.read_text(encoding="utf-8"))
+                # display_url 또는 thumbnail_src · video_thumbnail_url 등 후보
+                thumb_url = (
+                    meta.get("display_url")
+                    or meta.get("thumbnail_src")
+                    or meta.get("video_thumbnail_url")
+                    or meta.get("thumbnail_url")
+                )
+                if thumb_url:
+                    try:
+                        r = requests.get(thumb_url, timeout=30)
+                        if r.status_code == 200:
+                            thumb_path = work_dir / "video-thumbnail.jpg"
+                            thumb_path.write_bytes(r.content)
+                            image_files = [thumb_path]
+                            print(f"    🎬 영상 게시물 — 썸네일 별도 다운 OK")
+                            break
+                    except Exception as e:
+                        print(f"    ⚠ 썸네일 다운 실패: {e}")
+            except Exception:
+                continue
+
     if not image_files:
-        print("    ❌ 다운된 이미지 없음 (영상이면 썸네일 다운 옵션 추가 필요)")
+        print("    ❌ 다운된 이미지·썸네일 없음 (비공개·삭제·메타 형식 변경)")
         return None
 
     # 가장 큰 이미지 = 메인 이미지 (영상 게시물의 썸네일 후보)
