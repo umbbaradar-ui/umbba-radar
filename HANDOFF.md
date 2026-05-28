@@ -1,299 +1,309 @@
-# 인수인계서 — 2026-05-25 세션 종료 시점
+# 인수인계서 — 2026-05-29 압축본
 
-> **다음 Claude/세션 시작 시 이 문서 + `OWNERSHIP.md` + `AGENTS.md` 먼저 읽으세요.**
-> 이번 세션은 PWA 고도화 → SEO 인프라 → 분석 도구 → 분류 체계 → 알림 시스템까지 60+ 커밋 진행. 컨텍스트 무거워서 새 세션 권장.
-
----
-
-## 🚨 즉시 사용자 액션 대기 중인 것 (가장 중요)
-
-배포는 모두 완료됐지만 **사용자가 외부 콘솔에서 수동으로 처리해야** 할 항목들:
-
-### 1. ~~DB 마이그레이션 3개~~ ✅ 완료 (2026-05-25)
-
-011/012/013 모두 Supabase Dashboard SQL Editor에서 실행 완료.
-- 011: type_tags 7→4 (follow/lottery/gov_support 제거, free_trial+experience_group+sponsored → experience)
-- 012: topic 컬럼 추가 (parenting/living)
-- 013: stage_categories 8→6 (preschool→toddler, elementary_lower+upper → elementary)
-
-후속 정리도 같이 진행됨 (2026-05-25 세션):
-- `post.ts`의 deprecated fallback 라벨 일괄 제거 (union·STAGE_LABELS·TYPE_LABELS)
-- `stage-visuals.ts`의 deprecated 엔트리 제거
-- `service-server.ts`의 `getStageFromBirthDate` 데드코드 제거 (옛 stage 값 반환하던 함수)
-- `npm run build` 통과 확인
-
-### 2. ~~검색엔진 콘솔~~ ✅ 완료 (2026-05-25)
-
-Google Search Console + Naver Search Advisor 사이트 등록 + sitemap 제출 완료.
-verification 메타태그는 `src/app/layout.tsx:38-43`에 상주 (소스 변경 금지).
-
-### 3. ~~GA4 페이지뷰 태그~~ ✅ 완료 (2026-05-25)
-
-GTM 컨테이너 `GTM-PR2K864P`에 GA4 페이지뷰 태그 등록 + 게시 완료.
-
-### 4. (선택) PWA Screenshots 캡처 — 🔴 대기 중
-
-- 폰에서 메인/카드상세/내 레이더 3장 캡처
-- 1080×1920 크롭 후 `public/screenshots/{mobile-home,mobile-card,mobile-my}.png` 업로드
-- 가이드: `public/screenshots/README.md`
-
-### 5. (선택) Play Store 등록
-
-- Google Play Console 가입 ($25, 신원인증 + 신용카드)
-- pwabuilder.com에서 `https://umbba-radar.com` → Android 패키지 생성
-- SHA-256 받아서 Claude에 전달 → `public/.well-known/assetlinks.json` 자동 작성
-- 개인 계정은 Closed Testing 20명 14일 필수 (2023.11~ 정책)
+> **새 세션 시작 시 이 문서 + `OWNERSHIP.md` + `AGENTS.md` + `tools/umbba-cli/RULES.md` 먼저 읽으세요.**
+> 5/25~5/29 4일간 인스타 모니터링·자동화·로컬 분석 모드 구축. 컨텍스트 압축본.
 
 ---
 
-## 🗺️ 이번 세션 작업 분류 요약
+## 🚨 현재 진행 중 (즉시 사용자 액션)
 
-### A. PWA 고도화
-- 아이콘 5종 생성 (192/512 any + 192/512 maskable + 180 apple) — `scripts/generate-pwa-icons.mjs`
-- 원본은 `assets/bear-mascot-source.png` (1254×1254), 공개 자산은 압축본
-- manifest 풀세트: id, scope, shortcuts(4개), screenshots(3개 placeholder), launch_handler, display_override, dir
-- PWA 설치 감지 강화: `src/shared/utils/pwa.ts` — display-mode 4종 + iOS standalone + localStorage 폴백
-- SplashScreen: PWA 모드 노출 + 슬로건 하단 + 로딩 인디케이터 + 500/700ms 단축
+### 1. A루틴 (--scan) 작업 스케줄러 등록 — 사용자 진행 중
+- 매일 21:30: `py ingest.py --scan` (인스타 신규 URL 큐 저장, 비용 0)
+- 시작 위치: `C:\Users\myj87\Documents\Claude\Projects\앱프로젝트\umbba-radar\tools\umbba-cli`
+- 조건: "절전 모드 해제" + "예약된 시간 후에 가능한 한 빨리"
 
-### B. SEO 풀세트
-- `src/app/robots.ts` — 공개 인덱싱 허용, 개인화/관리 차단
-- `src/app/sitemap.ts` — 정적 5개 + DB published 동적, revalidate 60s
-- `/post/[id]/page.tsx` — generateMetadata (카드별 고유 title/desc/OG/canonical) + JSON-LD Article
-- `/post/[id]/opengraph-image.tsx` — 카드별 1200×630 OG 이미지 (좌측 썸네일 + 우측 정보)
-- root layout: JSON-LD Organization + WebSite, alternates.canonical, robots.googleBot
-- 검색엔진 소유권 인증 (Google + Naver) — metadata.verification
+### 2. B루틴 (분류+import) Claude routine 등록 대기
+- 매일 22:00 자동 실행 예정
+- 내용: `--auto-export` → 분류 → `--import`
+- 직전 schedule skill 호출 실패 ("Connecting trouble with remote claude.ai")
+- 재시도 필요
 
-### C. 분석
-- GTM (`GTM-PR2K864P`) — `next/script` SSR, production만, dev 비활성
-- noscript fallback, 환경변수 `NEXT_PUBLIC_GTM_ID` 우선
-- 자체 analytics(events 테이블) + GA4 이중 추적 (이중 보내기는 안 함, 분리 운영)
+### 3. Anthropic Console 월 한도 (백업용 안전망, 선택)
+https://console.anthropic.com/settings/limits → Monthly $20
+- B루틴이 Claude routine 으로 가면 비용 0, 필요 X
+- 만약 `--pull` (API 모드) 도 같이 운영하면 안전망으로 권장
 
-### D. 분류 체계 간소화 (3개 axis)
+### 4. ③ 카드 승인 검수 (매일 운영)
+- `/admin/queue` 에 자동으로 카드 쌓임 → 발행 결정
+- 17개 발행 완료 (1차 라운드, 5/28)
 
-**type_tags 7→4**:
-| 구 (제거/통합) | 신 |
-|---|---|
-| follow / lottery / gov_support | 제거 |
-| free_trial / experience_group / sponsored | → `experience` (체험단) |
-| regram | 유지 |
-| (신규) kids_model, supporters | 추가 |
+---
 
-**stage_categories 8→6**:
-| 구 | 신 |
-|---|---|
-| pregnancy/newborn/infant/toddler/all_ages | 유지 (newborn 라벨 "출산 직후"→"신생아") |
-| preschool | → `toddler` |
-| elementary_lower / elementary_upper | → `elementary` |
+## 🏗️ 시스템 개요 (Phase 2 인스타 자동화)
 
-**topic axis 신규**: `parenting` (육아) / `living` (리빙)
-- 기존 카드는 일괄 `parenting`
-- AI(Gemini)가 새 카드 분류
-
-~~deprecated 값은 `post.ts` union/labels에 임시 fallback~~ → 2026-05-25 일괄 제거 완료.
-`ACTIVE_STAGE_CATEGORIES`, `ACTIVE_TYPE_TAGS`, `ACTIVE_TOPIC_CATEGORIES` 상수로 UI/AI는 신규만 노출.
-
-**stages.ts 월령 매칭 버퍼 재설계**:
+### 운영 흐름
 ```
-신생아: -3~6, 영아: 3~15, 유아: 6~90(코어 1~7세+±6), 초등생: 72~168(코어 7~13세+±12)
+[① 팔로잉 계정 등록]
+  /admin/accounts — 102개 인스타 username 등록됨
+
+[A루틴] py ingest.py --scan
+  102계정 중 30개씩 순회 (last_scanned_at 오래된 것부터)
+  gallery-dl --simulate -j 로 각 계정 /posts/ 페이지 fetch
+  신규 게시물 URL + 캡션(2000자) + 메타 → ingest_queue 저장
+  인스타 호출만, 비용 0
+
+[② URL 큐 검수] /admin/bulk-ingest
+  대기 기본 탭 + 3일 필터 (오래된 done/failed 자동 숨김)
+  캡션 미리보기 200자 표시, hover 시 전체
+
+[B루틴] 두 가지 선택지 (병존 가능):
+
+  옵션 A) py ingest.py --pull --limit N  (Claude API 모드)
+    todo N개 가져와 gallery-dl 이미지 다운 → Storage 업로드
+    → Vercel /api/admin/bulk-ingest-with-image
+    → Claude Sonnet 4.5 Vision 분류 (캡션 + 이미지 같이)
+    → is_actual_event=false 또는 confidence<0.4 면 status='skipped' (카드 X)
+    → 진짜 모집만 카드(pending) 생성
+    카드당 약 24원
+
+  옵션 B) py ingest.py --auto-export → Claude Code 분류 → --import
+    --auto-export: 텍스트만 JSON 저장 (인스타 호출 0)
+    Claude Code: RULES.md 따라 분류, results.json 생성 (구독 내, 비용 0)
+    --import: skip=false 만 이미지 자동 다운 + Storage 업로드 + 카드 생성
+    인스타 호출 ~20회 (전체 51회 → 60% 절감), 비용 0
+
+[③ 카드 승인] /admin/queue
+  pending 카드 검수 → 발행 / 수정 후 발행 / 반려
 ```
 
-### E. 알림 시스템 + 내 레이더 재설계
+### 분류 책임 분리 (RULES.md 정책)
+- **Claude (Code 또는 API)**: 자동 skip 판단 + 분류
+- **사용자**: 발행 결정만 (큐 검수·노이즈 제거 X)
 
-**새 컴포넌트/페이지**:
-- `/notifications` 페이지 — 자녀 시기 정확 매칭 + 관심 카드 마감 임박
-- `NotificationBell` (헤더 우측 벨, 미읽음 빨간 점, localStorage `umbba-notif-last-seen`)
-- `NotificationsHeader` (sticky top-0 z-30, 뒤로가기, 토스 스타일)
-- `NotificationSeenMarker` (페이지 진입 시 lastSeen 갱신)
-
-**서버 함수 신규** (`src/modules/personalization/service-server.ts`):
-- `getRecentMatchingCards(limit)` — 자녀 시기 정확 매칭 (all_ages 제외) + 최근 14일
-- `getInterestedDeadlineSoon()` — 관심 카드 중 7일 이내 마감
-- `getNotifications()` — 위 둘 통합, 마감 임박 우선
-
-**/my 3탭 재설계** (`MyRadarTabs.tsx`):
-- 관심: "찜한 카드 · 마감 임박 시 알림 보내드려요 🔔"
-- 신청함: "신청 완료! 좋은 결과를 바라요 ♥"
-- 과거 레이더: expired 카드 중 관심/신청, 월별 그룹핑
-
-**시기별 시각화** (`src/shared/utils/stage-visuals.ts`):
-임신중🤰 / 신생아👶 / 영아🍼 / 유아🧸 / 초등생🎒 / 전연령🏠
-
-**명칭**: "내것" → "내 레이더" (BottomTabNav, 데스크탑 nav, manifest shortcuts)
-
-### F. 성능 / 버그픽스
-- `next.config.ts`: images.formats AVIF/WebP, deviceSizes 슬림
-- bear-mascot.png 1.3MB → 29KB (300×300)
-- toss-thumbnail.png 1295KB → 234KB
-- BottomTabNav 스크롤 따라가는 버그: body `flex flex-col` → `min-h-dvh` (block), sticky footer는 (web)/layout wrapper로 이전
-
-### G. 브랜드/카피
-- title/OG/Twitter 통일: "엄빠레이더 — 엄빠 대신 매일 혜택 스캔 중 ♥"
-- description은 "놓치는 혜택은 없게..." 유지 (기능적 카피)
+### skip 자동 패턴 8종 (vision-extractor + RULES.md 둘 다 반영)
+1. 이벤트 기간 만료
+2. 신청 방법 없음 (참여·댓글·팔로우 키워드 부재)
+3. 단순 광고·자랑·후기
+4. 매장 영업 안내
+5. 정치·종교·논란성
+6. 무관 콜라보 알림 (모집 X)
+7. LIVE 방송 안내 (시청 권유)
+8. 기존 구매자·사용자 대상 ("○○ 사용 모습 담아주세요" 등)
 
 ---
 
-## 🎯 정책 결정사항 (영구 적용)
+## 🛠️ CLI 명령 cheatsheet
 
-| 항목 | 결정 |
-|------|------|
-| 자녀 시기 매칭 (알림) | `all_ages` 제외 — 진짜 맞춤만 |
-| 자녀 시기 매칭 (메인 필터) | `all_ages` 포함 |
-| 푸시 알림 | Web Push는 MAU 100+ 후 (Stage 2, PUSH 담당자) — 지금은 인앱만 |
-| GTM 운영 | dev 환경 비활성, production만 |
-| console.log/error | 서버 사이드 에러 로그는 유지 (Vercel 디버깅용) |
-| screenshots | Play Console UI에 별도 업로드 (manifest는 부가) |
-| 분류 변경 시 | 마이그레이션 SQL + deprecated fallback 동시 → 무중단 |
-| 커밋 메시지 | 한국어, 담당자 prefix (`feat(FRONT,PROFILE): ...`), HEREDOC |
-| **자동 커밋·푸시** | 빌드 성공 후 묻지 말고 자동 (사용자 피드백 — `~/.claude/.../memory/feedback_auto_commit_push.md`) |
-| **운영·자동화 논의 범위** | **인스타만 다룸**. 네이버 블로그 등 다른 소스는 사용자가 명시적으로 언급할 때까지 거론·질문 X (2026-05-26 결정) |
+위치: `C:\Users\myj87\Documents\Claude\Projects\앱프로젝트\umbba-radar\tools\umbba-cli`
 
----
+```powershell
+# A루틴 (인스타 fetch)
+py ingest.py --scan                            # 30계정, 캡션·메타
+py ingest.py --scan --max-accounts 100         # 한 번에 더 많이 (인증 직후 비추)
+py ingest.py --scan --recent 5                 # 계정당 5개 게시물 (기본 3)
 
-## 🔮 미해결 / 다음 단계 옵션
+# B루틴 옵션 A (Claude API)
+py ingest.py --pull --limit 5                  # 카드당 ~24원
+py ingest.py --pull --limit 10
 
-### 작은 follow-up (단순 작업)
-- [x] ~~`post.ts`의 deprecated stage/type 라벨 제거~~ (2026-05-25 완료)
-- [ ] PWA shortcuts 각각 다른 96×96 아이콘 디자인 (지금은 모두 앱 아이콘 fallback)
-- [ ] screenshots 3장 사용자 캡처 → 매니페스트 검증 통과
-- [x] ~~GA4 측정 ID 발급 후 GTM에 페이지뷰 태그 추가~~ (2026-05-25 완료)
+# B루틴 옵션 B (로컬, 비용 0)
+py ingest.py --auto-export                     # 텍스트만 export
+# → Claude Code 분류 → results.json
+py ingest.py --import C:\path\results.json     # skip=false 만 이미지 자동 다운
 
-### 중간 작업 (의사결정 필요)
-- [ ] `share_target` manifest 추가 + `/submit` prefill 처리 (인스타 → 공유 → 제보 자동)
-- [ ] proxy.ts children 조회 캐싱 (페이지 네비 -50~100ms, AUTH 로직 변경 위험 중)
-- [ ] PostCard 블러 백드롭 제거 검토 (렌더 비용, 디자인 영향)
-- [ ] 마감 미정 카드 노출 기간 관리자 입력화 (현재 7일 하드코딩)
+# 단발 (수동 등록)
+py ingest.py urls.txt                          # URL 목록 파일 처리
+```
 
-### 큰 작업 (별도 의논 필요)
-- [x] ~~Web Push 인프라~~ (2026-05-25 풀세트 도입 완료 — Stage 2 → Stage 1로 앞당김)
-- [ ] Play Store 등록 (개인 계정, $25, Closed Testing 20명 14일)
-- [ ] iOS App Store ($99/년, PWA→iOS는 까다로움, 토스 미니앱 트랙이 더 현실적일 수도)
-- [ ] Search Console 등록 후 데이터 분석 (4~8주 누적 후)
-- [ ] 신청함 → 당첨함 상태 추가 + 후기 작성 유도
+### 환경 변수 (`.env`)
+```
+UMBBA_API_URL=https://www.umbba-radar.com
+ADMIN_CLI_TOKEN=<Vercel 동일 토큰>
+UMBBA_SLEEP=10                                  # 계정 간 sleep (인스타 부담 ↓)
+UMBBA_COOKIES_FILE=C:\...\cookies.txt           # Firefox export
+```
 
----
-
-## 🛠️ 다음 세션이 알아야 할 기술 컨텍스트
-
-### Next.js 16 특이사항 (AGENTS.md 참조 필수)
-- Turbopack + `proxy.ts` (middleware 이름 deprecated)
-- App Router 메타데이터 파일 컨벤션 적극 활용 (`robots.ts`, `sitemap.ts`, `manifest.ts`, `opengraph-image.tsx`)
-- ViewTransition (React 19.2) — PostCard에 사용 중
-
-### 환경 변수 (`.env.local` + Vercel)
-- `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-- `SUPABASE_SERVICE_ROLE_KEY`
-- `GEMINI_API_KEY`
-- `ADMIN_ID`, `ADMIN_PASSWORD`
-- `NAVER_CLIENT_ID`, `NAVER_CLIENT_SECRET`
-- `NEXT_PUBLIC_GTM_ID` (선택 — 미설정 시 코드 기본값 `GTM-PR2K864P`)
-- `NEXT_PUBLIC_GOOGLE_OAUTH_ENABLED` (현재 비활성)
-- `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` (Web Push)
-- `CRON_SECRET` (Vercel cron 인증 — ingest + notify-deadline 공유)
-
-### DB (Supabase) 마이그레이션 현황
-- 015까지 모두 실행 완료 (2026-05-25)
-- 014: `posts.deadline_unknown` boolean — 마감 미정 카드 처리
-- 015: `posts.search_keywords` TEXT + pg_trgm + GIN trigram 인덱스 4종 — 동의어 검색
-
-### Vercel
-- Hobby plan, cron 2개 (Vercel cron 표준 = UTC 기준):
-  - `/api/cron/ingest` — `0 21 * * *` UTC = **06:00 KST** (핸드오프 초안 "21:00 KST" 표기는 사실 UTC 시간이었음 — INFRA 검토 권장)
-  - `/api/cron/notify-deadline` — `0 0 * * *` UTC = **09:00 KST** (마감 1일 전 카드 푸시 발송)
-- Server Action body limit 10MB
-- maxDuration 60s (cron route는 300s까지 가능)
-
-### Repo
-- GitHub `umbbaradar-ui/umbba-radar` (public, Vercel 자동 배포)
-- 도메인 `umbba-radar.com` (Cloudflare Registrar)
+### Vercel 환경변수 (Production+Preview)
+- `ANTHROPIC_API_KEY` (sk-ant-api03-...)
+- `VISION_PROVIDER=claude` (또는 `gemini` fallback)
+- `ADMIN_PASSWORD`, `ADMIN_CLI_TOKEN`
+- `SUPABASE_*`, `NAVER_*`, `VAPID_*`, `CRON_SECRET`
 
 ---
 
-## 💬 사용자 작업 스타일 (Claude 협업 팁)
+## 📊 어드민 페이지 구조 (현재 단계 명시됨)
 
-- **빠른 진행 선호**: 너무 많이 묻지 말고 합리적 default로 진행 → 결과 보고 시점에 옵션 명시
-- **AskUserQuestion**: 정말 의견 갈리는 디자인/정책만. 기술 디테일은 알아서 판단
-- **빌드 검증 후 자동 커밋·푸시 필수** — 사용자에게 git 명령 요청하지 말 것 (이전 피드백)
-- **커밋 메시지**: 한국어, 담당자 prefix, HEREDOC로 멀티라인 안전 처리
-- **마이그레이션 같은 사용자 액션 필요한 것**: 끝에 🔴 강조해서 명확히 안내
-- **풀세트 vs MVP**: 사용자가 풀세트 선호 (다만 작업량 큰 건 옵션 제시 후 결정)
-- **컨텍스트 60% 넘으면 새 세션 권장** + 이 HANDOFF.md 갱신
-- **이번 세션 보존된 메모리** (`~/.claude/.../memory/feedback_auto_commit_push.md`): umbba-radar 작업 시 빌드 후 자동 커밋·푸시까지 묻지 말 것
+```
+네비: 카드 목록 / ① 팔로잉 계정 / ② URL 큐 / ③ 카드 승인 [N] / 새 카드 / 통계 / 회원 관리
+```
 
----
-
-## 📂 핵심 파일 빠른 참조
-
-| 영역 | 파일 |
-|------|------|
-| 매니페스트 | `src/app/manifest.ts` |
-| robots/sitemap | `src/app/robots.ts`, `src/app/sitemap.ts` |
-| GTM/SEO 메타 | `src/app/layout.tsx` |
-| 알림 페이지 | `src/app/(web)/notifications/` (page.tsx + _components/NotificationsList.tsx) |
-| 알림 서버 함수 | `src/modules/personalization/service-server.ts` (getNotifications/getRecentMatchingCards/getInterestedDeadlineSoon) |
-| Web Push 모듈 | `src/modules/notification/` (push-service.ts + actions.ts + ui/PushToggle.tsx) |
-| Web Push cron | `src/app/api/cron/notify-deadline/route.ts` |
-| Service Worker | `public/sw.js` (push + notificationclick 핸들러) |
-| 내 레이더 | `src/app/(web)/my/page.tsx` + `src/modules/personalization/ui/MyRadarTabs.tsx` |
-| 시기 매칭 | `src/shared/utils/stages.ts` + `src/shared/utils/stage-visuals.ts` |
-| PWA 감지 | `src/shared/utils/pwa.ts` |
-| AI 프롬프트 | `src/modules/ingestion/normalizer.ts`, `vision-extractor.ts` |
-| 타입 정의 | `src/shared/types/post.ts` |
-| 마이그레이션 | `supabase/migrations/011/012/013/014_*.sql` |
-| 아이콘 생성 스크립트 | `scripts/generate-pwa-icons.mjs` |
+- `/admin` — 카드 관리 (필터·정렬·마감탭 추가됨, FilterBar 신규)
+- `/admin/accounts` — 인스타 username 등록 (102개)
+- `/admin/bulk-ingest` — URL 큐 (대기/완료/중복/실패 탭, 캡션 미리보기, 로컬 모드 패널)
+- `/admin/queue` — 카드 승인 (Claude 분류 후 검수)
+- `/admin/users` — 회원 관리 (auth.users + children + profiles + push 통합, 삭제 가능)
+- `/admin/new` — 단발 카드 생성 (스크린샷 탭 제거됨, URL 만)
+- `/admin/[id]/edit` — 카드 수정 (body textarea 14줄 320px)
 
 ---
 
-## 🔄 이번 세션(2026-05-25 ~ 2026-05-26) 추가 변경 요약
+## 📋 핵심 결정·정책
 
-1. **`stages.ts` newborn 출산 전 버퍼 제거** (`minMonths: -3 → 0`)
-   - 임신 중 부모가 신생아 전용 카드 매칭에서 제외 (신청 조건 "이미 태어난 아기" 케이스 보호)
-2. **알림 시스템 4종 개선** (`getRecentMatchingCards`/`getInterestedDeadlineSoon`/`NotificationsList`)
-   - 마감 임박 7→3일, 가입 이후 카드만, 같은 D-day 내 아이 매칭 우선, 본 항목 페이드
-   - 빨간 점 동기화 버그 수정 (custom event + storage + focus 3종 listen)
-3. **Web Push 풀세트** (notification 모듈 신규 + sw.js 확장 + /me 토글 + notify-deadline cron)
-   - 마감 1일 전 자동 푸시. 사용자 수동 옵트인. iOS 16.4+ PWA 안내.
-4. **마감일 미정 카드 처리** (마이그레이션 014 + PostForm 체크박스 + PostCard/상세 안내 + AI 통합)
-   - 등록 +N일 자동 종료 (관리자가 1/3/7일 라디오로 선택, default 7일).
-   - UI에 `~D-N` amber 톤. 푸시 알림 제외. AI 추출 실패도 동일 처리.
-5. **OG 이미지 곰돌이 마스코트 통일** (루트 + 카드별)
-   - 루트 OG: bear-mascot.png 합성, 레이더 원 3겹.
-   - 카드별 OG: 썸네일 없을 때 곰돌이 fallback + 하단 워터마크.
-   - node:fs + base64 data URL (runtime=nodejs) 패턴.
-6. **`form` type_tag 추가** — 네이버폼/구글폼/자체폼 식별 (DB 마이그레이션 불필요, TEXT[]).
-7. **검색 동의어 매칭** (마이그레이션 015 + 4컬럼 OR + AI 자동 동의어)
-   - `search_keywords` 컬럼 + pg_trgm + GIN trigram 인덱스 4종.
-   - 관리자 폼 + AI가 1~3개 자동 생성. 4컬럼 OR ILIKE.
-8. **Play Store 배포 인프라 풀세트**
-   - `/account-deletion` 페이지 신규 (Google Play 2024년 정책 필수).
-   - `/me`에 **앱 내 계정 영구 삭제 버튼** (Server Action + 2단 확인, FK CASCADE 활용).
-   - `/privacy` + `/terms` 광고 도입 사전 고지 조항 추가 (재동의 면제 효과).
-   - 운영 이메일 `umbba.radar@gmail.com` 전 영역 통일.
-   - `PLAY_STORE_LISTING.md` 자세한 설명·짧은 설명·데이터 보안 표 초안.
-   - Feature graphic 1024×500 (`public/feature-graphic.png`) 생성 스크립트.
-   - `assetlinks.json` 배포 (TWA 도메인 검증) — SHA-256 `69:BD:89:...:AD:0B`.
-9. **PWA manifest 풀세트**
-   - `share_target` (인스타·카톡 → /submit 자동 prefill).
-   - `shortcuts` 4종 재구성 (홈 / 내 레이더 / 체험단 / 제보 — 키즈모델 운영가치 낮아 제거).
-   - 각 shortcut 96×96 고유 SVG 아이콘.
-   - 메인 PWA 아이콘 둥근 사각형 마스크 + 투명 외각.
-   - 곰돌이 source PNG의 검정 외각을 알파 처리 (이중 액자 + 검정 모서리 진짜 원인 제거).
+### 비용 모델
+- **목표**: Claude API 호출 0 (Claude Code 구독 활용)
+- **현실**: A루틴 100% 비용 0, B루틴은 Claude Code routine 으로 0 (또는 --pull API 모드 카드당 24원)
+- **안전망**: Anthropic Console 월 $20 한도 (--pull 모드 사용 시)
 
----
+### 인스타 안전 운영
+- 더미 계정 사용 (본 계정 절대 X)
+- 5/28 한 번 잠겼다가 메일 인증으로 풀림 → 이후 보수적 설정
+  - sleep 10초 (`.env` UMBBA_SLEEP=10)
+  - max-accounts 30 (기본)
+  - recent 3 (기본)
+- cookies.txt 주기적 재export (1주 1회 권장)
+- 작업 스케줄러 시간 약간 분산 (매일 정확히 같은 시각 X)
 
-## 📦 Play Store 출시 진행 상태 (2026-05-26 기준)
+### RULES.md 정책 (`tools/umbba-cli/RULES.md`)
+운영하며 다듬는 살아있는 룰셋. 핵심:
+- title 에 brand_name 절대 X (별도 표시됨)
+- brand_name 한글 우선 (BEBERO → 베베로)
+- body 원문 그대로 (요약 금지) — •참여방법·이벤트 기간·발표 다 살리기
+- 시기 안전 마진 (베개=신생아부터, 선크림=영아부터 등)
+- search_keywords 본문 단어 중복 금지, 동의어만
+- skip 패턴 8종 적극 적용 (사용자 확인 X)
+- confidence 0.85 시작 → +/- 가감
 
-- ✅ Play Console 앱 생성 (`com.umbba_radar.twa`)
-- ✅ 앱 콘텐츠 8개 필수 항목 (단 데이터 보안 "사진 공유" 잘못 체크 — 정정 필요)
-- ✅ 스토어 등록정보 입력 ("검토를 위해 전송 준비 완료")
-- ✅ 내부 테스트 트랙 .aab 업로드 (versionCode 2)
-- ⏸️ **새 .aab 빌드 대기** (versionCode 3) — 누적된 manifest·아이콘 변경 반영용
-  - PWA Builder 재방문 → Options → version code 3 + Signing key "Use mine"
-  - signing.keystore 보관 위치: 사용자 다운로드 + 비밀번호 매니저
-  - keystore 비밀번호: signing-key-info.txt 참조 (repo에 절대 X — .gitignore 안전장치 있음)
-- ⏸️ 공개 테스트 트랙 (Open Testing) — 트랙 만들고 옵트인 URL 모집 (12명 활성·14일)
-- ⏸️ 프로덕션 출시 신청 (14일 카운트 후)
+### 큐 시스템 (마이그레이션 016, 017, 018)
+- `ingest_queue`: url unique, status (todo/processing/done/duplicate/failed)
+- `ingest_queue.caption_preview`: 2000자 저장 (UI 200자 표시)
+- `instagram_accounts`: 모니터링 대상 102개 + last_scanned_at 추적
+- 3일 이상 옛 항목 UI 자동 비노출 (DB 행은 유지)
+
+### 어드민 흐름
+- 큐 검수에서 사용자가 노이즈 [삭제] X → Claude 가 자동 skip
+- 사용자 = ③ 카드 승인 발행 결정만
+- 모든 단계 명시 (① 팔로잉 → ② URL 큐 → ③ 카드 승인)
 
 ---
 
-> 이 문서는 살아있는 인수인계서입니다. 다음 세션에서 변경된 정책·완료된 액션은 갱신 또는 제거해주세요.
-> 마지막 갱신: 2026-05-26 (Play Store 진행 + 마감 미정 입력화 + 계정 삭제 기능 + OG 카드별 곰돌이)
+## 🐛 알려진 이슈 / 주의사항
+
+### datetime.utcnow() DeprecationWarning
+해소 완료 (5/29). 현재 코드는 `datetime.now(timezone.utc)` 사용.
+
+### gallery-dl JSON 출력 파싱
+인스타 사용자 페이지 URL 끝에 `/posts/` 필수 (없으면 user 페이지에서 멈춤).
+`-j` 출력은 indented JSON 한 덩어리 (줄 단위 X) — 전체 json.loads 후 배열 순회.
+에러 entry `[-1, {error, message}]` 검출 → 우리 코드가 last_error 로 보고.
+
+### 인스타 더미 계정 잠금 위험
+- 일일 시간당 fetch 양 100 미만 권장
+- 본인 확인 통과 후 1~2시간 자제 (의심도 가라앉기)
+- 새 더미 만들 때 다른 Gmail 별칭 + 실제 SMS 번호 사용
+
+### Claude routine schedule skill 일시 실패
+"We're having trouble connecting with your remote claude.ai account" — 잠시 후 재시도.
+
+---
+
+## 📝 5/25~5/29 진행 작업 압축 요약
+
+### 알림 시스템 (5/25)
+- 마감 임박 D-3 푸시 (cron), 가입 이후 신규만, 본 항목 반투명
+- web-push + VAPID + Service Worker
+
+### 마감일 미정 (5/25, 마이그레이션 014)
+- `deadline_unknown` boolean, 등록일+7일 자동
+- 1/3/7일 옵션 (DEFAULT 7일)
+
+### 검색 동의어 (5/26, 마이그레이션 015)
+- `search_keywords` 컬럼 + pg_trgm GIN 인덱스 4개
+- AI 자동 생성 (콤마 구분 1~3개)
+
+### PWA 고도화 (5/26~5/27)
+- share_target manifest (외부 공유 → /submit)
+- 4 shortcuts (홈·내 레이더·체험단·제보)
+- assetlinks.json (TWA 검증)
+
+### 계정 삭제 (5/27)
+- /account-deletion 페이지 + Server Action
+- 본인이 회원 탈퇴 가능 (auth.admin.deleteUser)
+
+### Phase 1 자동화 (5/27)
+- URL 자동 추출 (og:image + caption)
+- /admin/bulk-ingest 일괄 등록 페이지
+- 인스타는 차단되어 사실상 비활성 (외부 도구 안내만)
+
+### Phase 2 CLI 자동화 (5/28)
+- tools/umbba-cli Python CLI (gallery-dl + Firefox cookies)
+- /api/admin/bulk-ingest-with-image (Bearer 인증)
+- 더미 인스타 계정 + Firefox 쿠키 export 셋업
+
+### review 제거 (5/28)
+- kind enum 에서 review 옵션 제거
+- 자동수집 결과는 무조건 recruiting
+
+### Claude Vision 통합 (5/28)
+- `@anthropic-ai/sdk` 설치
+- VISION_PROVIDER env 토글 (claude/gemini)
+- system prompt 캐싱 (5분 ephemeral, 비용 18% 절감)
+- 캡션도 같이 분류에 활용 (Vision API 입력)
+
+### 인스타 모니터링 시스템 (5/28)
+- 마이그레이션 017: `instagram_accounts` 테이블
+- /admin/accounts 페이지 (username 일괄 등록·삭제·토글)
+- CLI `--scan` 모드 (gallery-dl --simulate -j)
+- /api/admin/accounts/active + /report endpoint
+
+### 큐 미리보기 (5/28, 마이그레이션 018)
+- ingest_queue 에 source_username·source_post_date·caption_preview 추가
+- CLI scan 이 메타 다 fetch, 큐 UI 에 표시
+- 캡션 2000자 저장 (UI 200자)
+
+### 로컬 분석 모드 A·C (5/28)
+- /api/admin/queue/export-todo + import-results
+- LocalModePanel UI ([Export] [Import] 버튼)
+- CLI `--auto-export [--with-images]` + `--import`
+- C 모드 = 이미지 다운 + Storage 업로드 + JSON 저장
+- A 모드 = 텍스트만, 이후 분류 단계에서 이미지 처리
+
+### RULES.md 강화 라운드 1·2 (5/28~5/29)
+- 라운드 1: 두 세션 결과 비교 후 룰 강화 (제목 brand X, 시기 마진, search_keywords)
+- 라운드 2: skip 자동화 8종 (이벤트 만료·신청방법 없음·광고·매장·정치·콜라보·LIVE·기존 구매자)
+- body 톤 변경 (요약 X, 원문 그대로 + •불릿)
+
+### 하이브리드 자동화 (5/29)
+- vision-extractor SYSTEM_PROMPT 에 RULES.md 룰 풀로 반영
+- bulk-ingest-with-image 에서 is_actual_event=false 또는 confidence<0.4 → status='skipped'
+- CLI --pull 가 'skipped' 응답 처리 (큐 failed 마킹)
+
+### 영상 썸네일 다운 (5/29)
+- download_post 가 이미지 없으면 메타의 display_url 직접 다운
+- video-thumbnail.jpg 로 저장 → 정상 흐름 진행
+
+### --import 가 skip=false 만 이미지 자동 다운 (5/29)
+- run_import_mode 가 results.json 분석
+- skip=false + thumbnail_url 없는 항목만 큐 url 매핑 fetch
+- gallery-dl 이미지 다운 + Storage 업로드 + thumbnail_url 채워서 import
+- 인스타 호출 60% 절감 효과
+
+### UI 정리 (5/29)
+- 큐 리스트 기본 '대기' 탭 + 최근 3일 필터
+- 어드민 메뉴 ① 팔로잉 / ② URL 큐 / ③ 카드 승인 단계 명시
+- /admin 필터 (시기/유형/상태) + 정렬 + 마감 탭
+- 회원 관리 페이지 + 삭제 기능
+- FilterBar 자녀 사용자 '전체' 버튼 버그 픽스
+
+### 운영 검증 (5/29)
+- 1차 라운드: 78개 → 17개 카드 발행 성공 (skip 32, 실패 0)
+- 인스타 호출 17번 모두 정상 통과 (인증 후)
+- B 모드 (이미지 포함) 풀 자동화 흐름 검증 완료
+
+---
+
+## 🔮 다음 세션 작업 후보
+
+### 우선순위 높음
+1. **schedule skill 재시도** — B루틴 (분류+import) Claude routine 자동 등록
+2. **A루틴 작업 스케줄러 검증** — 사용자가 등록 후 동작 확인
+3. **2차 라운드 운영** — 새 RULES.md 룰 (LIVE·기존 구매자·중복) 효과 검증
+
+### 중간 우선순위
+4. **카드 품질 운영 데이터 수집** — 운영 1주 후 RULES.md 추가 다듬을 부분 검토
+5. **Play Store 출시 (#47~51)** — versionCode 3 빌드 + 14일 카운트
+6. **MAU 트래킹** — Stats 페이지에 일/주/월 활성 사용자
+
+### 낮은 우선순위
+7. Batch API (50% 추가 절감) — 카드 100건+/일 누적 시
+8. Chrome 확장 (Phase 4) — 인스타 보면서 1클릭 URL 등록
+9. 새 더미 인스타 계정 백업 (현 계정 잠금 대비)
