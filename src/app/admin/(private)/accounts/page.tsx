@@ -25,7 +25,7 @@ export default async function AdminAccountsPage() {
           ← 관리자 홈
         </Link>
         <h1 className="mt-2 text-2xl font-extrabold tracking-tight text-slate-900">
-          팔로잉 계정 모니터링
+          ① 팔로잉 계정 <span className="text-sm font-medium text-slate-400">(1단계: 모니터링 등록)</span>
         </h1>
         <p className="mt-2 text-sm text-slate-600">
           여기 등록된 계정의 <strong>신규 게시물 URL</strong>을 매일 저녁 CLI 가

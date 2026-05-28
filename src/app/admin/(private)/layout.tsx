@@ -53,23 +53,36 @@ export default async function AdminPrivateLayout({
               카드 목록
             </Link>
             <Link
+              href="/admin/accounts"
+              className="rounded-full px-3 py-1 text-xs font-medium text-slate-600 hover:bg-slate-100"
+              title="1단계: 모니터링할 인스타 팔로잉 계정 등록"
+            >
+              ① 팔로잉 계정
+            </Link>
+            <Link
               href="/admin/bulk-ingest"
               className="rounded-full px-3 py-1 text-xs font-medium text-slate-600 hover:bg-slate-100"
-              title="1차: 인스타 URL 검수 + Claude 분석 트리거"
+              title="2단계: CLI 가 자동 발견한 URL 검수 + Claude 분석 트리거"
             >
-              ① URL 큐
+              ② URL 큐
             </Link>
             <Link
               href="/admin/queue"
               className="flex items-center gap-1 rounded-full px-3 py-1 text-xs font-medium text-slate-600 hover:bg-slate-100"
-              title="2차: Claude 분석 끝난 카드 검수 + 발행"
+              title="3단계: Claude 분석 끝난 카드 검수 + 발행"
             >
-              <span>② 카드 승인</span>
+              <span>③ 카드 승인</span>
               {pendingCount > 0 && (
                 <span className="rounded-full bg-rose-500 px-1.5 py-0.5 text-[10px] font-bold text-white">
                   {pendingCount}
                 </span>
               )}
+            </Link>
+            <Link
+              href="/admin/new"
+              className="rounded-full px-3 py-1 text-xs font-medium text-slate-600 hover:bg-slate-100"
+            >
+              새 카드
             </Link>
             <Link
               href="/admin/stats"
@@ -82,18 +95,6 @@ export default async function AdminPrivateLayout({
               className="rounded-full px-3 py-1 text-xs font-medium text-slate-600 hover:bg-slate-100"
             >
               회원 관리
-            </Link>
-            <Link
-              href="/admin/accounts"
-              className="rounded-full px-3 py-1 text-xs font-medium text-slate-600 hover:bg-slate-100"
-            >
-              팔로잉 계정
-            </Link>
-            <Link
-              href="/admin/new"
-              className="rounded-full px-3 py-1 text-xs font-medium text-slate-600 hover:bg-slate-100"
-            >
-              새 카드
             </Link>
             <Link
               href="/"
