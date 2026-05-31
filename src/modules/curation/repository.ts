@@ -272,6 +272,94 @@ export async function selectStatusCounts(): Promise<{
   return { byStatus, bySource };
 }
 
+// ============================================
+// 수집 파이프라인 현황 — 팔로잉 계정 → 큐(찾은 게시물) → 발행 카드
+// instagram_accounts / ingest_queue / posts 를 가로질러 집계 (관리자 대시보드용)
+// ============================================
+export interface PipelineStats {
+  accountsActive: number;
+  queueTotal: number;
+  publishedTotal: number;
+  /** 최근 24시간 (직전 야간 스캔 포함, KST 자정 경계 무관) */
+  last24h: { found: number; created: number };
+  /** 최근 N일 KST 일별 (오늘 포함, 최신이 먼저) */
+  daily: Array<{ date: string; found: number; created: number; published: number }>;
+}
+
+const KST_OFFSET_MS = 9 * 60 * 60 * 1000;
+function toKstDate(iso: string): string {
+  return new Date(new Date(iso).getTime() + KST_OFFSET_MS)
+    .toISOString()
+    .slice(0, 10);
+}
+
+export async function selectPipelineStats(days = 7): Promise<PipelineStats> {
+  const now = Date.now();
+  const since = new Date(now - days * 24 * 60 * 60 * 1000).toISOString();
+  const since24h = new Date(now - 24 * 60 * 60 * 1000).toISOString();
+
+  const [accRes, queueTotalRes, queueRowsRes, publishedRes, postRowsRes] =
+    await Promise.all([
+      supabaseServer
+        .from("instagram_accounts")
+        .select("id", { count: "exact", head: true })
+        .eq("active", true),
+      supabaseServer.from("ingest_queue").select("id", { count: "exact", head: true }),
+      supabaseServer.from("ingest_queue").select("created_at").gte("created_at", since),
+      supabaseServer
+        .from("posts")
+        .select("id", { count: "exact", head: true })
+        .eq("status", "published"),
+      supabaseServer
+        .from("posts")
+        .select("created_at, status, source_type")
+        .gte("created_at", since),
+    ]);
+
+  // KST 일별 버킷 (오늘 포함 최신 days일)
+  const dayKeys: string[] = [];
+  for (let i = 0; i < days; i++) {
+    dayKeys.push(
+      new Date(now + KST_OFFSET_MS - i * 86400000).toISOString().slice(0, 10)
+    );
+  }
+  const bucket = new Map<
+    string,
+    { found: number; created: number; published: number }
+  >();
+  for (const d of dayKeys) bucket.set(d, { found: 0, created: 0, published: 0 });
+
+  let found24 = 0;
+  for (const r of (queueRowsRes.data ?? []) as { created_at: string }[]) {
+    const b = bucket.get(toKstDate(r.created_at));
+    if (b) b.found++;
+    if (r.created_at >= since24h) found24++;
+  }
+
+  let created24 = 0;
+  for (const p of (postRowsRes.data ?? []) as {
+    created_at: string;
+    status: string;
+    source_type: string;
+  }[]) {
+    if (p.source_type !== "ingestion") continue; // 자동수집 카드만 (파이프라인 산출물)
+    const b = bucket.get(toKstDate(p.created_at));
+    if (b) {
+      b.created++;
+      if (p.status === "published") b.published++;
+    }
+    if (p.created_at >= since24h) created24++;
+  }
+
+  return {
+    accountsActive: accRes.count ?? 0,
+    queueTotal: queueTotalRes.count ?? 0,
+    publishedTotal: publishedRes.count ?? 0,
+    last24h: { found: found24, created: created24 },
+    daily: dayKeys.map((d) => ({ date: d, ...bucket.get(d)! })),
+  };
+}
+
 export async function insertPost(input: PostInsertInput): Promise<Post> {
   const { data, error } = await supabaseServer
     .from("posts")

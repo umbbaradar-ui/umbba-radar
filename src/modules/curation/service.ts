@@ -10,8 +10,10 @@ import {
   selectPendingPosts,
   selectStatusCounts,
   selectAdminStats,
+  selectPipelineStats,
   type PostInsertInput,
   type AdminStats,
+  type PipelineStats,
 } from "./repository";
 import type { Post, SourceType } from "@/shared/types/post";
 
@@ -35,4 +37,8 @@ export async function getAdminStats(periodDays = 7): Promise<AdminStats> {
   return selectAdminStats(periodDays);
 }
 
-export type { PostInsertInput, AdminStats };
+export async function getPipelineStats(days = 7): Promise<PipelineStats> {
+  return selectPipelineStats(days);
+}
+
+export type { PostInsertInput, AdminStats, PipelineStats };

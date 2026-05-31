@@ -5,8 +5,9 @@
 // ============================================
 
 import Link from "next/link";
-import { listAllPosts, getCounts } from "@/modules/curation/service";
+import { listAllPosts, getCounts, getPipelineStats } from "@/modules/curation/service";
 import { deletePostAction } from "@/modules/curation/actions";
+import { PipelineDashboard } from "./_components/PipelineDashboard";
 import {
   STAGE_LABELS,
   TYPE_LABELS,
@@ -159,7 +160,11 @@ export default async function AdminDashboard({ searchParams }: PageProps) {
   const type = normalizeType(sp.type);
   const sort = normalizeSort(sp.sort);
 
-  const [posts, counts] = await Promise.all([listAllPosts(), getCounts()]);
+  const [posts, counts, pipeline] = await Promise.all([
+    listAllPosts(),
+    getCounts(),
+    getPipelineStats(),
+  ]);
 
   // 탭 카운트 (필터 적용 전, 탭만)
   const activeCount = posts.filter((p) => ACTIVE_STATUSES.includes(p.status)).length;
@@ -183,6 +188,8 @@ export default async function AdminDashboard({ searchParams }: PageProps) {
           {okMessage}
         </div>
       )}
+
+      <PipelineDashboard stats={pipeline} />
 
       <header className="mb-6 flex items-end justify-between">
         <div>
