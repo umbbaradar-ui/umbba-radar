@@ -50,17 +50,19 @@ scan.bat → py ingest.py --scan
   ⚠️ 인스타 cookies.txt 만료되면 401로 수집 0 (주 1회 갱신 필요)
 ```
 
-### 🟩 B루틴 — 분류 + 카드생성  (로컬 PC · 매일 22:00 · 헤드리스 Claude)
+### 🟩 B루틴 — 분류 + 카드생성  (로컬 PC · 매일 22:00 · 숨김 PowerShell)
 ```
-run-b.bat → claude -p (구독 OAuth 토큰, 💰비용 0)
-  1) --auto-export : 큐 todo를 텍스트로 (인스타 X)
-  2) Claude가 RULES.md로 분류 → results.json
+작업 스케줄러 → powershell -WindowStyle Hidden -File run-b.ps1  (💰비용 0, claude 구독)
+  PowerShell이 오케스트레이션, claude는 "분류"만 (셸 명령·cd 없음 → 멈춤/콘솔 문제 회피)
+  1) PS: py ingest.py --auto-export → exports/<ts>/todo-enriched.json (인스타 X)
+  2) claude: 25건씩 배치로 RULES.md 기준 분류 → results.json (ASCII 임시폴더, 파일 읽기/쓰기만)
        └ skip=true 8~9패턴 자동제거(기간만료·신청법없음·단순광고·LIVE·기존구매자…)
-  3) --import : skip=false만 이미지 다운로드(gallery-dl+쿠키)→Storage
-                → posts(pending) 생성
-  4) 결과 보고 → b-log.txt
+  3) PS: py ingest.py --import results.json
+       └ skip=false만 이미지 다운로드(gallery-dl+쿠키)→Storage → posts(pending)
+  4) 로그 → b-log.txt
   인증: User 환경변수 CLAUDE_CODE_OAUTH_TOKEN (1년 유효)
   실행 조건: PC 켜짐 + 로그인 + (노트북) 전원 연결
+  ※ 창 절대 닫지 말 것(숨김 처리됨) — 닫으면 claude가 CTRL_CLOSE로 죽음
 ```
 
 ### 🟨 네이버 블로그 자동수집  (Vercel 클라우드 · 매일 06:00 KST)  ⏸️ 현재 보류(INGESTION_ENABLED=OFF, Gemini 키 정지)
@@ -144,7 +146,7 @@ vercel.json cron "0 21 * * *" (UTC) = 한국시간 06:00
 ## 7. 관련 파일 빠른 참조
 | 무엇 | 파일 |
 |---|---|
-| 인스타 루틴(로컬) | `tools/umbba-cli/` — `ingest.py`, `scan.bat`, `run-b.bat`, `b-routine-prompt.txt`, `RULES.md` |
+| 인스타 루틴(로컬) | `tools/umbba-cli/` — `ingest.py`, `scan.bat`, `run-b.ps1`, `RULES.md` |
 | 네이버 수집 키워드 | `src/modules/ingestion/keywords.ts` |
 | 네이버 검색 클라이언트 | `src/modules/ingestion/sources/naver-search.ts` |
 | 수집 오케스트레이션 | `src/modules/ingestion/service.ts` |
