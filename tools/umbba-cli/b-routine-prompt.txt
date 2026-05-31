@@ -1,0 +1,31 @@
+너는 지금 "엄빠레이더 B루틴"을 무인(headless)으로 자동 실행 중이야.
+현재 작업 디렉터리(cwd)는 umbba-cli 이고, 여기에 RULES.md, ingest.py, .env, cookies.txt 가 있어.
+절대 사용자에게 질문하지 말고, 아래 단계를 끝까지 자동으로 완료한 뒤 결과만 한국어로 보고해.
+
+[파이썬 실행 방법]
+- 기본: `py ingest.py ...`
+- 만약 `py` 가 안 잡히면: `C:\Users\myj87\AppData\Local\Programs\Python\Python314\python.exe ingest.py ...`
+
+[단계]
+1) export: `py ingest.py --auto-export` 실행.
+   - 인스타 호출 없음. Vercel 큐에서 todo 텍스트만 가져와 exports/<타임스탬프>/todo-enriched.json 으로 저장됨.
+   - 명령 출력의 "파일: <경로>" 줄에서 방금 만들어진 todo-enriched.json 의 정확한 경로를 확인해.
+   - 만약 todo 가 0개면, "처리할 항목 없음"으로 보고하고 즉시 종료(2,3단계 생략).
+
+2) classify: 그 todo-enriched.json 을 읽고, RULES.md 를 정독한 뒤 모든 item 을 분류해서
+   같은 폴더에 results.json 을 만들어(UTF-8).
+   - 출력 스키마는 RULES.md 의 results.json 형식 그대로:
+     queue_id(입력 그대로), skip, title(브랜드명 X), brand_name(한글 우선),
+     body(원문 그대로·요약 금지), search_keywords(본문 단어 중복 금지),
+     stage_categories(배열), type_tags(배열), topic, deadline(ISO8601 +09:00 또는 null), confidence.
+   - skip 자동 패턴 8종(이벤트 만료·신청방법 없음·단순광고·매장영업·정치종교·콜라보알림·LIVE·기존구매자)
+     과 동일 이벤트 중복(9번)을 적극 적용. 사용자에게 묻지 말 것.
+   - 마감 만료 판단 기준 날짜는 오늘(KST)로 한다.
+   - 검증: items 수 = 입력 items 수, 모든 queue_id 매칭, skip=false 항목은 title 필수,
+     stage_categories 는 배열, deadline 은 ISO8601 +09:00 또는 null.
+
+3) import: `py ingest.py --import exports/<타임스탬프>/results.json` 실행.
+   - skip=false + 썸네일 없는 항목만 gallery-dl 로 이미지 자동 다운 + Storage 업로드 + 카드(pending) 생성.
+
+4) 보고: 마지막에 한국어 한 단락으로 요약.
+   예) "입력 78개 → 분류 30개 / skip 48개 (이벤트 만료 22 · 신청방법 없음 18 · 광고 8) → 카드 생성 30개, 실패 0"
