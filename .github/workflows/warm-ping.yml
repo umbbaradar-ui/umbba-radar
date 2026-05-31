@@ -1,0 +1,25 @@
+name: warm-ping
+
+# Vercel Hobby 함수의 콜드스타트 방지 — 주기적으로 사이트를 찔러 서버를 깨워둔다.
+# (Vercel cron은 2개 한도라 외부에서. public repo는 GitHub Actions 무료.)
+# 스케줄은 best-effort(수 분 지연 가능). 수동 실행은 Actions 탭 > Run workflow.
+
+on:
+  schedule:
+    - cron: "*/5 * * * *" # 5분마다
+  workflow_dispatch: {}
+
+# 직전 실행이 안 끝났으면 새 실행이 대체 (큐 적체 방지)
+concurrency:
+  group: warm-ping
+  cancel-in-progress: true
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Ping health (함수 워밍)
+        run: curl -fsS -m 20 https://umbba-radar.com/api/health || true
+      - name: Ping home (페이지 워밍)
+        run: curl -fsS -m 20 -o /dev/null https://umbba-radar.com/ || true
