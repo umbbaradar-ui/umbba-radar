@@ -62,6 +62,12 @@ export default async function WebLayout({
               내 레이더
             </Link>
             <Link
+              href="/archive"
+              className="rounded-full px-3 py-1.5 font-medium text-slate-600 transition hover:bg-amber-100/60 hover:text-slate-900"
+            >
+              지난 이벤트
+            </Link>
+            <Link
               href="/submit"
               className="rounded-full bg-rose-50 px-3 py-1.5 font-medium text-rose-700 transition hover:bg-rose-100"
             >
