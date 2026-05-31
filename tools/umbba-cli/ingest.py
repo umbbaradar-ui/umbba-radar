@@ -838,6 +838,29 @@ def run_auto_export_mode(with_images: bool, output_dir: Path) -> int:
     return _process_export(payload, with_images, output_dir, f"API ({API_URL})")
 
 
+def notify_telegram() -> None:
+    """import 완료 후 서버에 '텔레그램 일일 현황 전송'을 트리거 (실패해도 무시).
+    실제 통계 집계·메시지 작성·전송은 서버(/api/admin/notify-telegram)가 수행.
+    TELEGRAM_BOT_TOKEN/CHAT_ID 미설정이면 서버가 알아서 no-op."""
+    if not API_TOKEN:
+        return
+    try:
+        r = requests.post(
+            f"{API_URL}/api/admin/notify-telegram",
+            headers={"Authorization": f"Bearer {API_TOKEN}"},
+            timeout=20,
+        )
+        body = (r.text or "")[:120]
+        if r.status_code == 200 and '"sent":true' in body:
+            print("   📨 텔레그램 일일 현황 전송 OK")
+        elif r.status_code == 200:
+            print(f"   ℹ 텔레그램 미설정/스킵: {body}")
+        else:
+            print(f"   ⚠ 텔레그램 트리거 HTTP {r.status_code}: {body}")
+    except Exception as e:
+        print(f"   ⚠ 텔레그램 트리거 실패(무시): {e}")
+
+
 def run_import_mode(results_file: Path) -> int:
     """Claude Code 가 만든 results.json 업로드 → posts 카드 일괄 생성
 
@@ -984,6 +1007,7 @@ def run_import_mode(results_file: Path) -> int:
             print(f"     · {e.get('queue_id', '?')[:8]}: {e.get('message', '')[:100]}")
     print()
     print(f"   검수: {API_URL}/admin/queue")
+    notify_telegram()
     return 0 if total_failed == 0 else 2
 
 
