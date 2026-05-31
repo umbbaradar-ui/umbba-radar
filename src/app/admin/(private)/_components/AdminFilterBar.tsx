@@ -41,6 +41,8 @@ interface Props {
     active: number;
     expired: number;
   };
+  /** 있으면 URL 이동 없이 즉시(클라이언트 상태) 변경. 없으면 기존 URL 방식. */
+  onChange?: (key: string, value: string | null) => void;
 }
 
 export function AdminFilterBar({
@@ -50,6 +52,7 @@ export function AdminFilterBar({
   type,
   sort,
   counts,
+  onChange,
 }: Props) {
   const router = useRouter();
   const pathname = usePathname();
@@ -57,12 +60,16 @@ export function AdminFilterBar({
 
   const setParam = useCallback(
     (key: string, value: string | null) => {
+      if (onChange) {
+        onChange(key, value);
+        return;
+      }
       const sp = new URLSearchParams(searchParams.toString());
       if (!value || value === "all") sp.delete(key);
       else sp.set(key, value);
       router.push(`${pathname}?${sp.toString()}`);
     },
-    [pathname, router, searchParams]
+    [onChange, pathname, router, searchParams]
   );
 
   return (
