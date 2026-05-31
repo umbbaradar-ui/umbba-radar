@@ -59,3 +59,29 @@ export function filterPosts(posts: Post[], filters: PostFilters): Post[] {
     return true;
   });
 }
+
+/** 클라이언트 측 정렬 — 서버 repository 정렬과 동일 규칙 (deadline 없는 건 항상 뒤로) */
+export function sortPosts(posts: Post[], sort: SortMode): Post[] {
+  const arr = [...posts];
+  switch (sort) {
+    case "created_desc":
+      arr.sort((a, b) => b.created_at.localeCompare(a.created_at));
+      break;
+    case "deadline_desc":
+      arr.sort((a, b) => {
+        if (!a.deadline && !b.deadline) return 0;
+        if (!a.deadline) return 1;
+        if (!b.deadline) return -1;
+        return b.deadline.localeCompare(a.deadline);
+      });
+      break;
+    default: // deadline_asc
+      arr.sort((a, b) => {
+        if (!a.deadline && !b.deadline) return 0;
+        if (!a.deadline) return 1;
+        if (!b.deadline) return -1;
+        return a.deadline.localeCompare(b.deadline);
+      });
+  }
+  return arr;
+}

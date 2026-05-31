@@ -24,6 +24,12 @@ interface Props {
   q: string;
   /** 자녀 등록된 사용자만 true → "내 아이" pill 노출 */
   hasChildren?: boolean;
+  /** 있으면 시기·유형·주제·정렬을 URL 이동 없이 즉시(클라이언트 상태) 변경.
+   *  없으면 기존처럼 URL 이동(서버 재요청). 검색(q)은 항상 URL 이동. */
+  onFilterChange?: (
+    key: "stage" | "type" | "topic" | "sort",
+    value: string
+  ) => void;
 }
 
 export function FilterBar({
@@ -33,6 +39,7 @@ export function FilterBar({
   sort,
   q,
   hasChildren,
+  onFilterChange,
 }: Props) {
   const router = useRouter();
   const [searchInput, setSearchInput] = useState(q);
@@ -56,9 +63,17 @@ export function FilterBar({
     return qs ? `/?${qs}` : "/";
   }
 
-  function update(key: string, value: string) {
+  function update(
+    key: "stage" | "type" | "topic" | "sort",
+    value: string
+  ) {
     track("filter_change", { key, value, stage, type, topic, sort, q });
-    router.push(buildUrl({ [key]: value }));
+    if (onFilterChange) {
+      // 클라이언트 즉시 필터 — URL 이동·서버 재요청 없음
+      onFilterChange(key, value);
+    } else {
+      router.push(buildUrl({ [key]: value }));
+    }
   }
 
   function handleSearchSubmit(e: React.FormEvent) {
