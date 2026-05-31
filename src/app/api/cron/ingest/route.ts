@@ -32,8 +32,21 @@ export async function GET(request: Request) {
     // expire 실패해도 ingestion은 진행
   }
 
+  // 2. 자동 수집 (네이버 + AI 정규화) — 현재 보류(PENDING)
+  //    사유: Gemini API 키 정지(CONSUMER_SUSPENDED, project 991772519706)로 정규화가
+  //    매일 0건 생산. 인스타 로컬 파이프라인(A·B루틴) 위주로 전환 (2026-05-31).
+  //    되살리기: Vercel에 유효한 GEMINI_API_KEY + INGESTION_ENABLED=true 설정.
+  //    (1번 마감 만료 처리 step은 계속 동작)
+  if (process.env.INGESTION_ENABLED !== "true") {
+    console.log(
+      "[cron/ingest] ingestion paused (set INGESTION_ENABLED=true to enable)",
+      { expired: expiredCount }
+    );
+    return NextResponse.json({ ok: true, paused: true, expired: expiredCount });
+  }
+
   try {
-    // 2. 자동 수집 (네이버 + AI 정규화)
+    // 자동 수집 (네이버 + AI 정규화)
     const stats = await runIngestion();
     console.log("[cron/ingest] completed", { expired: expiredCount, ...stats });
     return NextResponse.json({ ok: true, expired: expiredCount, stats });
