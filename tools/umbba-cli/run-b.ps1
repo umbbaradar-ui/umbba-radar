@@ -32,7 +32,7 @@ if (-not $exe) { Log "ERROR: claude.exe not found"; exit 9 }
 Log "claude: $exe"
 
 $batchSize = if ($env:UMBBA_B_BATCH)    { [int]$env:UMBBA_B_BATCH }    else { 25 }
-$maxItems  = if ($env:UMBBA_B_MAXITEMS) { [int]$env:UMBBA_B_MAXITEMS } else { 0 }   # 0 = process all (production)
+$maxItems  = if ($env:UMBBA_B_MAXITEMS) { [int]$env:UMBBA_B_MAXITEMS } else { 50 }  # 야간 처리 상한(인스타 이미지 다운로드 burst 제한). 0=전체.
 
 # 1) auto-export (no Instagram; Vercel queue -> todo-enriched.json)
 Log "auto-export start"

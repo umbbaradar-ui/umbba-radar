@@ -40,18 +40,19 @@
 
 ## 2. 자동화 루틴 3종 (현재 가동)
 
-### 🟦 A루틴 — 인스타 스캔  (로컬 PC · 매일 21:30 · Windows 작업 스케줄러)
+### 🟦 A루틴 — 인스타 스캔  (로컬 PC · 밤새 4회 분산 · Windows 작업 스케줄러)
 ```
-scan.bat → py ingest.py --scan
-  ├ 활성 인스타 계정 전부(현재 202개)를 하루 1회 스캔 (--max-accounts 1000, 각 1번·중복 자동제거)
-  ├ UMBBA_SLEEP=10초 간격(봇 의심 완화, 5/28 잠금 후 권장값) → 1회 ~34분 드립
+scan.bat → py ingest.py --scan --max-accounts 50
+  ├ 트리거 4회: 21:30 · 23:00 · 00:30 · 02:00 (밤새 분산, 절전돼도 깨워서 실행)
+  ├ 회차당 50계정만(~8분, ~100읽기). last_scanned_at 순환으로 202개 전부 각 1번 커버
+  ├ UMBBA_SLEEP=10초 간격(봇 의심 완화) → 단일 burst·시간당 부하 둘 다 낮춤
   ├ gallery-dl --simulate : 이미지 안 받고 URL·캡션만
   └ 새 게시물 URL → ingest_queue(todo)
   💰 비용 0 · Claude 안 씀 · 인스타엔 "구경만"
   ⚠️ 인스타 cookies.txt 만료되면 401로 수집 0 (주 1회 갱신 필요)
 ```
 
-### 🟩 B루틴 — 분류 + 카드생성  (로컬 PC · 매일 23:00 · 숨김 PowerShell)
+### 🟩 B루틴 — 분류 + 카드생성  (로컬 PC · 매일 03:00 · 숨김 PowerShell)
 ```
 작업 스케줄러 → powershell -WindowStyle Hidden -File run-b.ps1  (💰비용 0, claude 구독)
   PowerShell이 오케스트레이션, claude는 "분류"만 (셸 명령·cd 없음 → 멈춤/콘솔 문제 회피)
@@ -139,7 +140,7 @@ vercel.json cron "0 21 * * *" (UTC) = 한국시간 06:00
 
 ## 6. 운영 주의점
 1. **인스타 쿠키 주기 갱신**: `tools/umbba-cli/cookies.txt` 만료 시 A루틴 수집 0(401). Firefox에서 더미계정 로그인 후 재export (주 1회 권장).
-2. **B루틴 23:00 조건**: PC 켜짐 + 로그인 + (노트북) 전원 연결. (A 21:30 풀스캔 ~34분과 안 겹치게 23:00로 분리)
+2. **야간 운영 조건**: A루틴 21:30~02:00(4회), B루틴 03:00 → **PC를 밤새 켜두고 로그인 상태 유지**(노트북은 전원 연결). 절전은 깨워서 실행(WakeToRun)되나, 완전 종료/로그오프면 그날 건너뜀(다음날 자동 이어감). B는 야간 상한 50건(이미지 다운로드 burst 제한).
 3. **네이버 수집 확인법**: 작동 중이면 매일 새벽 `/admin/queue`에 source=ingestion 카드가 쌓임. 안 쌓이면 Vercel 환경변수/키워드 점검.
 
 ---
