@@ -16,6 +16,8 @@ interface Props {
   /** 수정 모드 — 기존 카드 prefill (AI 추출 결과가 들어오면 그게 우선) */
   post?: Post;
   action: (formData: FormData) => Promise<void> | void;
+  /** 있으면 PostForm에 "발행 저장"(수정+즉시 발행) 초록 버튼 노출 */
+  publishAction?: (formData: FormData) => Promise<void> | void;
   extractFromUrl: (url: string) => Promise<AIExtractResponse>;
   submitLabel: string;
   errorMessage?: string | null;
@@ -24,6 +26,7 @@ interface Props {
 export function PostFormWithAI({
   post,
   action,
+  publishAction,
   extractFromUrl,
   submitLabel,
   errorMessage,
@@ -79,6 +82,7 @@ export function PostFormWithAI({
         key={version}
         post={post}
         action={action}
+        publishAction={publishAction}
         defaults={defaults}
         submitLabel={submitLabel}
         errorMessage={errorMessage}

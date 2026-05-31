@@ -15,6 +15,7 @@ import {
   SOURCE_TYPE_LABELS,
   type SourceType,
 } from "@/shared/types/post";
+import { calcDDay } from "@/shared/utils/dday";
 
 interface PageProps {
   searchParams: Promise<{ source?: string; ok?: string }>;
@@ -129,6 +130,15 @@ export default async function AdminQueuePage({ searchParams }: PageProps) {
 
                   <h3 className="text-sm font-bold text-slate-900">{p.title}</h3>
 
+                  {p.deadline && (
+                    <div className="mt-1.5">
+                      <DeadlineBadge
+                        deadline={p.deadline}
+                        unknown={p.deadline_unknown}
+                      />
+                    </div>
+                  )}
+
                   {p.body && (
                     <p className="mt-1 line-clamp-2 text-xs text-slate-600">
                       {p.body}
@@ -195,6 +205,38 @@ export default async function AdminQueuePage({ searchParams }: PageProps) {
         </div>
       )}
     </main>
+  );
+}
+
+// (예상) 마감기한 배지 — 근접(D-3 이내)이면 빨강, 지나면 회색, 그 외 주황.
+// deadline_unknown이면 "(예상)" 표시 (등록일+N일 자동값이라 정확치 않음).
+function DeadlineBadge({
+  deadline,
+  unknown,
+}: {
+  deadline: string;
+  unknown: boolean;
+}) {
+  const dd = calcDDay(deadline);
+  if (!dd) return null;
+  const dateStr = new Date(deadline).toLocaleDateString("ko-KR", {
+    timeZone: "Asia/Seoul",
+    month: "numeric",
+    day: "numeric",
+  });
+  const color =
+    dd.days < 0
+      ? "bg-slate-100 text-slate-400"
+      : dd.urgent
+        ? "bg-rose-100 text-rose-700"
+        : "bg-amber-100 text-amber-800";
+  return (
+    <span
+      className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-bold ${color}`}
+    >
+      ⏰ {unknown ? "(예상) " : ""}
+      {dd.label} · ~{dateStr}
+    </span>
   );
 }
 

@@ -44,6 +44,8 @@ interface Props {
   post?: Post; // 수정 시 prefill
   defaults?: PostFormDefaults; // AI 추출 결과 등 동적 prefill (post보다 우선)
   action: (formData: FormData) => Promise<void> | void;
+  /** 있으면 "발행 저장"(수정 + 즉시 발행) 초록 버튼 노출 — status를 published로 강제 */
+  publishAction?: (formData: FormData) => Promise<void> | void;
   submitLabel: string;
   errorMessage?: string | null;
 }
@@ -56,7 +58,7 @@ function toLocalDatetimeInput(iso: string | null): string {
   return kst.toISOString().slice(0, 16);
 }
 
-export function PostForm({ post, defaults, action, submitLabel, errorMessage }: Props) {
+export function PostForm({ post, defaults, action, publishAction, submitLabel, errorMessage }: Props) {
   // defaults가 있으면 post보다 우선 (AI 추출 결과 등 동적 prefill)
   const v = {
     kind: defaults?.kind ?? post?.kind ?? "recruiting",
@@ -328,6 +330,15 @@ export function PostForm({ post, defaults, action, submitLabel, errorMessage }: 
         >
           {submitLabel}
         </button>
+        {publishAction && (
+          <button
+            type="submit"
+            formAction={publishAction}
+            className="rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-bold text-white hover:bg-emerald-700"
+          >
+            ✓ 발행 저장
+          </button>
+        )}
       </div>
     </form>
   );

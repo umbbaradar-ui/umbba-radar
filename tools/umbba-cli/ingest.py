@@ -161,8 +161,12 @@ def download_post(url: str, work_dir: Path) -> Optional[DownloadedPost]:
         print("    ❌ 다운된 이미지·썸네일 없음 (비공개·삭제·메타 형식 변경)")
         return None
 
-    # 가장 큰 이미지 = 메인 이미지 (영상 게시물의 썸네일 후보)
-    main_image = max(image_files, key=lambda p: p.stat().st_size)
+    # 무조건 "첫 이미지"를 메인으로 (캐러셀 1번째 = 보통 대표 이미지).
+    # gallery-dl 파일명 인덱스 기준 자연 정렬(2 < 10)로 다운로드 순서를 복원해 첫 장 선택.
+    import re as _re
+    def _img_order(p: Path):
+        return [int(t) if t.isdigit() else t for t in _re.split(r"(\d+)", p.name)]
+    main_image = sorted(image_files, key=_img_order)[0]
 
     # 캡션은 첫 번째 metadata json에서 description 필드 추출
     caption = ""

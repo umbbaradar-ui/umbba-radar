@@ -7,7 +7,7 @@
 
 import { notFound } from "next/navigation";
 import { getPostForAdmin } from "@/modules/curation/service";
-import { updatePostAction } from "@/modules/curation/actions";
+import { updatePostAction, updateAndPublishPostAction } from "@/modules/curation/actions";
 import { extractFromUrlAction } from "@/modules/curation/ai-extract-actions";
 import { PostFormWithAI } from "@/modules/curation/ui/PostFormWithAI";
 
@@ -31,6 +31,7 @@ export default async function EditPostPage({ params, searchParams }: PageProps) 
 
   // updatePostAction은 (id, formData)를 받음. bind로 id 고정
   const boundAction = updatePostAction.bind(null, id);
+  const boundPublishAction = updateAndPublishPostAction.bind(null, id);
 
   return (
     <main className="mx-auto max-w-3xl px-5 py-6">
@@ -57,6 +58,7 @@ export default async function EditPostPage({ params, searchParams }: PageProps) 
       <PostFormWithAI
         post={post}
         action={boundAction}
+        publishAction={boundPublishAction}
         extractFromUrl={extractFromUrlAction}
         submitLabel="수정 저장"
         errorMessage={errorMessage}

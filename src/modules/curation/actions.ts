@@ -241,6 +241,24 @@ export async function updatePostAction(
   redirect("/admin?ok=updated");
 }
 
+// 수정 + 발행 동시 (승인대기 → 발행). 폼 status 값과 무관하게 published로 강제.
+export async function updateAndPublishPostAction(
+  id: string,
+  formData: FormData
+): Promise<void> {
+  await ensureAdmin();
+  const input = parseFormToPost(formData);
+  if (!input.title || !input.source_url) {
+    redirect(`/admin/${id}/edit?error=required`);
+  }
+  await updatePost(id, { ...input, status: "published" });
+  revalidatePath("/");
+  revalidatePath(`/post/${id}`);
+  revalidatePath("/admin");
+  revalidatePath("/admin/queue");
+  redirect("/admin/queue?ok=approved");
+}
+
 export async function deletePostAction(id: string): Promise<void> {
   await ensureAdmin();
   await deletePost(id);
