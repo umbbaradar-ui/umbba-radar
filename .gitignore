@@ -51,3 +51,10 @@ next-env.d.ts
 # local-only deploy logs
 deploy.log
 *.log
+
+# umbba-cli 로컬 런타임 산출물·비밀 (절대 커밋 금지)
+/tools/umbba-cli/*cookies*.txt
+/tools/umbba-cli/scan-log.txt
+/tools/umbba-cli/b-log.txt
+/tools/umbba-cli/exports/
+/tools/umbba-cli/gallery-dl/
