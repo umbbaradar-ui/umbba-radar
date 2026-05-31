@@ -771,7 +771,9 @@ def _process_export(
 
         enriched.append(enriched_item)
 
-        if i < len(items) and SLEEP_BETWEEN_URLS > 0:
+        # 텍스트 전용(with_images=False)은 항목당 네트워크 호출이 없어 sleep 불필요.
+        # (대량 큐에서 124개 x 10초 = ~21분 낭비 → auto-export 지연/트리거 겹침의 원인이었음)
+        if with_images and i < len(items) and SLEEP_BETWEEN_URLS > 0:
             import time
             time.sleep(SLEEP_BETWEEN_URLS)
 
