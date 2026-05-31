@@ -11,7 +11,6 @@ import { useEffect, useState } from "react";
 
 const STORAGE_KEY = "umbba-splash-shown";
 // 체감 속도 우선 — 슬로건 읽을 시간만 확보하고 빠르게 사라짐
-const HOLD_MS_WEB = 500;
 const HOLD_MS_PWA = 700;
 const FADE_MS = 250;
 
@@ -39,11 +38,17 @@ export function SplashScreen() {
       return;
     }
 
-    const holdMs = isStandalonePWA() ? HOLD_MS_PWA : HOLD_MS_WEB;
+    // 웹(브라우저)에선 스플래시 생략.
+    // 이 컴포넌트는 클라이언트라 SSR 콘텐츠가 먼저 그려진 뒤 그 위에 덮였다 사라져서
+    // "콘텐츠 → 스플래시 → 콘텐츠" 번쩍임이 생김. 웹은 OS 스플래시도 없어 띄울 이점이 없음.
+    if (!isStandalonePWA()) {
+      setPhase("done");
+      return;
+    }
 
-    // 1프레임 뒤 페이드 인 (마운트 직후 transition 작동)
-    requestAnimationFrame(() => setPhase("in"));
-    const holdTimer = setTimeout(() => setPhase("out"), holdMs);
+    // PWA(standalone)만: OS 스플래시 → 앱 스플래시로 자연 연결. 즉시 표시 후 fade out.
+    setPhase("in");
+    const holdTimer = setTimeout(() => setPhase("out"), HOLD_MS_PWA);
     return () => clearTimeout(holdTimer);
   }, []);
 
