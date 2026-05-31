@@ -43,7 +43,8 @@
 ### 🟦 A루틴 — 인스타 스캔  (로컬 PC · 매일 21:30 · Windows 작업 스케줄러)
 ```
 scan.bat → py ingest.py --scan
-  ├ 활성 인스타 계정 목록(102개)을 하루 30개씩 순회
+  ├ 활성 인스타 계정 전부(~149개)를 하루 1회 스캔 (--max-accounts 200, 각 1번·중복 자동제거)
+  ├ UMBBA_SLEEP=10초 간격(봇 의심 완화, 5/28 잠금 후 권장값) → 1회 ~25분 드립
   ├ gallery-dl --simulate : 이미지 안 받고 URL·캡션만
   └ 새 게시물 URL → ingest_queue(todo)
   💰 비용 0 · Claude 안 씀 · 인스타엔 "구경만"
