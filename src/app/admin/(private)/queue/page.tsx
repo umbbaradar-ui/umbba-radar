@@ -15,7 +15,7 @@ import {
   SOURCE_TYPE_LABELS,
   type SourceType,
 } from "@/shared/types/post";
-import { calcDDay } from "@/shared/utils/dday";
+import { calcDDay, isPastDeadline } from "@/shared/utils/dday";
 
 interface PageProps {
   searchParams: Promise<{ source?: string; ok?: string }>;
@@ -38,8 +38,10 @@ export default async function AdminQueuePage({ searchParams }: PageProps) {
 
   const posts = await listPendingPosts(source);
 
-  const okMessage =
-    ok === "approved"
+  const isArchivedMsg = ok === "archived";
+  const okMessage = isArchivedMsg
+    ? "모집 마감 기간이 오늘 이전이라 발행하지 않고 마감(보관) 처리했어요."
+    : ok === "approved"
       ? "발행됐어요."
       : ok === "deleted"
         ? "반려·삭제됐어요."
@@ -48,7 +50,13 @@ export default async function AdminQueuePage({ searchParams }: PageProps) {
   return (
     <main className="mx-auto max-w-4xl px-5 py-6">
       {okMessage && (
-        <div className="mb-4 rounded-xl bg-emerald-50 px-4 py-2 text-sm text-emerald-700">
+        <div
+          className={`mb-4 rounded-xl px-4 py-2 text-sm ${
+            isArchivedMsg
+              ? "bg-amber-50 text-amber-800"
+              : "bg-emerald-50 text-emerald-700"
+          }`}
+        >
           {okMessage}
         </div>
       )}
@@ -139,6 +147,13 @@ export default async function AdminQueuePage({ searchParams }: PageProps) {
                     </div>
                   )}
 
+                  {isPastDeadline(p.deadline) && (
+                    <p className="mt-1.5 text-[11px] font-semibold text-amber-700">
+                      ⚠️ 모집 마감 기간이 오늘 이전입니다. 승인하면 발행되지 않고
+                      마감(보관) 처리돼요.
+                    </p>
+                  )}
+
                   {p.body && (
                     <p className="mt-1 line-clamp-2 text-xs text-slate-600">
                       {p.body}
@@ -178,9 +193,13 @@ export default async function AdminQueuePage({ searchParams }: PageProps) {
                     <form action={approvePostAction.bind(null, p.id)}>
                       <button
                         type="submit"
-                        className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-emerald-700"
+                        className={`rounded-lg px-3 py-1.5 text-xs font-bold text-white ${
+                          isPastDeadline(p.deadline)
+                            ? "bg-amber-500 hover:bg-amber-600"
+                            : "bg-emerald-600 hover:bg-emerald-700"
+                        }`}
                       >
-                        ✓ 발행
+                        {isPastDeadline(p.deadline) ? "마감 처리" : "✓ 발행"}
                       </button>
                     </form>
                     <Link

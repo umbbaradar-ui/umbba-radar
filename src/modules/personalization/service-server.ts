@@ -9,6 +9,7 @@ import { getServerSupabase } from "@/shared/db/supabase-ssr";
 import { supabaseServer } from "@/shared/db/supabase-server";
 import type { Post, StageCategory } from "@/shared/types/post";
 import { getStagesForChildren } from "@/shared/utils/stages";
+import { kstTodayStartIso } from "@/shared/utils/dday";
 import type { UserPostStatusValue } from "./service";
 
 /** 알림 항목 — 카드 + 알림 종류 + 시간 */
@@ -115,6 +116,8 @@ export async function getRecentMatchingCards(
     .select("*")
     .eq("status", "published")
     .gte("created_at", sinceIso)
+    // 마감일(KST 날짜) 지난 카드는 신규 매칭 알림에서도 제외 (피드와 동일 기준)
+    .or(`deadline.gte.${kstTodayStartIso()},deadline.is.null`)
     .order("created_at", { ascending: false })
     .limit(100);
 

@@ -18,6 +18,7 @@ import {
 import { getServerSupabase } from "@/shared/db/supabase-ssr";
 import { supabaseServer } from "@/shared/db/supabase-server";
 import type { PostStatus } from "@/shared/types/post";
+import { isPastDeadline } from "@/shared/utils/dday";
 
 const ADMIN_COOKIE = "umbba-admin";
 
@@ -157,11 +158,14 @@ export async function createPostAction(formData: FormData): Promise<void> {
 // ============================================
 export async function approvePostAction(id: string): Promise<void> {
   await ensureAdmin();
-  await approvePost(id);
+  const result = await approvePost(id); // "published" | "expired"
   revalidatePath("/");
   revalidatePath("/admin");
   revalidatePath("/admin/queue");
-  redirect("/admin/queue?ok=approved");
+  // 마감 지난 카드는 발행 대신 보관(expired) 처리됨 → 관리자에게 다른 메시지
+  redirect(
+    `/admin/queue?ok=${result === "expired" ? "archived" : "approved"}`
+  );
 }
 
 // ============================================
@@ -251,12 +255,18 @@ export async function updateAndPublishPostAction(
   if (!input.title || !input.source_url) {
     redirect(`/admin/${id}/edit?error=required`);
   }
-  await updatePost(id, { ...input, status: "published" });
+  // 발행 저장도 마감일 체크 — 이미 지난 카드면 published 대신 expired(보관)로 강제
+  const nextStatus: PostStatus = isPastDeadline(input.deadline ?? null)
+    ? "expired"
+    : "published";
+  await updatePost(id, { ...input, status: nextStatus });
   revalidatePath("/");
   revalidatePath(`/post/${id}`);
   revalidatePath("/admin");
   revalidatePath("/admin/queue");
-  redirect("/admin/queue?ok=approved");
+  redirect(
+    `/admin/queue?ok=${nextStatus === "expired" ? "archived" : "approved"}`
+  );
 }
 
 export async function deletePostAction(id: string): Promise<void> {

@@ -7,6 +7,7 @@
 import "server-only";
 import { supabaseServer } from "@/shared/db/supabase-server";
 import type { Post, PostStatus, SourceType } from "@/shared/types/post";
+import { isPastDeadline, kstTodayStartIso } from "@/shared/utils/dday";
 
 export async function selectAllPosts(): Promise<Post[]> {
   const { data, error } = await supabaseServer
@@ -67,22 +68,42 @@ export interface PostInsertInput {
   submitter_user_id?: string | null;
 }
 
-export async function approvePost(id: string): Promise<void> {
+/**
+ * 승인 — 단, 마감일(KST 날짜)이 이미 지난 카드는 published 대신 곧장 expired로 보관.
+ * (지난달 카드를 뒤늦게 승인해도 피드에 "마감" 상태로 노출되는 일 방지)
+ * @returns 실제 적용된 상태 — "published"(정상 발행) | "expired"(마감 보관)
+ */
+export async function approvePost(id: string): Promise<"published" | "expired"> {
+  const { data: row, error: selErr } = await supabaseServer
+    .from("posts")
+    .select("deadline")
+    .eq("id", id)
+    .maybeSingle();
+  if (selErr) throw new Error(`approvePost(select): ${selErr.message}`);
+
+  const deadline = (row as { deadline: string | null } | null)?.deadline ?? null;
+  const nextStatus: "published" | "expired" = isPastDeadline(deadline)
+    ? "expired"
+    : "published";
+
   const { error } = await supabaseServer
     .from("posts")
-    .update({ status: "published" })
+    .update({ status: nextStatus })
     .eq("id", id);
   if (error) throw new Error(`approvePost: ${error.message}`);
+  return nextStatus;
 }
 
-/** 마감일 지난 published 카드를 일괄 expired 처리 */
+/** 마감일(KST 날짜)이 지난 published 카드를 일괄 expired 처리.
+ *  기준을 시각(now)이 아닌 "오늘 KST 00:00"으로 잡아 화면 D-day(캘린더 날짜)와 일치시킴
+ *  — 마감일 당일 카드를 cron이 먼저 만료시키던 1일 오차 제거. */
 export async function expireOverduePosts(): Promise<number> {
-  const nowIso = new Date().toISOString();
+  const cutoff = kstTodayStartIso();
   const { data, error } = await supabaseServer
     .from("posts")
     .update({ status: "expired" })
     .eq("status", "published")
-    .lt("deadline", nowIso)
+    .lt("deadline", cutoff)
     .not("deadline", "is", null)
     .select("id");
   if (error) throw new Error(`expireOverduePosts: ${error.message}`);

@@ -5,6 +5,7 @@
 
 import { supabase } from "@/shared/db/supabase";
 import type { Post } from "@/shared/types/post";
+import { kstTodayStartIso } from "@/shared/utils/dday";
 
 export type SortMode = "deadline_asc" | "created_desc" | "deadline_desc";
 
@@ -28,6 +29,12 @@ export async function selectPublishedPosts(
   const { q, sort = "deadline_asc", limit = 100 } = options;
 
   let query = supabase.from("posts").select("*").eq("status", "published");
+
+  // 마감일(KST 날짜)이 지난 카드는 피드에서 즉시 제외.
+  // cron(expireOverduePosts)이 status를 expired로 정리하기 전이라도 사용자에겐 안 보이게 함.
+  // deadline 없는 상시 카드는 유지(deadline.is.null). 기준은 "오늘 KST 00:00".
+  const todayStart = kstTodayStartIso();
+  query = query.or(`deadline.gte.${todayStart},deadline.is.null`);
 
   // 검색어 필터 — title/brand_name/body + search_keywords(동의어) 4개 컬럼 ILIKE OR
   // search_keywords는 관리자 직접 입력 또는 AI 자동 생성한 동의어 (콤마 구분 텍스트)
