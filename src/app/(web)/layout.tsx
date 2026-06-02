@@ -125,6 +125,10 @@ export default async function WebLayout({
             지난 이벤트
           </Link>
           <span aria-hidden="true">·</span>
+          <Link href="/business" className="hover:text-slate-600 hover:underline">
+            업체·브랜드 문의
+          </Link>
+          <span aria-hidden="true">·</span>
           <Link href="/terms" className="hover:text-slate-600 hover:underline">
             이용약관
           </Link>

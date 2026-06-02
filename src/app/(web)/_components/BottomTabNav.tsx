@@ -144,6 +144,12 @@ export function BottomTabNav({ user }: Props) {
               onClick={() => setMoreOpen(false)}
             />
             <SheetLink
+              href="/business"
+              icon="🏢"
+              label="업체·브랜드 문의"
+              onClick={() => setMoreOpen(false)}
+            />
+            <SheetLink
               href="/terms"
               icon="📄"
               label="이용약관"

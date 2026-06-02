@@ -8,6 +8,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { logoutAction } from "@/modules/curation/actions";
 import { getCounts } from "@/modules/curation/service";
+import { countNewInquiries } from "@/modules/business/repository";
 import { Logo } from "@/shared/ui/Logo";
 
 const ADMIN_COOKIE = "umbba-admin";
@@ -25,11 +26,16 @@ export default async function AdminPrivateLayout({
     redirect("/admin/login");
   }
 
-  // 승인 대기 카드 수 (네비 배지용)
+  // 승인 대기 카드 수 + 신규 업체 문의 수 (네비 배지용)
   let pendingCount = 0;
+  let newInquiryCount = 0;
   try {
-    const counts = await getCounts();
+    const [counts, inquiries] = await Promise.all([
+      getCounts(),
+      countNewInquiries(),
+    ]);
     pendingCount = counts.byStatus.pending;
+    newInquiryCount = inquiries;
   } catch {
     // 조회 실패는 무시
   }
@@ -95,6 +101,18 @@ export default async function AdminPrivateLayout({
               className="rounded-full px-3 py-1 text-xs font-medium text-slate-600 hover:bg-slate-100"
             >
               회원 관리
+            </Link>
+            <Link
+              href="/admin/business"
+              className="flex items-center gap-1 rounded-full px-3 py-1 text-xs font-medium text-slate-600 hover:bg-slate-100"
+              title="업체 입점·상품·제휴·인스타 모니터링 문의"
+            >
+              <span>업체 문의</span>
+              {newInquiryCount > 0 && (
+                <span className="rounded-full bg-rose-500 px-1.5 py-0.5 text-[10px] font-bold text-white">
+                  {newInquiryCount}
+                </span>
+              )}
             </Link>
             <Link
               href="/"

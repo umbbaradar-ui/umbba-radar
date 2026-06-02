@@ -13,6 +13,7 @@ const EXEMPT_PREFIXES = [
   "/login", // 로그인 페이지
   "/auth", // OAuth·이메일 인증 콜백
   "/admin", // 관리자 별도 인증
+  "/business", // 업체(B2B) 문의 — 업체는 로그인·자녀정보 없이 제출
   "/terms",
   "/privacy",
 ];
