@@ -32,7 +32,7 @@ if (-not $exe) { Log "ERROR: claude.exe not found"; exit 9 }
 Log "claude: $exe"
 
 $batchSize = if ($env:UMBBA_B_BATCH)    { [int]$env:UMBBA_B_BATCH }    else { 25 }
-$maxItems  = if ($env:UMBBA_B_MAXITEMS) { [int]$env:UMBBA_B_MAXITEMS } else { 25 }  # 야간 처리 상한(=배치1개, 검증됨; 이미지 다운로드 burst 제한). 0=전체.
+$maxItems  = if ($env:UMBBA_B_MAXITEMS) { [int]$env:UMBBA_B_MAXITEMS } else { 25 }  # nightly cap (=1 batch; limits image-download burst). 0=all.
 
 # 1) auto-export (no Instagram; Vercel queue -> todo-enriched.json)
 Log "auto-export start"
@@ -110,4 +110,75 @@ Log ("merged results.json: {0} items" -f $all.Count)
 Log "import start"
 & $py ingest.py --import "$resultsPath" 2>&1 | Out-Null
 Log "B routine done"
+
+# ============================================================
+# 5) Nightly health report -> Telegram (server builds + sends).
+#    Measure LOCAL-only signals here (scan log, cookie age, B result)
+#    and POST them; server merges DB stats and sends one message.
+#    Failures are ignored (report is best-effort).
+# ============================================================
+try {
+  # --- read API_URL / ADMIN_CLI_TOKEN from .env ---
+  $apiUrl = 'https://www.umbba-radar.com'
+  $cliTok = $null
+  $envFile = Join-Path $dir '.env'
+  if (Test-Path $envFile) {
+    foreach ($ln in Get-Content -LiteralPath $envFile -Encoding UTF8) {
+      if ($ln -match '^\s*UMBBA_API_URL\s*=\s*(.+)\s*$') { $apiUrl = $matches[1].Trim().Trim('"').Trim("'") }
+      if ($ln -match '^\s*ADMIN_CLI_TOKEN\s*=\s*(.+)\s*$') { $cliTok = $matches[1].Trim().Trim('"').Trim("'") }
+    }
+  }
+
+  # --- A-scan result from scan-log.txt (last round) ---
+  # Parse only ASCII markers (log body is Korean; avoid non-ASCII regex):
+  #   "[k/N]"  per-account progress -> N = accounts this round
+  #   "401"    failed account (instagram unauthorized)
+  #   "fetch"  a fetch line (post fetched ok)
+  $scanOk = $true; $scanAccts = 0; $scanFetched = 0; $scanQueued = 0; $scanFailed = 0; $all401 = $false
+  $scanLog = Join-Path $dir 'scan-log.txt'
+  if (Test-Path $scanLog) {
+    $sc = Get-Content -LiteralPath $scanLog -Raw -Encoding UTF8
+    $c401 = ([regex]::Matches($sc, '401')).Count
+    $cFetch = ([regex]::Matches($sc, 'fetch')).Count
+    # last "[k/N]" gives accounts processed this round
+    $prog = [regex]::Matches($sc, '\[(\d+)/(\d+)\]')
+    if ($prog.Count -gt 0) { $scanAccts = [int]$prog[$prog.Count - 1].Groups[2].Value }
+    $scanFailed = $c401
+    $scanFetched = $cFetch
+    $scanQueued = $cFetch   # approx: queued ~ fetched (new posts)
+    if ($scanAccts -gt 0 -and $c401 -ge $scanAccts) { $all401 = $true; $scanOk = $false }
+    elseif ($c401 -gt 0) { $scanOk = $false }
+  }
+
+  # --- cookie age (days) ---
+  $cookieAge = $null
+  $ck = Join-Path $dir 'cookies.txt'
+  if (Test-Path $ck) {
+    $cookieAge = [int]([math]::Floor(((Get-Date) - (Get-Item $ck).LastWriteTime).TotalDays))
+  }
+
+  # --- B result ---
+  $bHeld = 0
+  $heldFile = Get-ChildItem $exportDir -Filter '*.held-no-image.json' -ErrorAction SilentlyContinue | Select-Object -First 1
+  if ($heldFile) {
+    try { $bHeld = @((Get-Content -LiteralPath $heldFile.FullName -Raw -Encoding UTF8 | ConvertFrom-Json).items).Count } catch {}
+  }
+
+  if ($cliTok) {
+    $payload = @{
+      scan = @{ ok = $scanOk; accounts = $scanAccts; queued = $scanQueued; failed = $scanFailed; all401 = $all401 }
+      b    = @{ ok = $true; classified = $all.Count; imported = ($all.Count - $bHeld); held = $bHeld }
+      cookieAgeDays = $cookieAge
+    } | ConvertTo-Json -Depth 6
+    $resp = Invoke-RestMethod -Method Post -Uri ("{0}/api/admin/health-report" -f $apiUrl) `
+      -Headers @{ Authorization = ("Bearer {0}" -f $cliTok) } `
+      -ContentType 'application/json; charset=utf-8' -Body $payload -TimeoutSec 25
+    Log ("health-report sent: {0}" -f ($resp | ConvertTo-Json -Compress))
+  } else {
+    Log "health-report skipped: no ADMIN_CLI_TOKEN"
+  }
+} catch {
+  Log ("health-report failed (ignored): {0}" -f $_.Exception.Message)
+}
+
 exit 0
