@@ -1,13 +1,16 @@
 "use client";
 
 // ============================================
-// 모바일 하단 탭 네비게이션 — 4탭 + 더보기 시트
+// 모바일 하단 탭 네비게이션 — 3탭 + 더보기 시트
 // 데스크탑(md+)에서는 숨김. 모바일 PWA 풀스크린에서 "앱처럼" 느껴지게 함
 //
-// 4 탭 구성:
-//   홈 / 내것 / 제보(강조) / 더보기(시트)
+// 3 탭 구성:
+//   홈 / 내 레이더 / 더보기(시트)
+//   ※ 제보는 메인 동선에서 강등(2026-06-02) — 더보기 시트로 이동.
+//     MAU0에선 제보량 기대 X. 가운데 강조(+) 자리는 비움(억지로 안 채움).
+//     자세한 결정 근거: docs/ROADMAP-NEXT.md
 //
-// 더보기 탭: 슬라이드업 시트로 보조 메뉴 (로그인/로그아웃·관리자·약관 등)
+// 더보기 탭: 슬라이드업 시트로 보조 메뉴 (로그인/로그아웃·제보·약관 등)
 // ============================================
 
 import { useState } from "react";
@@ -27,11 +30,10 @@ export function BottomTabNav({ user }: Props) {
 
   const isHome = pathname === "/";
   const isMy = pathname.startsWith("/my");
-  const isSubmit = pathname.startsWith("/submit");
 
   return (
     <>
-      {/* 하단 탭 네비 */}
+      {/* 하단 탭 네비 — 3탭 (홈 / 내 레이더 / 더보기) */}
       <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-amber-100 bg-white/95 backdrop-blur md:hidden">
         <div className="pb-safe mx-auto flex max-w-md">
           <Tab href="/" label="홈" active={isHome}>
@@ -40,7 +42,6 @@ export function BottomTabNav({ user }: Props) {
           <Tab href="/my" label="내 레이더" active={isMy}>
             <BookmarkIcon filled={isMy} />
           </Tab>
-          <SubmitTab href="/submit" label="제보" active={isSubmit} />
           <button
             type="button"
             onClick={() => setMoreOpen(true)}
@@ -127,6 +128,13 @@ export function BottomTabNav({ user }: Props) {
                 onClick={() => setMoreOpen(false)}
               />
             )}
+            {/* 혜택 제보 — 메인 동선에서 강등(2026-06-02), 여기로 이동 */}
+            <SheetLink
+              href="/submit"
+              icon="💡"
+              label="혜택 제보하기"
+              onClick={() => setMoreOpen(false)}
+            />
             {/* 앱 설치 진입점 — 푸시·자동 배너와 별개 보조 경로 */}
             <InstallSheetEntry onClick={() => setMoreOpen(false)} />
             <SheetLink
@@ -193,35 +201,6 @@ function Tab({
   );
 }
 
-/** 제보 탭 — 가운데 강조 (primary CTA) */
-function SubmitTab({
-  href,
-  label,
-  active,
-}: {
-  href: string;
-  label: string;
-  active: boolean;
-}) {
-  return (
-    <Link
-      href={href}
-      className="flex flex-1 flex-col items-center justify-center gap-0.5 py-2.5 text-[10px] font-bold transition active:scale-95"
-    >
-      <div
-        className={`flex h-9 w-9 items-center justify-center rounded-full transition ${
-          active ? "bg-rose-600 text-white" : "bg-rose-100 text-rose-600"
-        }`}
-      >
-        <PlusIcon />
-      </div>
-      <span className={active ? "text-rose-600" : "text-rose-500"}>
-        {label}
-      </span>
-    </Link>
-  );
-}
-
 // ============================================
 // 시트 메뉴 링크
 // ============================================
@@ -284,24 +263,6 @@ function BookmarkIcon({ filled }: { filled: boolean }) {
       strokeLinejoin="round"
     >
       <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
-    </svg>
-  );
-}
-
-function PlusIcon() {
-  return (
-    <svg
-      width="20"
-      height="20"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2.5"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <line x1="12" y1="5" x2="12" y2="19" />
-      <line x1="5" y1="12" x2="19" y2="12" />
     </svg>
   );
 }

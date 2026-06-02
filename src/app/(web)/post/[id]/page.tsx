@@ -13,6 +13,7 @@ import { getUserStatusForPost } from "@/modules/personalization/service-server";
 import { getCurrentUser } from "@/modules/user/service";
 import { CardClickTracker } from "@/modules/analytics/ui/CardClickTracker";
 import { ExternalLinkButton } from "@/modules/analytics/ui/ExternalLinkButton";
+import { ShareButton } from "@/modules/content/ui/ShareButton";
 import { AdSlot } from "@/modules/advertising/ui/AdSlot";
 import { ViewGate } from "@/modules/user/ui/ViewGate";
 import { STAGE_LABELS, TYPE_LABELS } from "@/shared/types/post";
@@ -262,6 +263,14 @@ export default async function PostDetailPage({ params }: PageProps) {
           >
             원문 보러 가기 →
           </ExternalLinkButton>
+
+          {/* 공유 — 바이럴 핵심. 배우자·지인에게 카드 전달 (앱 내 신청 X, 발견·공유만) */}
+          <ShareButton
+            postId={post.id}
+            title={post.title}
+            brandName={post.brand_name}
+          />
+
           <p className="text-center text-[11px] text-slate-400">
             * 신청·체험은 외부 인스타·블로그 페이지에서 진행됩니다
           </p>
