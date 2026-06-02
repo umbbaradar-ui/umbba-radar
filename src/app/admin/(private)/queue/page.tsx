@@ -106,14 +106,24 @@ export default async function AdminQueuePage({ searchParams }: PageProps) {
             >
               <div className="flex flex-col sm:flex-row">
                 {/* 썸네일 */}
-                <div className="aspect-square w-full shrink-0 bg-slate-100 sm:w-40">
-                  {p.thumbnail_url && (
+                <div className="relative aspect-square w-full shrink-0 bg-slate-100 sm:w-40">
+                  {p.thumbnail_url ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
                       src={p.thumbnail_url}
                       alt={p.title}
                       className="h-full w-full object-cover"
                     />
+                  ) : (
+                    <div className="flex h-full w-full flex-col items-center justify-center gap-1 text-center">
+                      <span className="text-2xl">🖼️</span>
+                      <span className="px-2 text-[10px] font-bold text-amber-700">
+                        사진 없음
+                      </span>
+                      <span className="px-2 text-[9px] leading-tight text-slate-400">
+                        수정에서 업로드 필요
+                      </span>
+                    </div>
                   )}
                 </div>
                 {/* 본문 */}

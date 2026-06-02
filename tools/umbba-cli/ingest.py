@@ -861,6 +861,134 @@ def notify_telegram() -> None:
         print(f"   ⚠ 텔레그램 트리거 실패(무시): {e}")
 
 
+def _download_and_upload_thumb(url: str, attempts: int = 2) -> str | None:
+    """인스타 URL → gallery-dl 다운 → Storage 업로드 → 공개 URL. 실패 시 재시도.
+
+    attempts회 시도(기본 2 = 1차 + 재시도 1). 일시적 401/타임아웃은 잠깐 쉬고
+    다시 받으면 성공하는 경우가 있어 짧은 backoff 후 재시도.
+    모두 실패하면 None.
+    """
+    import time
+    for n in range(1, attempts + 1):
+        with tempfile.TemporaryDirectory(prefix="umbba-thumb-") as tmp:
+            post = download_post(url, Path(tmp))
+            if post:
+                storage_url = upload_image_to_storage(post["image_path"])
+                if storage_url:
+                    return storage_url
+                print(f"    ⚠ Storage 업로드 실패 (시도 {n}/{attempts})")
+            else:
+                print(f"    ⚠ 이미지 다운 실패 (시도 {n}/{attempts})")
+        if n < attempts:
+            time.sleep(8)  # 일시적 인스타 차단 완화용 짧은 대기
+    return None
+
+
+def run_backfill_thumbnails(held_file: Path) -> int:
+    """보류(held) 항목의 사진만 재다운로드해서 카드 생성/채움.
+
+    run_import_mode 가 사진 못 받아 빼둔 *.held-no-image.json 을 입력으로 받아:
+      - 각 항목 인스타 URL 재다운(재시도 포함) → Storage 업로드
+      - 성공분만 import-results 로 전송(= pending 카드 생성)
+      - 여전히 실패한 건 *.still-held.json 으로 다시 남김(다음 기회에 또 시도)
+
+    인스타 리밋이 풀린 시점에 수동 1회 실행하는 용도. (자동 cron 아님 → 차단 위험 관리)
+    """
+    if not held_file.exists():
+        print(f"❌ 보류 파일 없음: {held_file}")
+        return 1
+    if not API_TOKEN:
+        print("❌ ADMIN_CLI_TOKEN 미설정")
+        return 1
+    try:
+        payload = json.loads(held_file.read_text(encoding="utf-8-sig"))
+    except Exception as e:
+        print(f"❌ JSON 파싱 실패: {e}")
+        return 1
+
+    items = payload.get("items", []) if isinstance(payload, dict) else payload
+    if not isinstance(items, list) or not items:
+        print("ℹ️ 보류 항목 없음 — 할 일 없음")
+        return 0
+
+    # 큐 URL 매핑 (queue_id → url) 재확보
+    print(f"🔁 백필 시작: 보류 {len(items)}개")
+    print(f"   API: {API_URL}")
+    print(f"   큐 URL 매핑 fetch …")
+    queue_url_map: dict[str, str] = {}
+    todo_payload = fetch_export_todo_via_api()
+    if todo_payload:
+        for ti in todo_payload.get("items", []):
+            qid = ti.get("queue_id")
+            url = ti.get("url")
+            if qid and url:
+                queue_url_map[qid] = url
+
+    ready: list[dict] = []      # 사진 채워진 항목 (import 대상)
+    still_held: list[dict] = [] # 또 실패
+    print()
+    for idx, item in enumerate(items, 1):
+        qid = item.get("queue_id")
+        # 보류 항목에 url을 직접 들고 있을 수도, 큐 매핑에서 찾을 수도
+        url = item.get("source_url") or item.get("url") or queue_url_map.get(qid)
+        if not url:
+            print(f"  [{idx}/{len(items)}] {str(qid)[:8]}… ⚠ url 못 찾음 → 계속 보류")
+            still_held.append(item)
+            continue
+
+        print(f"  [{idx}/{len(items)}] {url}")
+        storage_url = _download_and_upload_thumb(url, attempts=2)
+        if storage_url:
+            clean = {k: v for k, v in item.items() if not k.startswith("_")}
+            clean["thumbnail_url"] = storage_url
+            ready.append(clean)
+            print(f"    ☁️ 사진 확보 OK")
+        else:
+            print(f"    ⚠ 또 실패 → 계속 보류")
+            still_held.append(item)
+
+        if idx < len(items) and SLEEP_BETWEEN_URLS > 0:
+            import time
+            time.sleep(SLEEP_BETWEEN_URLS)
+
+    # 사진 확보된 것만 import-results 로 전송 (pending 카드 생성)
+    total_created = 0
+    if ready:
+        print(f"\n   📤 사진 확보 {len(ready)}건 → import-results 전송")
+        try:
+            r = requests.post(
+                f"{API_URL}/api/admin/queue/import-results",
+                headers={
+                    "Authorization": f"Bearer {API_TOKEN}",
+                    "Content-Type": "application/json",
+                },
+                json={"items": ready},
+                timeout=90,
+            )
+            if r.status_code == 200 and r.json().get("ok"):
+                d = r.json()
+                total_created = d.get("created", 0)
+                print(f"   ✅ 생성 {total_created}, 스킵 {d.get('skipped',0)}, 실패 {d.get('failed',0)}")
+            else:
+                print(f"   ❌ HTTP {r.status_code}: {r.text[:200]}")
+                still_held.extend(ready)  # 전송 실패분도 보류 유지
+        except requests.RequestException as e:
+            print(f"   ❌ 네트워크 오류: {e}")
+            still_held.extend(ready)
+
+    # 여전히 보류인 것 다시 저장 (없으면 파일 안 남김)
+    if still_held:
+        out = held_file.with_name(held_file.stem.replace(".held-no-image", "") + ".still-held.json")
+        out.write_text(json.dumps({"items": still_held}, ensure_ascii=False, indent=2), encoding="utf-8")
+        print(f"\n   🅗 아직 사진 못 받은 {len(still_held)}건 → {out}")
+        print(f"      (리밋 더 풀린 뒤 같은 명령으로 재시도)")
+    else:
+        print(f"\n   🎉 모든 보류 항목 처리 완료!")
+
+    print(f"\n   검수: {API_URL}/admin/queue")
+    return 0
+
+
 def run_import_mode(results_file: Path) -> int:
     """Claude Code 가 만든 results.json 업로드 → posts 카드 일괄 생성
 
@@ -910,30 +1038,48 @@ def run_import_mode(results_file: Path) -> int:
                     queue_url_map[qid] = url
 
         # 이미지 자동 다운 + 업로드
+        # 가드레일: 다운/업로드 실패하면 1회 재시도, 그래도 실패하면 그 항목은
+        #   import에서 제외(held)하고 보류 파일로 빼둠 → 사진 없는 카드가 승인 큐(pending)에
+        #   안 올라오게. 보류분은 나중에 `--backfill-thumbnails`로 인스타 리밋 풀렸을 때 채움.
         print()
+        held_items: list[dict] = []  # 사진 못 받아 import 보류된 항목
         for idx, item in enumerate(needs_image, 1):
             qid = item.get("queue_id")
             url = queue_url_map.get(qid)
             if not url:
-                print(f"  [{idx}/{len(needs_image)}] {qid[:8]}… ⚠ 큐에 url 없음, 썸네일 NULL 로 진행")
+                print(f"  [{idx}/{len(needs_image)}] {qid[:8]}… ⚠ 큐에 url 없음 → 보류(held)")
+                item["_held_reason"] = "큐에 url 매핑 없음"
+                held_items.append(item)
                 continue
 
             print(f"  [{idx}/{len(needs_image)}] {url}")
-            with tempfile.TemporaryDirectory(prefix="umbba-import-") as tmp:
-                post = download_post(url, Path(tmp))
-                if not post:
-                    print(f"    ⚠ 이미지 다운 실패 — 썸네일 NULL")
-                else:
-                    storage_url = upload_image_to_storage(post["image_path"])
-                    if storage_url:
-                        item["thumbnail_url"] = storage_url
-                        print(f"    ☁️ Storage 업로드 OK")
-                    else:
-                        print(f"    ⚠ Storage 업로드 실패 — 썸네일 NULL")
+            storage_url = _download_and_upload_thumb(url, attempts=2)
+            if storage_url:
+                item["thumbnail_url"] = storage_url
+                print(f"    ☁️ Storage 업로드 OK")
+            else:
+                print(f"    ⚠ 이미지 확보 실패(재시도 포함) → 보류(held), 승인 큐에 안 올림")
+                item["_held_reason"] = "이미지 다운/업로드 실패 (인스타 401·삭제·비공개 가능)"
+                held_items.append(item)
 
             if idx < len(needs_image) and SLEEP_BETWEEN_URLS > 0:
                 import time
                 time.sleep(SLEEP_BETWEEN_URLS)
+
+        # 보류 항목은 import 대상(items)에서 제외 + 보류 파일로 저장
+        if held_items:
+            held_qids = {it.get("queue_id") for it in held_items}
+            items = [it for it in items if it.get("queue_id") not in held_qids]
+            held_file = results_file.with_suffix(".held-no-image.json")
+            try:
+                held_file.write_text(
+                    json.dumps({"items": held_items}, ensure_ascii=False, indent=2),
+                    encoding="utf-8",
+                )
+                print(f"\n   🅗 사진 미확보 {len(held_items)}건 보류 → {held_file}")
+                print(f"      (인스타 리밋 풀린 뒤 `py ingest.py --backfill-thumbnails \"{held_file}\"` 로 채우기)")
+            except Exception as e:
+                print(f"   ⚠ 보류 파일 저장 실패: {e}")
 
         # 다음 단계 안내 / 결과 파일 백업 (썸네일 URL 채워진 상태)
         backup_file = results_file.with_suffix(".with-images.json")
@@ -1140,6 +1286,12 @@ def main() -> int:
         help="Claude Code 가 만든 results.json 업로드 → 카드 자동 생성",
     )
     parser.add_argument(
+        "--backfill-thumbnails",
+        dest="backfill_file",
+        type=Path,
+        help="import 때 사진 못 받아 보류된 *.held-no-image.json 의 이미지만 재다운→카드 생성 (인스타 리밋 풀린 뒤 수동 1회)",
+    )
+    parser.add_argument(
         "--dry-run",
         action="store_true",
         help="다운만 하고 API POST 안 함 (테스트용)",
@@ -1172,6 +1324,9 @@ def main() -> int:
 
     if args.import_file:
         return run_import_mode(args.import_file)
+
+    if args.backfill_file:
+        return run_backfill_thumbnails(args.backfill_file)
 
     if args.pull:
         return run_pull_mode(limit=min(max(args.limit, 1), 20),
