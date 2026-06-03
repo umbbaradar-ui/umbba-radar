@@ -56,27 +56,28 @@ export function PostCard({ post }: Props) {
           )}
 
           {/* 좌측 상단 배지 그룹 — D-day + NEW
-              마감 미정 카드는 D-day 라벨에 ~ 접두어 + amber 톤으로 "추정" 시각화.
-              urgent 빨강 효과는 사용 안 함 (가짜 긴급 인상 방지). */}
+              마감 미정(deadline_unknown) 카드는 자동마감일이 D-day로 보이면 "오늘 마감!"
+              같은 가짜 긴급감을 줘서, D-day 대신 "상시" 중립 배지로 표시.
+              실제 마감일 있는 카드만 D-day(긴급=빨강) 노출. */}
           {(dday || isNew) && (
             <div className="absolute left-3 top-3 flex gap-1">
-              {dday && (
+              {post.deadline_unknown ? (
                 <span
-                  className={`rounded-full px-2.5 py-1 text-[11px] font-extrabold tracking-tight text-white shadow-sm ${
-                    post.deadline_unknown
-                      ? "bg-amber-500/85 backdrop-blur"
-                      : dday.urgent
-                        ? "bg-rose-500"
-                        : "bg-slate-900/70 backdrop-blur"
-                  }`}
-                  title={
-                    post.deadline_unknown
-                      ? "마감일 미정 — 등록일 기준 자동 종료"
-                      : undefined
-                  }
+                  className="rounded-full bg-slate-900/70 px-2.5 py-1 text-[11px] font-extrabold tracking-tight text-white shadow-sm backdrop-blur"
+                  title="마감일 미정 — 원문에서 마감을 확인하세요"
                 >
-                  {post.deadline_unknown ? `~${dday.label}` : dday.label}
+                  상시
                 </span>
+              ) : (
+                dday && (
+                  <span
+                    className={`rounded-full px-2.5 py-1 text-[11px] font-extrabold tracking-tight text-white shadow-sm ${
+                      dday.urgent ? "bg-rose-500" : "bg-slate-900/70 backdrop-blur"
+                    }`}
+                  >
+                    {dday.label}
+                  </span>
+                )
               )}
               {isNew && (
                 <span className="rounded-full bg-emerald-500 px-2.5 py-1 text-[11px] font-extrabold tracking-tight text-white shadow-sm">

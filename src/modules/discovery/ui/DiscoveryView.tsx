@@ -11,6 +11,7 @@ import type { Post, StageCategory } from "@/shared/types/post";
 import type { SortMode } from "@/modules/content/service";
 import { filterPosts, sortPosts } from "@/modules/discovery/service";
 import { FilterBar } from "./FilterBar";
+import { OnboardingHint } from "./OnboardingHint";
 import { PostCard } from "@/modules/content/ui/PostCard";
 import { AdSlot } from "@/modules/advertising/ui/AdSlot";
 
@@ -73,6 +74,9 @@ export function DiscoveryView({
           {stage === "my_child" && hasChildren && " · 내 아이 맞춤"}
         </p>
       </header>
+
+      {/* 자녀 미등록 사용자에게 맞춤 추천 가치 안내 (검색 중이 아닐 때만) */}
+      {!hasChildren && !q && <OnboardingHint />}
 
       <AdSlot id="top_banner" />
 
