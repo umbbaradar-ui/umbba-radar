@@ -32,7 +32,7 @@ if (-not $exe) { Log "ERROR: claude.exe not found"; exit 9 }
 Log "claude: $exe"
 
 $batchSize = if ($env:UMBBA_B_BATCH)    { [int]$env:UMBBA_B_BATCH }    else { 25 }
-$maxItems  = if ($env:UMBBA_B_MAXITEMS) { [int]$env:UMBBA_B_MAXITEMS } else { 25 }  # nightly cap (=1 batch; limits image-download burst). 0=all.
+$maxItems  = if ($env:UMBBA_B_MAXITEMS) { [int]$env:UMBBA_B_MAXITEMS } else { 50 }  # per-run cap = 2 batches (claude 25x2). runs once daily 03:30 (conservative, 2026-06-04). image-download burst small (most items skip). 0=all.
 
 # 1) auto-export (no Instagram; Vercel queue -> todo-enriched.json)
 Log "auto-export start"
@@ -108,7 +108,21 @@ Log ("merged results.json: {0} items" -f $all.Count)
 
 # 4) import (downloads images for skip=false, creates pending cards)
 Log "import start"
-& $py ingest.py --import "$resultsPath" 2>&1 | Out-Null
+$importOut = & $py ingest.py --import "$resultsPath" 2>&1
+$importOut | Out-File -LiteralPath (Join-Path $exportDir 'import-out.txt') -Encoding utf8
+# Parse the ASCII summary line ingest.py prints: "IMPORT_SUMMARY created=N skipped=N failed=N held=N"
+# (avoid parsing Korean log lines, which a BOM-less ANSI-read .ps1 would mangle).
+$createdCount = 0; $importFailed = 0
+$sumLine = ($importOut | Select-String -Pattern 'IMPORT_SUMMARY' | Select-Object -Last 1)
+if ($sumLine) {
+  $sm = [regex]::Match($sumLine.ToString(), 'created=(\d+).*?failed=(\d+)')
+  if ($sm.Success) { $createdCount = [int]$sm.Groups[1].Value; $importFailed = [int]$sm.Groups[2].Value }
+}
+$skipFalseCount = @($all | Where-Object { -not $_.skip }).Count
+Log ("import done: cards created={0}, failed={1}, skip=false items={2}" -f $createdCount, $importFailed, $skipFalseCount)
+if ($createdCount -eq 0 -and $skipFalseCount -gt 0) {
+  Log "WARNING: 0 cards created but skip=false items existed -> image download likely blocked (cookie 401)"
+}
 Log "B routine done"
 
 # ============================================================
@@ -146,7 +160,9 @@ try {
     $scanFailed = $c401
     $scanFetched = $cFetch
     $scanQueued = $cFetch   # approx: queued ~ fetched (new posts)
-    if ($scanAccts -gt 0 -and $c401 -ge $scanAccts) { $all401 = $true; $scanOk = $false }
+    # Majority-failed = cookie likely dead. Don't require literally ALL to fail:
+    # a soft-ban often lets a handful through (e.g. 73/80 -> cookie still dead).
+    if ($scanAccts -gt 0 -and $c401 -ge [math]::Ceiling($scanAccts * 0.6)) { $all401 = $true; $scanOk = $false }
     elseif ($c401 -gt 0) { $scanOk = $false }
   }
 
@@ -165,9 +181,12 @@ try {
   }
 
   if ($cliTok) {
+    # b.ok must reflect REALITY: 0 cards created while skip=false items existed = failure
+    # (the old code hardcoded $true + reported skip=true noise as "imported", hiding the 06-04 outage).
+    $bOk = ($importFailed -eq 0) -and -not ($createdCount -eq 0 -and $skipFalseCount -gt 0)
     $payload = @{
       scan = @{ ok = $scanOk; accounts = $scanAccts; queued = $scanQueued; failed = $scanFailed; all401 = $all401 }
-      b    = @{ ok = $true; classified = $all.Count; imported = ($all.Count - $bHeld); held = $bHeld }
+      b    = @{ ok = $bOk; classified = $all.Count; imported = $createdCount; held = $bHeld; failed = $importFailed }
       cookieAgeDays = $cookieAge
     } | ConvertTo-Json -Depth 6
     $resp = Invoke-RestMethod -Method Post -Uri ("{0}/api/admin/health-report" -f $apiUrl) `

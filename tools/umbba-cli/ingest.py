@@ -1020,6 +1020,8 @@ def run_import_mode(results_file: Path) -> int:
     print(f"📤 import 시작: {len(items)}개 항목")
     print(f"   API: {API_URL}")
 
+    held_count = 0  # 사진 못 받아 보류된 수 (관측용; run-b.ps1이 IMPORT_SUMMARY로 파싱)
+
     # skip=false + thumbnail_url 없는 항목이 있으면 큐 URL 매핑 한 번 받음
     needs_image = [
         it for it in items
@@ -1067,6 +1069,7 @@ def run_import_mode(results_file: Path) -> int:
                 time.sleep(SLEEP_BETWEEN_URLS)
 
         # 보류 항목은 import 대상(items)에서 제외 + 보류 파일로 저장
+        held_count = len(held_items)
         if held_items:
             held_qids = {it.get("queue_id") for it in held_items}
             items = [it for it in items if it.get("queue_id") not in held_qids]
@@ -1153,6 +1156,8 @@ def run_import_mode(results_file: Path) -> int:
             print(f"     · {e.get('queue_id', '?')[:8]}: {e.get('message', '')[:100]}")
     print()
     print(f"   검수: {API_URL}/admin/queue")
+    # ASCII 요약 한 줄 — run-b.ps1이 정규식으로 파싱(한글 파싱 회피). 실제 카드 생성 수를 정확히 보고.
+    print(f"IMPORT_SUMMARY created={total_created} skipped={total_skipped} failed={total_failed} held={held_count}")
     notify_telegram()
     return 0 if total_failed == 0 else 2
 
