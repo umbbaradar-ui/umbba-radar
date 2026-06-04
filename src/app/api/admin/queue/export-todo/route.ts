@@ -40,8 +40,15 @@ export async function GET(request: Request) {
   }
 
   // todo 상태만 필터 (3일 이상 옛 항목도 포함하려 withinDays 크게)
-  const all = await listQueue(500, 30);
-  const todos = all.filter((q) => q.status === "todo");
+  const all = await listQueue(600, 30);
+  const todos = all
+    .filter((q) => q.status === "todo")
+    // 같은 계정 글을 인접시켜 한 배치에 모이게 정렬 → RULES #9 동일이벤트 중복 판정이 실제로 작동
+    .sort(
+      (a, b) =>
+        (a.source_username ?? "").localeCompare(b.source_username ?? "") ||
+        (a.source_post_date ?? "").localeCompare(b.source_post_date ?? "")
+    );
 
   // KST 기준 today (Claude 가 이벤트 만료 판단 시 사용)
   const nowKST = new Date(Date.now() + 9 * 3600000);

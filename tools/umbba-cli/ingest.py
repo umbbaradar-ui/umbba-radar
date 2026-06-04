@@ -56,6 +56,8 @@ REQUEST_TIMEOUT = 60  # Vercel maxDuration과 일치
 
 # 차단 회피용 약한 backoff (각 URL 사이 짧은 sleep)
 SLEEP_BETWEEN_URLS = float(os.getenv("UMBBA_SLEEP", "2.0"))
+# 이미지 다운로드(gallery-dl+쿠키 = 인스타 호출) 회당 상한. 분류는 무제한이고 이 단계만 부하라 여기서 제한. 0=무제한.
+B_MAX_IMAGES = int(os.getenv("UMBBA_B_MAX_IMAGES", "80"))
 
 # 인스타 로그인 쿠키 — 둘 중 하나
 #   UMBBA_COOKIES_FILE: cookies.txt 형식 파일 경로 (Firefox 확장으로 export)
@@ -1027,6 +1029,13 @@ def run_import_mode(results_file: Path) -> int:
         it for it in items
         if not it.get("skip") and not it.get("thumbnail_url")
     ]
+    # 이미지 다운로드는 이 단계의 유일한 인스타 부하 → 회당 상한으로 버스트 제한.
+    # 초과분은 held 로 빼 다음 run 자동 재시도(분류는 이미 끝났으니 큐엔 todo 로 남음). 0=무제한.
+    image_overflow: list[dict] = []
+    if B_MAX_IMAGES > 0 and len(needs_image) > B_MAX_IMAGES:
+        image_overflow = needs_image[B_MAX_IMAGES:]
+        needs_image = needs_image[:B_MAX_IMAGES]
+        print(f"   이미지 다운 회당 상한 {B_MAX_IMAGES} 초과 → {len(image_overflow)}건 다음 run 보류(held)")
     queue_url_map: dict[str, str] = {}
     if needs_image:
         print(f"   이미지 다운 필요: {len(needs_image)}개 (skip=false + 썸네일 X)")
@@ -1067,6 +1076,11 @@ def run_import_mode(results_file: Path) -> int:
             if idx < len(needs_image) and SLEEP_BETWEEN_URLS > 0:
                 import time
                 time.sleep(SLEEP_BETWEEN_URLS)
+
+        # 회당 이미지 상한 초과분도 보류 처리 (다음 run 자동 재시도)
+        for ov in image_overflow:
+            ov["_held_reason"] = "이미지 다운 회당 상한 초과 (다음 run 재시도)"
+            held_items.append(ov)
 
         # 보류 항목은 import 대상(items)에서 제외 + 보류 파일로 저장
         held_count = len(held_items)
