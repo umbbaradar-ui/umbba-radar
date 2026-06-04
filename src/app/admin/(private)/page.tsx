@@ -59,6 +59,7 @@ function normalizeType(raw: string | undefined): string {
   const valid: TypeTag[] = [
     "regram",
     "experience",
+    "giveaway",
     "kids_model",
     "supporters",
     "form",

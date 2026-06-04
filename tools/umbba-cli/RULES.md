@@ -37,6 +37,7 @@
       "search_keywords": "베이비옷,오버핏",
       "stage_categories": ["newborn", "infant"],
       "type_tags": ["experience", "form"],
+      "kind": "recruiting",
       "topic": "parenting",
       "deadline": "2026-06-05T23:59:00+09:00",
       "confidence": 0.92
@@ -255,7 +256,8 @@
 ## type_tags (복수 가능)
 
 - `regram`: 본인 피드에 리그램(재게시) 필수
-- `experience`: 체험단 — 제품 받고 후기·SNS 게시 의무
+- `experience`: 체험단 — 제품 받고 후기·SNS 게시 **의무 있음**
+- `giveaway`: 단순 증정 — 댓글·팔로우·추첨으로 받기만, 후기·SNS 게시 **의무 없음** (제일 흔한 유형)
 - `kids_model`: 키즈모델·아동 모델
 - `supporters`: 서포터즈 — 장기 SNS 활동 (주 N회) 약속
 - `form`: 별도 폼 작성 필수 (구글폼·네이버폼·카카오톡 채널 신청서)
@@ -269,6 +271,14 @@
 - `parenting`: 아이가 주체 (이유식·기저귀·완구·교구·키즈모델·아동 체험단)
 - `living`: 살림 (가전·가구·식기·청소·침구 — 가족 단위)
 - 애매하면 `parenting` (육아 사이트 디폴트)
+
+---
+
+## kind (필수, 기본 recruiting)
+
+- `recruiting`: 신청·모집·체험단·증정·이벤트 (대부분 이것)
+- `group_buy`: 공동구매 — 캡션에 "공구"·"공동구매" 명시된 경우만
+- 애매하면 `recruiting`
 
 ---
 

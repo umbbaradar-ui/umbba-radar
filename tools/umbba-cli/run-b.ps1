@@ -62,7 +62,7 @@ Steps:
 2. Classify EVERY item in input.json.items exactly per RULES.md.
 3. Write results.json in the current folder as UTF-8 JSON: an object {"items": [ ... ]}.
    Each result item MUST have these keys: queue_id (copy from input), skip (boolean),
-   title, brand_name, body, search_keywords, stage_categories (array), type_tags (array),
+   title, brand_name, body, search_keywords, kind ("recruiting" or "group_buy"), stage_categories (array), type_tags (array),
    topic, deadline (ISO8601 with +09:00, or null), confidence (number 0..1).
    Follow RULES.md for every value and all skip patterns. Use input.json today_kst
    for expiry checks. results count MUST equal input count; preserve every queue_id.

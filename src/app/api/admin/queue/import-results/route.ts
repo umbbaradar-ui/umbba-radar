@@ -213,7 +213,7 @@ export async function POST(request: Request) {
     const { data: inserted, error: insertError } = await supabaseServer
       .from("posts")
       .insert({
-        kind: "recruiting" as const, // 자동수집은 항상 recruiting
+        kind: item.kind === "group_buy" ? "group_buy" : "recruiting", // 공구 명시 시 group_buy, 기본 recruiting
         title: item.title.slice(0, 120),
         brand_name: item.brand_name ?? null,
         thumbnail_url: item.thumbnail_url ?? null,

@@ -44,6 +44,7 @@ export type StageCategory =
 export type TypeTag =
   | 'regram'       // 리그램
   | 'experience'   // 체험단
+  | 'giveaway'     // 단순 증정 (댓글·추첨, 후기 의무 없음)
   | 'kids_model'   // 키즈모델
   | 'supporters'   // 서포터즈
   | 'form'         // 폼 작성 필수 (네이버폼/구글폼/자체폼)
@@ -98,6 +99,7 @@ export const ACTIVE_STAGE_CATEGORIES: readonly StageCategory[] = [
 export const TYPE_LABELS: Record<TypeTag, string> = {
   regram: '리그램',
   experience: '체험단',
+  giveaway: '증정',
   kids_model: '키즈모델',
   supporters: '서포터즈',
   form: '폼 작성',
@@ -106,6 +108,7 @@ export const TYPE_LABELS: Record<TypeTag, string> = {
 export const ACTIVE_TYPE_TAGS: readonly TypeTag[] = [
   'regram',
   'experience',
+  'giveaway',
   'kids_model',
   'supporters',
   'form',
