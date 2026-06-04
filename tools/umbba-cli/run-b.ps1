@@ -32,7 +32,7 @@ if (-not $exe) { Log "ERROR: claude.exe not found"; exit 9 }
 Log "claude: $exe"
 
 $batchSize = if ($env:UMBBA_B_BATCH)    { [int]$env:UMBBA_B_BATCH }    else { 25 }
-$maxItems  = if ($env:UMBBA_B_MAXITEMS) { [int]$env:UMBBA_B_MAXITEMS } else { 50 }  # per-run cap = 2 batches (claude 25x2). runs once daily 03:30 (conservative, 2026-06-04). image-download burst small (most items skip). 0=all.
+$maxItems  = if ($env:UMBBA_B_MAXITEMS) { [int]$env:UMBBA_B_MAXITEMS } else { 150 }  # per-run cap = up to 6 batches (claude 25x6). once daily 03:30. raised 50->150 (2026-06-04) to drain a ~350 todo backlog over ~2-3 nights; settles back to <cap in steady state. image-download burst stays small (only skip=false, 15s apart). 0=all.
 
 # 1) auto-export (no Instagram; Vercel queue -> todo-enriched.json)
 Log "auto-export start"
