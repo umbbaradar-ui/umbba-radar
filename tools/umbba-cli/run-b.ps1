@@ -71,6 +71,7 @@ Steps:
 $work = Join-Path $env:TEMP 'umbba-b'
 $rulesPath = Join-Path $dir 'RULES.md'
 $all = New-Object System.Collections.ArrayList
+$totalCreated = 0; $importFailed = 0; $totalHeld = 0
 $nb = [math]::Ceiling($items.Count / $batchSize)
 for ($b = 0; $b -lt $nb; $b++) {
   $lo = $b * $batchSize
@@ -94,36 +95,35 @@ for ($b = 0; $b -lt $nb; $b++) {
   if (Test-Path $resFile) {
     try {
       $r = Get-Content -LiteralPath $resFile -Raw -Encoding UTF8 | ConvertFrom-Json
-      foreach ($it in @($r.items)) { [void]$all.Add($it) }
-      Log ("batch {0} done: {1} items (exit={2})" -f ($b + 1), @($r.items).Count, $proc.ExitCode)
+      $bitems = @($r.items)
+      foreach ($it in $bitems) { [void]$all.Add($it) }
+      # Import THIS batch right away so progress survives a mid-run kill (Task Scheduler
+      # ExecutionTimeLimit). Image download is only for skip=false in these 25 -> small.
+      $bres = Join-Path $bw 'batch-results.json'
+      WriteNoBom $bres (@{ items = $bitems } | ConvertTo-Json -Depth 10)
+      $io = & $py ingest.py --import "$bres" 2>&1
+      $io | Out-File -LiteralPath (Join-Path $exportDir ("import-{0}.txt" -f $b)) -Encoding utf8
+      $bc = 0; $bf = 0; $bh = 0
+      $sl = ($io | Select-String -Pattern 'IMPORT_SUMMARY' | Select-Object -Last 1)
+      if ($sl) {
+        $m = [regex]::Match($sl.ToString(), 'created=(\d+).*?failed=(\d+).*?held=(\d+)')
+        if ($m.Success) { $bc = [int]$m.Groups[1].Value; $bf = [int]$m.Groups[2].Value; $bh = [int]$m.Groups[3].Value }
+      }
+      $totalCreated += $bc; $importFailed += $bf; $totalHeld += $bh
+      Log ("batch {0}/{1} done: {2} items -> cards {3} (exit={4})" -f ($b + 1), $nb, $bitems.Count, $bc, $proc.ExitCode)
     }
-    catch { Log ("batch {0} results.json parse failed: {1}" -f ($b + 1), $_.Exception.Message) }
+    catch { Log ("batch {0} classify/import failed: {1}" -f ($b + 1), $_.Exception.Message) }
   }
   else {
     Log ("batch {0} FAILED: no results.json (exit={1})" -f ($b + 1), $proc.ExitCode)
   }
 }
-if ($all.Count -eq 0) { Log "ERROR: 0 classified - skip import"; exit 11 }
+if ($all.Count -eq 0) { Log "ERROR: 0 classified - nothing imported"; exit 11 }
 
-# 3) merge -> results.json in export dir
-$resultsPath = Join-Path $exportDir 'results.json'
-WriteNoBom $resultsPath (@{ items = $all } | ConvertTo-Json -Depth 10)
-Log ("merged results.json: {0} items" -f $all.Count)
-
-# 4) import (downloads images for skip=false, creates pending cards)
-Log "import start"
-$importOut = & $py ingest.py --import "$resultsPath" 2>&1
-$importOut | Out-File -LiteralPath (Join-Path $exportDir 'import-out.txt') -Encoding utf8
-# Parse the ASCII summary line ingest.py prints: "IMPORT_SUMMARY created=N skipped=N failed=N held=N"
-# (avoid parsing Korean log lines, which a BOM-less ANSI-read .ps1 would mangle).
-$createdCount = 0; $importFailed = 0
-$sumLine = ($importOut | Select-String -Pattern 'IMPORT_SUMMARY' | Select-Object -Last 1)
-if ($sumLine) {
-  $sm = [regex]::Match($sumLine.ToString(), 'created=(\d+).*?failed=(\d+)')
-  if ($sm.Success) { $createdCount = [int]$sm.Groups[1].Value; $importFailed = [int]$sm.Groups[2].Value }
-}
+# 3+4) Per-batch import already ran inside the loop (crash-resilient). Finalize counters.
+$createdCount = $totalCreated
 $skipFalseCount = @($all | Where-Object { -not $_.skip }).Count
-Log ("import done: cards created={0}, failed={1}, skip=false items={2}" -f $createdCount, $importFailed, $skipFalseCount)
+Log ("import done: classified={0}, cards created={1}, held={2}, failed={3}" -f $all.Count, $createdCount, $totalHeld, $importFailed)
 if ($createdCount -eq 0 -and $skipFalseCount -gt 0) {
   Log "WARNING: 0 cards created but skip=false items existed -> image download likely blocked (cookie 401)"
 }
@@ -177,12 +177,8 @@ try {
     $cookieAge = [int]([math]::Floor(((Get-Date) - (Get-Item $ck).LastWriteTime).TotalDays))
   }
 
-  # --- B result ---
-  $bHeld = 0
-  $heldFile = Get-ChildItem $exportDir -Filter '*.held-no-image.json' -ErrorAction SilentlyContinue | Select-Object -First 1
-  if ($heldFile) {
-    try { $bHeld = @((Get-Content -LiteralPath $heldFile.FullName -Raw -Encoding UTF8 | ConvertFrom-Json).items).Count } catch {}
-  }
+  # --- B result (per-batch import accumulated totalHeld) ---
+  $bHeld = $totalHeld
 
   if ($cliTok) {
     # b.ok must reflect REALITY: 0 cards created while skip=false items existed = failure
