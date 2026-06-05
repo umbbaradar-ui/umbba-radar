@@ -20,6 +20,7 @@ import {
   sendToMany,
   type PushPayload,
 } from "@/modules/notification/push-service";
+import { runHealthWatchdog } from "@/modules/ingestion/health-watchdog";
 
 export const maxDuration = 60;
 export const dynamic = "force-dynamic";
@@ -34,6 +35,20 @@ export async function GET(request: Request) {
       { status: 401 }
     );
   }
+
+  // 워치독 수동 테스트: ?watchdog=test → 현재 상태를 강제로 텔레그램 발송 후 반환
+  if (new URL(request.url).searchParams.get("watchdog") === "test") {
+    const w = await runHealthWatchdog({ force: true }).catch((e) => ({
+      error: e instanceof Error ? e.message : String(e),
+    }));
+    return NextResponse.json({ ok: true, watchdog: w });
+  }
+
+  // B루틴 독립 워치독 — 매 cron(09:00 KST) 실행. 인스타 호출 0, best-effort
+  // (어젯밤 큐 처리 0 + 대기 backlog 있으면 = B루틴 미실행 → 🔴 알림).
+  await runHealthWatchdog().catch((e) =>
+    console.error("[cron/notify-deadline] watchdog failed:", e)
+  );
 
   try {
     // 1. KST 기준 "내일" 0시~24시 사이에 마감되는 카드
