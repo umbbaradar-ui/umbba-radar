@@ -52,7 +52,19 @@ export async function runHealthWatchdog(
   const problem = !ran && todo > 0;
 
   let message: string | null = null;
-  if (problem) {
+  if (opts.force) {
+    // 테스트 모드: 실제 경보(🔴) 대신 현재 판정 상태만 보여준다 (오경보 방지).
+    // 정시(09시) cron이 아닌 시각에 호출하면 8h 창 밖이라 '미실행 신호'가 뜰 수 있음 — 정상.
+    message = [
+      `🧪 <b>워치독 테스트</b>`,
+      ``,
+      problem
+        ? `🟡 지금 기준 '미실행' 신호 (최근 ${WINDOW_HOURS}h 처리 ${processedRecently} / 대기 ${todo}) — 정시(09시)가 아니면 정상일 수 있음`
+        : `🟢 정상 — 최근 ${WINDOW_HOURS}h 처리 ${processedRecently}건, 카드 +${cardsRecently}건`,
+      ``,
+      `이 메시지가 보이면 알림 경로 정상입니다.`,
+    ].join("\n");
+  } else if (problem) {
     message = [
       `🔴 <b>엄빠레이더 경보 — B루틴 미실행</b>`,
       ``,
@@ -60,16 +72,6 @@ export async function runHealthWatchdog(
       `대기 큐 <b>${todo}건</b>이 그대로 쌓여 있습니다.`,
       ``,
       `점검: PC 켜짐·로그인·전원 / 작업 스케줄러 'B루틴' 마지막 실행 결과(0x41306=시간초과)`,
-    ].join("\n");
-  } else if (opts.force) {
-    message = [
-      `🧪 <b>워치독 테스트</b>`,
-      ``,
-      ran
-        ? `🟢 최근 ${WINDOW_HOURS}h 정상 — 큐 처리 ${processedRecently}건, 카드 +${cardsRecently}건`
-        : `🟡 처리 활동 없음 (대기 ${todo}건)`,
-      ``,
-      `이 메시지가 보이면 워치독 알림 경로가 정상입니다.`,
     ].join("\n");
   }
 
