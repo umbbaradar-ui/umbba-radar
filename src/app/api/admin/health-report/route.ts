@@ -78,7 +78,7 @@ async function handle(request: Request) {
     lines.push(`⚪ A스캔: 정보 없음 (로컬 측정값 미전달)`);
   } else if (s.all401) {
     lines.push(
-      `🔴 <b>A스캔: 전 계정 401 — 인스타 쿠키 만료!</b> 갱신 필요`
+      `🔴 <b>A스캔: 대부분 차단 — 인스타 인증 필요</b> (계정 인증/세션 풀어주세요)`
     );
   } else if (s.ok === false || (s.failed ?? 0) > 0) {
     lines.push(
@@ -94,6 +94,14 @@ async function handle(request: Request) {
   const b = body.b;
   if (!b) {
     lines.push(`⚪ B루틴: 정보 없음`);
+  } else if ((b.held ?? 0) > 0 && (b.imported ?? 0) === 0) {
+    // 분류는 됐는데 이미지 다운로드가 전부 막힘 = 인스타 인증/세션 차단 (가장 흔한 케이스)
+    lines.push(
+      `🔴 <b>B루틴: 인스타 인증 필요</b> — 분류 ${b.classified ?? 0}건은 됐지만 사진을 못 받아 카드 0 (${b.held}건 대기).`
+    );
+    lines.push(
+      `   👉 인스타 계정 인증을 풀어주세요. 풀면 밀린 큐부터 다음 새벽(또는 수동 실행)에 자동 재개됩니다.`
+    );
   } else if (b.ok === false) {
     lines.push(`🔴 <b>B루틴: 실패/미완주</b> — 로그 확인 필요`);
   } else {
