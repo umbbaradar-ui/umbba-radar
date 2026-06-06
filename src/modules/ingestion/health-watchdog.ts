@@ -53,7 +53,7 @@ export async function runHealthWatchdog(
 
   // 쿨다운: 인스타 계정 플래그 회복 대기 등 계획된 중단 중엔 cron 경보(🔴) 억제.
   // 이 날짜(KST)가 지나면 자동으로 다시 경보 재개(fail-safe — 끄고 잊어버려도 살아남). 재개 시 과거 날짜로.
-  const COOLDOWN_UNTIL = "2026-06-13";
+  const COOLDOWN_UNTIL = "2026-06-06"; // 재개(06-06): 쿨다운 해제 → 워치독 정상 감시. 다시 멈추려면 미래 날짜로.
   const inCooldown =
     new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 10) < COOLDOWN_UNTIL;
 
