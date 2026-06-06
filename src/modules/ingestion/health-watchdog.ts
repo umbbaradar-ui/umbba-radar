@@ -51,6 +51,12 @@ export async function runHealthWatchdog(
   // 문제 = 큐는 쌓였는데 밤새 한 건도 처리 안 됨 (B루틴 미실행/조기사망 = 조용한 실패)
   const problem = !ran && todo > 0;
 
+  // 쿨다운: 인스타 계정 플래그 회복 대기 등 계획된 중단 중엔 cron 경보(🔴) 억제.
+  // 이 날짜(KST)가 지나면 자동으로 다시 경보 재개(fail-safe — 끄고 잊어버려도 살아남). 재개 시 과거 날짜로.
+  const COOLDOWN_UNTIL = "2026-06-13";
+  const inCooldown =
+    new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 10) < COOLDOWN_UNTIL;
+
   let message: string | null = null;
   if (opts.force) {
     // 테스트 모드: 실제 경보(🔴) 대신 현재 판정 상태만 보여준다 (오경보 방지).
@@ -58,13 +64,16 @@ export async function runHealthWatchdog(
     message = [
       `🧪 <b>워치독 테스트</b>`,
       ``,
+      inCooldown ? `⏸️ 쿨다운 중 (~${COOLDOWN_UNTIL}): cron 경보 억제됨` : null,
       problem
         ? `🟡 지금 기준 '미실행' 신호 (최근 ${WINDOW_HOURS}h 처리 ${processedRecently} / 대기 ${todo}) — 정시(09시)가 아니면 정상일 수 있음`
         : `🟢 정상 — 최근 ${WINDOW_HOURS}h 처리 ${processedRecently}건, 카드 +${cardsRecently}건`,
       ``,
       `이 메시지가 보이면 알림 경로 정상입니다.`,
-    ].join("\n");
-  } else if (problem) {
+    ]
+      .filter(Boolean)
+      .join("\n");
+  } else if (problem && !inCooldown) {
     message = [
       `🔴 <b>엄빠레이더 경보 — B루틴 미실행</b>`,
       ``,
