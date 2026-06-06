@@ -156,6 +156,7 @@ try {
   $scanLog = Join-Path $dir 'scan-log.txt'
   if (Test-Path $scanLog) {
     $sc = Get-Content -LiteralPath $scanLog -Raw -Encoding UTF8
+    if (-not $sc) { $sc = '' }  # empty/missing log (e.g. scan force-stopped) -> avoid regex null exception
     $c401 = ([regex]::Matches($sc, 'HttpError')).Count  # count ALL instagram failures (401/400/login redirect), not just 401
     $cFetch = ([regex]::Matches($sc, 'fetch')).Count
     # last "[k/N]" gives accounts processed this round
