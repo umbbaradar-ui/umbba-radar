@@ -148,18 +148,26 @@ function TodayScanBanner({
     : "매일 새 혜택을 자동으로 모으고 있어요";
 
   return (
-    <section className="mb-5 flex items-center gap-3 rounded-2xl border border-rose-100 bg-gradient-to-br from-rose-50 to-pink-50 px-4 py-3">
-      <span aria-hidden className="text-2xl leading-none">
-        🐻
-      </span>
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-bold text-rose-700">{headline}</p>
-        <p className="mt-0.5 truncate text-xs text-slate-500">{subline}</p>
-      </div>
-      {scan.closingSoon > 0 && (
-        <span className="shrink-0 rounded-full bg-rose-500 px-2.5 py-1 text-xs font-bold text-white">
-          ⏰ 곧 마감 {scan.closingSoon}건
+    <section className="mb-5 rounded-2xl border border-rose-100 bg-gradient-to-br from-rose-50 to-pink-50 px-4 py-3">
+      <div className="flex items-center gap-3">
+        <span aria-hidden className="shrink-0 text-2xl leading-none">
+          🐻
         </span>
+        <div className="min-w-0 flex-1">
+          {/* truncate 금지 — 모바일 좁은 폭에서 헤드라인이 잘리지 않게 줄바꿈 허용 */}
+          <p className="text-sm font-bold leading-snug text-rose-700">
+            {headline}
+          </p>
+          <p className="mt-0.5 text-xs text-slate-500">{subline}</p>
+        </div>
+      </div>
+      {/* 마감 칩은 별도 줄 — 헤드라인 가로폭을 뺏지 않도록(모바일 잘림 방지) */}
+      {scan.closingSoon > 0 && (
+        <div className="mt-2">
+          <span className="inline-block rounded-full bg-rose-500 px-2.5 py-1 text-xs font-bold text-white">
+            ⏰ 곧 마감 {scan.closingSoon}건
+          </span>
+        </div>
       )}
     </section>
   );
