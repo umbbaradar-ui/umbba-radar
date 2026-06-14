@@ -11,6 +11,8 @@ import type { SortMode } from "@/modules/content/service";
 import { DiscoveryView } from "@/modules/discovery/ui/DiscoveryView";
 import { getUserChildrenBirths } from "@/modules/personalization/service-server";
 import { getStagesForChildren } from "@/shared/utils/stages";
+import { calcDDay, kstTodayStartIso } from "@/shared/utils/dday";
+import type { StageCategory } from "@/shared/types/post";
 
 export const revalidate = 60;
 
@@ -47,6 +49,28 @@ export default async function HomePage({ searchParams }: PageProps) {
   // 서버는 검색(q)만 처리 → 발행 카드 전부 로드. 나머지 필터·정렬은 클라이언트에서 즉시.
   const posts = await listPosts({ q });
 
+  // "오늘의 스캔" 요약 — 이미 로드한 posts에서 계산(추가 DB 호출 0). 필터와 무관한 고정 배너용.
+  // 자녀 있으면 my_child 필터(자녀 시기 ∪ 전연령)와 동일 기준으로 집계.
+  const todayStartIso = kstTodayStartIso();
+  const matching = hasChildren
+    ? posts.filter((p) => {
+        const tags = p.stage_categories;
+        return (
+          myChildStages.some((s) => tags.includes(s)) ||
+          tags.includes("all_ages" as StageCategory)
+        );
+      })
+    : posts;
+  const scan = {
+    newToday: matching.filter((p) => p.created_at >= todayStartIso).length,
+    matchingTotal: matching.length,
+    closingSoon: matching.filter((p) => {
+      if (p.deadline_unknown) return false; // "상시" 카드는 마감 임박 아님
+      const d = calcDDay(p.deadline);
+      return d !== null && d.days >= 0 && d.days <= 3;
+    }).length,
+  };
+
   return (
     <DiscoveryView
       posts={posts}
@@ -57,6 +81,7 @@ export default async function HomePage({ searchParams }: PageProps) {
       initialSort={sort}
       myChildStages={myChildStages}
       hasChildren={hasChildren}
+      scan={scan}
     />
   );
 }

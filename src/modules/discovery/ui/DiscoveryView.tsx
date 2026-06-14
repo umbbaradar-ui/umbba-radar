@@ -15,6 +15,13 @@ import { OnboardingHint } from "./OnboardingHint";
 import { PostCard } from "@/modules/content/ui/PostCard";
 import { AdSlot } from "@/modules/advertising/ui/AdSlot";
 
+/** "오늘의 스캔" 배너 요약 (서버에서 계산해 내려줌) */
+export interface ScanSummary {
+  newToday: number;
+  matchingTotal: number;
+  closingSoon: number;
+}
+
 interface Props {
   posts: Post[];
   q: string;
@@ -24,6 +31,7 @@ interface Props {
   initialSort: SortMode;
   myChildStages: StageCategory[];
   hasChildren: boolean;
+  scan: ScanSummary;
 }
 
 export function DiscoveryView({
@@ -35,6 +43,7 @@ export function DiscoveryView({
   initialSort,
   myChildStages,
   hasChildren,
+  scan,
 }: Props) {
   const [stage, setStage] = useState(initialStage);
   const [type, setType] = useState(initialType);
@@ -64,6 +73,9 @@ export function DiscoveryView({
 
   return (
     <main className="mx-auto max-w-6xl px-4 py-6">
+      {/* "오늘의 스캔" 배너 — daily loop 시각화(곰 마스코트). 검색 중엔 숨김 */}
+      {!q && <TodayScanBanner scan={scan} hasChildren={hasChildren} />}
+
       <header className="mb-5">
         <h1 className="text-xl font-extrabold tracking-tight text-slate-900">
           놓치는 혜택은 없게
@@ -110,5 +122,45 @@ export function DiscoveryView({
         </div>
       )}
     </main>
+  );
+}
+
+/**
+ * 홈 상단 "오늘의 스캔" 배너 — 곰이 매일 스캔한다는 daily loop 정체성.
+ * 새로 들어온 건수(가변 보상) + 곧 마감 건수(손실회피)를 한 줄로.
+ */
+function TodayScanBanner({
+  scan,
+  hasChildren,
+}: {
+  scan: ScanSummary;
+  hasChildren: boolean;
+}) {
+  const headline =
+    scan.newToday > 0
+      ? hasChildren
+        ? `오늘 우리 아이 맞춤 ${scan.newToday}건 새로 떴어요 🎉`
+        : `오늘 새로 ${scan.newToday}건 스캔했어요`
+      : "엄빠 대신 매일 혜택 스캔 중 ♥";
+
+  const subline = hasChildren
+    ? `우리 아이 맞춤 혜택 ${scan.matchingTotal}건을 챙기고 있어요`
+    : "매일 새 혜택을 자동으로 모으고 있어요";
+
+  return (
+    <section className="mb-5 flex items-center gap-3 rounded-2xl border border-rose-100 bg-gradient-to-br from-rose-50 to-pink-50 px-4 py-3">
+      <span aria-hidden className="text-2xl leading-none">
+        🐻
+      </span>
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-sm font-bold text-rose-700">{headline}</p>
+        <p className="mt-0.5 truncate text-xs text-slate-500">{subline}</p>
+      </div>
+      {scan.closingSoon > 0 && (
+        <span className="shrink-0 rounded-full bg-rose-500 px-2.5 py-1 text-xs font-bold text-white">
+          ⏰ 곧 마감 {scan.closingSoon}건
+        </span>
+      )}
+    </section>
   );
 }
