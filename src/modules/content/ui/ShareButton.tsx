@@ -1,9 +1,10 @@
 "use client";
 
 // ============================================
-// 카드 공유 버튼 — "남편한테 보내기 💌"
-// 바이럴 핵심 장치. Web Share API(모바일 네이티브 공유시트) 우선,
-// 미지원(데스크탑 등)이면 링크 복사 fallback.
+// 카드 공유 버튼 — 역할별 카피 (바이럴 핵심 장치)
+// 엄마(로그인) → "남편한테 보내기 💌" / 아빠(로그인) → "아내한테 보내기 💌"
+// 기타·비로그인 → "공유하기 💌" (성별 가정 안 함, 따뜻한 중립)
+// Web Share API(모바일 네이티브 공유시트) 우선, 미지원(데스크탑 등)이면 링크 복사 fallback.
 //
 // 정책: 앱 내 신청 처리 X — "발견·공유"만. 공유 대상은 카드 상세 퍼머링크.
 // 분석: card_share 이벤트 기록 (ANALYTICS)
@@ -12,13 +13,25 @@
 import { useState } from "react";
 import { track } from "@/modules/analytics/service";
 
+// 서버(service-server)의 ParentRole과 동일한 값. "use client"라 server-only 모듈에서 import 못 해 로컬 선언.
+type ShareRole = "mother" | "father" | "other";
+
 interface Props {
   postId: string;
   title: string;
   brandName?: string | null;
+  /** 로그인 사용자의 부모 역할. 없으면(비로그인·기타) 중립 카피 */
+  role?: ShareRole | null;
 }
 
-export function ShareButton({ postId, title, brandName }: Props) {
+// 역할별 버튼 라벨 — "부부" 브랜드 훅은 로그인 엄마/아빠에게만, 미상은 중립
+function shareLabel(role?: ShareRole | null): string {
+  if (role === "mother") return "남편한테 보내기 💌";
+  if (role === "father") return "아내한테 보내기 💌";
+  return "공유하기 💌";
+}
+
+export function ShareButton({ postId, title, brandName, role }: Props) {
   const [copied, setCopied] = useState(false);
 
   // 절대 URL — 공유받은 사람이 바로 열 수 있게. window 기준(현재 origin)
@@ -71,7 +84,7 @@ export function ShareButton({ postId, title, brandName }: Props) {
       ) : (
         <>
           <ShareIcon />
-          남편한테 보내기 💌
+          {shareLabel(role)}
         </>
       )}
     </button>

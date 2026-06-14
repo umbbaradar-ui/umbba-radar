@@ -11,6 +11,7 @@ import { getPost } from "@/modules/content/service";
 import { StatusButtons } from "@/modules/personalization/ui/StatusButtons";
 import { getUserStatusForPost } from "@/modules/personalization/service-server";
 import { getCurrentUser } from "@/modules/user/service";
+import { getUserProfile } from "@/modules/user/service-server";
 import { CardClickTracker } from "@/modules/analytics/ui/CardClickTracker";
 import { ExternalLinkButton } from "@/modules/analytics/ui/ExternalLinkButton";
 import { ShareButton } from "@/modules/content/ui/ShareButton";
@@ -86,7 +87,11 @@ export async function generateMetadata({
 
 export default async function PostDetailPage({ params }: PageProps) {
   const { id } = await params;
-  const [post, user] = await Promise.all([getPost(id), getCurrentUser()]);
+  const [post, user, profile] = await Promise.all([
+    getPost(id),
+    getCurrentUser(),
+    getUserProfile(), // 비로그인이면 null → 공유 버튼 중립 카피
+  ]);
 
   if (!post) {
     notFound();
@@ -272,6 +277,7 @@ export default async function PostDetailPage({ params }: PageProps) {
             postId={post.id}
             title={post.title}
             brandName={post.brand_name}
+            role={profile?.parent_role ?? null}
           />
 
           <p className="text-center text-[11px] text-slate-400">
