@@ -9,6 +9,7 @@ import { redirect } from "next/navigation";
 import { GoogleSignInButton } from "@/modules/user/ui/SignInButton";
 import { Logo } from "@/shared/ui/Logo";
 import { getCurrentUser } from "@/modules/user/service";
+import { safeNext } from "@/shared/utils/safe-next";
 
 interface PageProps {
   searchParams: Promise<{ next?: string; reason?: string }>;
@@ -20,7 +21,7 @@ export default async function SignupPage({ searchParams }: PageProps) {
 
   // 이미 로그인 상태면 다음 페이지로
   if (user) {
-    redirect(next ?? "/");
+    redirect(safeNext(next));
   }
 
   return (

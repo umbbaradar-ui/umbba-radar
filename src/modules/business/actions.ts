@@ -16,8 +16,8 @@ import {
   type InquiryType,
   type InquiryStatus,
 } from "./repository";
+import { ADMIN_COOKIE_NAME, verifyAdminToken } from "@/shared/utils/admin-session";
 
-const ADMIN_COOKIE = "umbba-admin";
 const VALID_TYPES: InquiryType[] = [
   "listing",
   "product",
@@ -123,11 +123,8 @@ async function notifyBusinessInquiry(info: {
 // 관리자 — 상태 변경
 // ============================================
 async function ensureAdmin(): Promise<void> {
-  const expected = process.env.ADMIN_PASSWORD;
-  if (!expected) throw new Error("ADMIN_PASSWORD not configured");
-  const cookieStore = await cookies();
-  const token = cookieStore.get(ADMIN_COOKIE)?.value;
-  if (!token || token !== expected) {
+  const token = (await cookies()).get(ADMIN_COOKIE_NAME)?.value;
+  if (!verifyAdminToken(token)) {
     redirect("/admin/login");
   }
 }

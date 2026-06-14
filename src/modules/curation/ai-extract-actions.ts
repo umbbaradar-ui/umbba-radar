@@ -16,19 +16,14 @@ import {
   type VisionExtractResult,
 } from "@/modules/ingestion/vision-extractor";
 import { supabaseServer } from "@/shared/db/supabase-server";
+import { ADMIN_COOKIE_NAME, verifyAdminToken } from "@/shared/utils/admin-session";
 
 // 주의: "use server" 파일에선 async 함수 외 export 불가.
 // maxDuration은 호출 page (admin/new/page.tsx)에 설정함.
 
-const ADMIN_COOKIE = "umbba-admin";
-
 async function ensureAdmin() {
-  const expected = process.env.ADMIN_PASSWORD;
-  if (!expected) {
-    throw new Error("ADMIN_PASSWORD env var is not configured");
-  }
-  const token = (await cookies()).get(ADMIN_COOKIE)?.value;
-  if (!token || token !== expected) {
+  const token = (await cookies()).get(ADMIN_COOKIE_NAME)?.value;
+  if (!verifyAdminToken(token)) {
     redirect("/admin/login");
   }
 }

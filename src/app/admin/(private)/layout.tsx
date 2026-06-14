@@ -10,19 +10,17 @@ import { logoutAction } from "@/modules/curation/actions";
 import { getCounts } from "@/modules/curation/service";
 import { countNewInquiries } from "@/modules/business/repository";
 import { Logo } from "@/shared/ui/Logo";
-
-const ADMIN_COOKIE = "umbba-admin";
+import { ADMIN_COOKIE_NAME, verifyAdminToken } from "@/shared/utils/admin-session";
 
 export default async function AdminPrivateLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const expected = process.env.ADMIN_PASSWORD;
   const cookieStore = await cookies();
-  const token = cookieStore.get(ADMIN_COOKIE)?.value;
+  const token = cookieStore.get(ADMIN_COOKIE_NAME)?.value;
 
-  if (!expected || !token || token !== expected) {
+  if (!verifyAdminToken(token)) {
     redirect("/admin/login");
   }
 

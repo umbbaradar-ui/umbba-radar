@@ -6,11 +6,12 @@
 
 import { NextResponse } from "next/server";
 import { getServerSupabase } from "@/shared/db/supabase-ssr";
+import { safeNext } from "@/shared/utils/safe-next";
 
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get("code");
-  const next = searchParams.get("next") ?? "/";
+  const next = safeNext(searchParams.get("next"));
 
   if (!code) {
     return NextResponse.redirect(`${origin}/login?error=missing_code`);

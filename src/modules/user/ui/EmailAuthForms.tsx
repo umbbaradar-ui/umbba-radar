@@ -13,6 +13,7 @@
 import { useState } from "react";
 import { getBrowserSupabase } from "@/shared/db/supabase-browser";
 import { track } from "@/modules/analytics/service";
+import { safeNext } from "@/shared/utils/safe-next";
 
 interface SignUpProps {
   next?: string;
@@ -177,7 +178,7 @@ export function EmailLoginForm({ next }: LoginProps) {
     // 로그인 성공 — 풀 리로드로 쿠키 동기화 100% 보장
     // (router.refresh + push 조합은 쿠키 race condition으로 메인 롤백 루프 유발)
     // proxy.ts가 새 쿠키 인식 후 자녀 정보 유무 따라 /signup/profile 또는 next로 분기
-    window.location.href = next ?? "/";
+    window.location.href = safeNext(next);
   }
 
   return (

@@ -14,14 +14,11 @@ import {
   requeue,
 } from "./repository";
 import type { AddUrlsResult } from "./types";
-
-const ADMIN_COOKIE = "umbba-admin";
+import { ADMIN_COOKIE_NAME, verifyAdminToken } from "@/shared/utils/admin-session";
 
 async function ensureAdmin() {
-  const expected = process.env.ADMIN_PASSWORD;
-  if (!expected) throw new Error("ADMIN_PASSWORD env var is not configured");
-  const token = (await cookies()).get(ADMIN_COOKIE)?.value;
-  if (!token || token !== expected) redirect("/admin/login");
+  const token = (await cookies()).get(ADMIN_COOKIE_NAME)?.value;
+  if (!verifyAdminToken(token)) redirect("/admin/login");
 }
 
 export type AddUrlsActionResult =

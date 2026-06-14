@@ -12,27 +12,14 @@
 // ============================================
 
 import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
 import { listQueue } from "@/modules/ingestion/queue/repository";
+import { isAdminRequest } from "@/shared/utils/admin-session";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const ADMIN_COOKIE = "umbba-admin";
-
-/**
- * 어드민 cookie (웹 UI) 또는 Bearer ADMIN_CLI_TOKEN (CLI) 둘 다 허용
- */
-async function isAuthorized(request: Request): Promise<boolean> {
-  const auth = request.headers.get("authorization");
-  if (auth) {
-    const expected = process.env.ADMIN_CLI_TOKEN;
-    return Boolean(expected && auth === `Bearer ${expected}`);
-  }
-  const cookieToken = (await cookies()).get(ADMIN_COOKIE)?.value;
-  const adminPw = process.env.ADMIN_PASSWORD;
-  return Boolean(adminPw && cookieToken && cookieToken === adminPw);
-}
+// 어드민 cookie(웹 UI) 또는 Bearer ADMIN_CLI_TOKEN(CLI) 둘 다 허용 (검증은 admin-session으로 일원화)
+const isAuthorized = isAdminRequest;
 
 export async function GET(request: Request) {
   if (!(await isAuthorized(request))) {

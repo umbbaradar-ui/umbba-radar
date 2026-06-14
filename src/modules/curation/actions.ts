@@ -19,19 +19,17 @@ import { getServerSupabase } from "@/shared/db/supabase-ssr";
 import { supabaseServer } from "@/shared/db/supabase-server";
 import type { PostStatus } from "@/shared/types/post";
 import { isPastDeadline } from "@/shared/utils/dday";
-
-const ADMIN_COOKIE = "umbba-admin";
+import {
+  ADMIN_COOKIE_NAME,
+  ADMIN_COOKIE_MAX_AGE,
+  signAdminToken,
+  verifyAdminToken,
+  safeEqualStr,
+} from "@/shared/utils/admin-session";
 
 async function ensureAdmin(): Promise<void> {
-  const expected = process.env.ADMIN_PASSWORD;
-  if (!expected) {
-    throw new Error(
-      "ADMIN_PASSWORD env var is not configured. Set it in .env.local and Vercel."
-    );
-  }
-  const cookieStore = await cookies();
-  const token = cookieStore.get(ADMIN_COOKIE)?.value;
-  if (!token || token !== expected) {
+  const token = (await cookies()).get(ADMIN_COOKIE_NAME)?.value;
+  if (!verifyAdminToken(token)) {
     redirect("/admin/login");
   }
 }
@@ -116,25 +114,32 @@ export async function loginAction(formData: FormData): Promise<void> {
   if (!expectedId || !expectedPassword) {
     redirect("/admin/login?error=notconfigured");
   }
-  const id = formData.get("id")?.toString();
-  const password = formData.get("password")?.toString();
-  if (id !== expectedId || password !== expectedPassword) {
+  const id = formData.get("id")?.toString() ?? "";
+  const password = formData.get("password")?.toString() ?? "";
+  // 상수시간 비교(early-exit 타이밍 누출 방지) — 두 비교 모두 항상 평가
+  const idOk = safeEqualStr(id, expectedId);
+  const pwOk = safeEqualStr(password, expectedPassword);
+  if (!idOk || !pwOk) {
+    // 브루트포스 완화: 실패 시 고정 지연. 단일 자격증명·MAU0 기준 경량 방어.
+    // (분산 레이트리밋이 필요하면 Upstash/Vercel KV 도입)
+    await new Promise((r) => setTimeout(r, 700));
     redirect("/admin/login?error=invalid");
   }
   const cookieStore = await cookies();
-  cookieStore.set(ADMIN_COOKIE, expectedPassword, {
+  // 쿠키엔 평문 비번이 아니라 HMAC 서명 토큰만 저장
+  cookieStore.set(ADMIN_COOKIE_NAME, signAdminToken(), {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
     path: "/",
-    maxAge: 60 * 60 * 24 * 7, // 1주
+    maxAge: ADMIN_COOKIE_MAX_AGE,
   });
   redirect("/admin");
 }
 
 export async function logoutAction(): Promise<void> {
   const cookieStore = await cookies();
-  cookieStore.delete(ADMIN_COOKIE);
+  cookieStore.delete(ADMIN_COOKIE_NAME);
   redirect("/admin/login");
 }
 

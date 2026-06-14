@@ -7,6 +7,7 @@ import { redirect } from "next/navigation";
 import { Logo } from "@/shared/ui/Logo";
 import { ChildrenForm } from "@/modules/user/ui/ChildrenForm";
 import { getCurrentUser } from "@/modules/user/service";
+import { safeNext } from "@/shared/utils/safe-next";
 
 interface PageProps {
   searchParams: Promise<{ next?: string; error?: string }>;
@@ -64,7 +65,7 @@ export default async function ProfileSetupPage({ searchParams }: PageProps) {
         </div>
       )}
 
-      <ChildrenForm next={next ?? "/"} />
+      <ChildrenForm next={safeNext(next)} />
 
       <p className="mt-5 text-center text-[11px] text-slate-400">
         나중에 마이페이지에서 언제든 수정할 수 있어요.

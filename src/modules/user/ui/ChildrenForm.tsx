@@ -11,6 +11,7 @@ import {
   saveProfileAndChildrenAction,
   type ParentRole,
 } from "../actions";
+import { safeNext } from "@/shared/utils/safe-next";
 
 const ERROR_MESSAGES = {
   required: "자녀를 최소 한 명 입력해주세요.",
@@ -102,7 +103,7 @@ export function ChildrenForm({
           setSubmitting(false);
         } else {
           // 온보딩: 메인(혹은 next)으로 이동
-          router.push(result.next);
+          router.push(safeNext(result.next));
           router.refresh();
         }
       } else {

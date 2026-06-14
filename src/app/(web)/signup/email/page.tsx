@@ -7,6 +7,7 @@ import { redirect } from "next/navigation";
 import { Logo } from "@/shared/ui/Logo";
 import { EmailSignUpForm } from "@/modules/user/ui/EmailAuthForms";
 import { getCurrentUser } from "@/modules/user/service";
+import { safeNext } from "@/shared/utils/safe-next";
 
 interface PageProps {
   searchParams: Promise<{ next?: string }>;
@@ -15,7 +16,7 @@ interface PageProps {
 export default async function EmailSignupPage({ searchParams }: PageProps) {
   const { next } = await searchParams;
   const user = await getCurrentUser();
-  if (user) redirect(next ?? "/");
+  if (user) redirect(safeNext(next));
 
   return (
     <main className="mx-auto max-w-md px-5 py-8">

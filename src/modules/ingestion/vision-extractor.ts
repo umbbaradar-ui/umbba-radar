@@ -9,6 +9,10 @@
 
 import "server-only";
 import Anthropic from "@anthropic-ai/sdk";
+import { safeFetch } from "@/shared/utils/safe-fetch";
+
+// og:image 다운로드 최대 크기 (SSRF/리소스 고갈 방지)
+const MAX_IMAGE_BYTES = 8 * 1024 * 1024; // 8MB
 
 const VISION_PROVIDER = (process.env.VISION_PROVIDER ?? "claude").toLowerCase();
 
@@ -412,15 +416,20 @@ interface UrlExtractOutput {
  */
 export async function extractFromUrl(targetUrl: string): Promise<UrlExtractOutput> {
   try {
-    const res = await fetch(targetUrl, {
-      headers: {
-        "User-Agent":
-          "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-        Accept:
-          "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-        "Accept-Language": "ko-KR,ko;q=0.9,en;q=0.8",
+    // SSRF 방지: 사설/내부 주소 차단 + hop 재검증 + 타임아웃 (safeFetch)
+    const res = await safeFetch(
+      targetUrl,
+      {
+        headers: {
+          "User-Agent":
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+          Accept:
+            "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+          "Accept-Language": "ko-KR,ko;q=0.9,en;q=0.8",
+        },
       },
-    });
+      { timeoutMs: 8000 }
+    );
     if (!res.ok) {
       return {
         result: null,
@@ -451,8 +460,9 @@ export async function extractFromUrl(targetUrl: string): Promise<UrlExtractOutpu
       };
     }
 
-    // 이미지 다운로드
-    const imageRes = await fetch(ogImage);
+    // 이미지 다운로드 — og:image도 상대경로 가능성 있어 절대화 후 SSRF 검증
+    const ogImageAbs = new URL(ogImage, targetUrl).toString();
+    const imageRes = await safeFetch(ogImageAbs, {}, { timeoutMs: 8000 });
     if (!imageRes.ok) {
       return {
         result: null,
@@ -461,7 +471,25 @@ export async function extractFromUrl(targetUrl: string): Promise<UrlExtractOutpu
         error: `이미지 다운로드 실패 (${imageRes.status})`,
       };
     }
+    // 크기 상한 — Content-Length 선검사 + 실제 바이트 재확인
+    const declaredLen = Number(imageRes.headers.get("content-length") ?? "0");
+    if (declaredLen > MAX_IMAGE_BYTES) {
+      return {
+        result: null,
+        imageBytes: null,
+        imageMime: null,
+        error: "이미지가 너무 큽니다(8MB 초과)",
+      };
+    }
     const buffer = await imageRes.arrayBuffer();
+    if (buffer.byteLength > MAX_IMAGE_BYTES) {
+      return {
+        result: null,
+        imageBytes: null,
+        imageMime: null,
+        error: "이미지가 너무 큽니다(8MB 초과)",
+      };
+    }
     const imageBytes = new Uint8Array(buffer);
     const imageMime =
       imageRes.headers.get("content-type")?.split(";")[0].trim() ||
