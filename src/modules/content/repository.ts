@@ -26,7 +26,9 @@ function sanitizeSearchTerm(term: string): string {
 export async function selectPublishedPosts(
   options: SelectPostsOptions = {}
 ): Promise<Post[]> {
-  const { q, sort = "deadline_asc", limit = 100 } = options;
+  // 기본 limit 상향(100→300) — 발행 카드 누적 시 마감 먼·상시 카드가 조용히 잘리는 것 완화(스톱갭).
+  // 카드 수가 더 늘면 keyset 페이지네이션으로 전환(감사 보고 §5.2).
+  const { q, sort = "deadline_asc", limit = 300 } = options;
 
   let query = supabase.from("posts").select("*").eq("status", "published");
 

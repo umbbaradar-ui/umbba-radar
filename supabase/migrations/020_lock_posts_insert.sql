@@ -1,5 +1,5 @@
 -- ============================================
--- 020: posts 공개 INSERT 정책 제거 (보안)
+-- 020: 공개 anon INSERT 정책 제거 (보안) — posts + business_inquiries
 --
 -- 배경: 005 "Anyone can submit a post for review" 정책은 anon/authenticated에게
 --       posts INSERT를 열어두고 WITH CHECK가 status='pending'·source_type='submission'만
@@ -19,7 +19,12 @@
 
 DROP POLICY IF EXISTS "Anyone can submit a post for review" ON posts;
 
--- 적용 후 posts의 INSERT 정책은 없어야 정상(서버 service_role만 insert).
+-- business_inquiries(019)도 동일 패턴 — anon INSERT WITH CHECK(true) dead policy.
+-- 실제 제출은 insertBusinessInquiry가 service_role로 하므로 제거해도 기능 손실 0.
+-- (타인 위조·무제한 텍스트 스팸 INSERT 벡터 차단). 적용 후 /business 문의 1회 확인 권장.
+DROP POLICY IF EXISTS "anyone can submit business inquiry" ON business_inquiries;
+
+-- 적용 후 posts·business_inquiries의 INSERT 정책은 없어야 정상(서버 service_role만 insert).
 -- 만약 롤백이 필요하면(권장하지 않음) 005의 원 정책 대신 신원 바인딩을 추가한 버전으로:
 --   CREATE POLICY "submit pending posts" ON posts FOR INSERT TO anon, authenticated
 --     WITH CHECK (

@@ -9,7 +9,7 @@
 
 import "server-only";
 import Anthropic from "@anthropic-ai/sdk";
-import { safeFetch } from "@/shared/utils/safe-fetch";
+import { safeFetchText, safeFetchBytes } from "@/shared/utils/safe-fetch";
 
 // og:image 다운로드 최대 크기 (SSRF/리소스 고갈 방지)
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024; // 8MB
@@ -416,8 +416,8 @@ interface UrlExtractOutput {
  */
 export async function extractFromUrl(targetUrl: string): Promise<UrlExtractOutput> {
   try {
-    // SSRF 방지: 사설/내부 주소 차단 + hop 재검증 + 타임아웃 (safeFetch)
-    const res = await safeFetch(
+    // SSRF 방지: 사설/내부 주소 차단 + hop 재검증 + 타임아웃(헤더+본문) — safeFetchText
+    const res = await safeFetchText(
       targetUrl,
       {
         headers: {
@@ -438,7 +438,7 @@ export async function extractFromUrl(targetUrl: string): Promise<UrlExtractOutpu
         error: `URL fetch 실패 (${res.status}). 인스타가 로그인 벽을 띄웠을 수 있어요.`,
       };
     }
-    const html = await res.text();
+    const html = res.text;
 
     // og:image 메타 태그 추출 (속성 순서 양쪽 케이스 다 대응)
     const ogImageMatch =
@@ -460,9 +460,15 @@ export async function extractFromUrl(targetUrl: string): Promise<UrlExtractOutpu
       };
     }
 
-    // 이미지 다운로드 — og:image도 상대경로 가능성 있어 절대화 후 SSRF 검증
+    // 이미지 다운로드 — og:image도 상대경로 가능성 있어 절대화 후 SSRF 검증.
+    // 타임아웃·8MB 크기상한(스트리밍)은 safeFetchBytes 내부에서 처리.
     const ogImageAbs = new URL(ogImage, targetUrl).toString();
-    const imageRes = await safeFetch(ogImageAbs, {}, { timeoutMs: 8000 });
+    const imageRes = await safeFetchBytes(
+      ogImageAbs,
+      {},
+      { timeoutMs: 8000 },
+      MAX_IMAGE_BYTES
+    );
     if (!imageRes.ok) {
       return {
         result: null,
@@ -471,29 +477,8 @@ export async function extractFromUrl(targetUrl: string): Promise<UrlExtractOutpu
         error: `이미지 다운로드 실패 (${imageRes.status})`,
       };
     }
-    // 크기 상한 — Content-Length 선검사 + 실제 바이트 재확인
-    const declaredLen = Number(imageRes.headers.get("content-length") ?? "0");
-    if (declaredLen > MAX_IMAGE_BYTES) {
-      return {
-        result: null,
-        imageBytes: null,
-        imageMime: null,
-        error: "이미지가 너무 큽니다(8MB 초과)",
-      };
-    }
-    const buffer = await imageRes.arrayBuffer();
-    if (buffer.byteLength > MAX_IMAGE_BYTES) {
-      return {
-        result: null,
-        imageBytes: null,
-        imageMime: null,
-        error: "이미지가 너무 큽니다(8MB 초과)",
-      };
-    }
-    const imageBytes = new Uint8Array(buffer);
-    const imageMime =
-      imageRes.headers.get("content-type")?.split(";")[0].trim() ||
-      "image/jpeg";
+    const imageBytes = imageRes.bytes;
+    const imageMime = imageRes.contentType || "image/jpeg";
 
     // Vision 분석
     const result = await extractFromImageBytes(imageBytes, imageMime);

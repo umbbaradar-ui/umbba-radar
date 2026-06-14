@@ -408,6 +408,28 @@ export async function updatePost(
 }
 
 export async function deletePost(id: string): Promise<void> {
+  // 삭제 전 thumbnail_url 조회 — 우리 Storage(card-images)에 올린 이미지면 함께 정리(orphan 방지)
+  const { data: row } = await supabaseServer
+    .from("posts")
+    .select("thumbnail_url")
+    .eq("id", id)
+    .maybeSingle();
+
   const { error } = await supabaseServer.from("posts").delete().eq("id", id);
   if (error) throw new Error(`deletePost: ${error.message}`);
+
+  // 베스트에포트 Storage 정리 — 외부 URL(시드·og)은 건너뜀, 실패해도 삭제는 성공 처리
+  const url = (row as { thumbnail_url: string | null } | null)?.thumbnail_url;
+  if (url && url.includes("/card-images/")) {
+    try {
+      const path = url.split("/card-images/")[1]?.split("?")[0];
+      if (path) {
+        await supabaseServer.storage
+          .from("card-images")
+          .remove([decodeURIComponent(path)]);
+      }
+    } catch {
+      // Storage 정리 실패는 무시(DB 삭제는 이미 완료). 별도 orphan 정리로 회수 가능.
+    }
+  }
 }
