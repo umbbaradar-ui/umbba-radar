@@ -69,6 +69,7 @@ export function BottomTabNav({ user }: Props) {
           moreOpen ? "translate-y-0" : "translate-y-full"
         }`}
         aria-hidden={!moreOpen}
+        inert={!moreOpen}
       >
         <div className="pb-safe">
           {/* 손잡이 */}

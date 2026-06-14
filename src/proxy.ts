@@ -58,11 +58,17 @@ export async function proxy(request: NextRequest) {
   }
 
   // 로그인 상태 — 자녀 정보 있나 확인
-  const { data: children } = await supabase
+  const { data: children, error: childrenError } = await supabase
     .from("children")
     .select("id")
     .eq("user_id", user.id)
     .limit(1);
+
+  // 조회 오류(RLS·네트워크·일시 PostgREST 등)면 온보딩으로 튕기지 말고 통과(fail-open).
+  // 오류를 '자녀 없음'으로 오판해 이미 등록한 사용자를 온보딩에 가두는 것을 방지.
+  if (childrenError) {
+    return response;
+  }
 
   if (!children || children.length === 0) {
     // 자녀 정보 없음 → 강제 온보딩

@@ -95,36 +95,22 @@ export function EmailSignUpForm({ next }: SignUpProps) {
         />
       </label>
 
-      <label className="block space-y-1.5">
-        <span className="text-xs font-medium text-slate-700">
-          비밀번호{" "}
-          <span className="text-[11px] font-normal text-slate-400">
-            (8자 이상)
-          </span>
-        </span>
-        <input
-          type="password"
-          required
-          minLength={8}
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          autoComplete="new-password"
-          className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none focus:border-rose-400"
-        />
-      </label>
+      <PasswordField
+        label="비밀번호"
+        hint="8자 이상"
+        minLength={8}
+        value={password}
+        onChange={setPassword}
+        autoComplete="new-password"
+      />
 
-      <label className="block space-y-1.5">
-        <span className="text-xs font-medium text-slate-700">비밀번호 확인</span>
-        <input
-          type="password"
-          required
-          minLength={8}
-          value={confirm}
-          onChange={(e) => setConfirm(e.target.value)}
-          autoComplete="new-password"
-          className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none focus:border-rose-400"
-        />
-      </label>
+      <PasswordField
+        label="비밀번호 확인"
+        minLength={8}
+        value={confirm}
+        onChange={setConfirm}
+        autoComplete="new-password"
+      />
 
       {error && (
         <p className="rounded-lg bg-rose-50 px-4 py-2 text-sm text-rose-700">
@@ -196,17 +182,12 @@ export function EmailLoginForm({ next }: LoginProps) {
         />
       </label>
 
-      <label className="block space-y-1.5">
-        <span className="text-xs font-medium text-slate-700">비밀번호</span>
-        <input
-          type="password"
-          required
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          autoComplete="current-password"
-          className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none focus:border-rose-400"
-        />
-      </label>
+      <PasswordField
+        label="비밀번호"
+        value={password}
+        onChange={setPassword}
+        autoComplete="current-password"
+      />
 
       {error && (
         <p className="rounded-lg bg-rose-50 px-4 py-2 text-sm text-rose-700">
@@ -222,6 +203,54 @@ export function EmailLoginForm({ next }: LoginProps) {
         {loading ? "로그인 중…" : "로그인"}
       </button>
     </form>
+  );
+}
+
+// 비밀번호 입력 + 표시/숨기기 토글 (가입·로그인 공통). OAuth 꺼진 동안 유일 가입경로라 UX 중요.
+function PasswordField({
+  label,
+  value,
+  onChange,
+  autoComplete,
+  minLength,
+  hint,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  autoComplete: string;
+  minLength?: number;
+  hint?: string;
+}) {
+  const [show, setShow] = useState(false);
+  return (
+    <label className="block space-y-1.5">
+      <span className="text-xs font-medium text-slate-700">
+        {label}
+        {hint && (
+          <span className="text-[11px] font-normal text-slate-400"> ({hint})</span>
+        )}
+      </span>
+      <div className="relative">
+        <input
+          type={show ? "text" : "password"}
+          required
+          minLength={minLength}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          autoComplete={autoComplete}
+          className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 pr-14 text-sm outline-none focus:border-rose-400"
+        />
+        <button
+          type="button"
+          onClick={() => setShow((s) => !s)}
+          aria-label={show ? "비밀번호 숨기기" : "비밀번호 표시"}
+          className="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg px-2 py-1 text-[11px] font-medium text-slate-500 hover:bg-slate-100"
+        >
+          {show ? "숨기기" : "표시"}
+        </button>
+      </div>
+    </label>
   );
 }
 

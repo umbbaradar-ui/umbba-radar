@@ -83,6 +83,8 @@ export async function migrateLocalStatusAction(
   const supabase = await getServerSupabase();
   const { error } = await supabase
     .from("user_post_status")
+    // 서버 우선: 이미 DB에 행이 있으면 로컬값으로 덮어쓰지 않음(ON CONFLICT DO NOTHING).
+    // 데이터 중복·손상 없고 멱등. 교차기기에서 로컬 소프트선호값 1개가 폐기될 수 있으나 의도된 동작.
     .upsert(rows, { onConflict: "user_id,post_id", ignoreDuplicates: true });
 
   if (error) {

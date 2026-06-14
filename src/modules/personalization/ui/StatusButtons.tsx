@@ -42,6 +42,7 @@ export function StatusButtons({ postId, loggedIn, initialStatus }: Props) {
 
   async function toggle(target: UserPostStatusValue) {
     const isUnmark = status === target;
+    let succeeded = false;
 
     if (loggedIn) {
       setPending(true);
@@ -55,6 +56,8 @@ export function StatusButtons({ postId, loggedIn, initialStatus }: Props) {
         if (!result.ok) {
           // 롤백
           setStatus(prev);
+        } else {
+          succeeded = true;
         }
       } finally {
         setPending(false);
@@ -68,8 +71,11 @@ export function StatusButtons({ postId, loggedIn, initialStatus }: Props) {
         else markLocalInterested(postId);
         setStatus(target);
       }
+      succeeded = true;
     }
 
+    // 실제로 반영된 경우에만 이벤트 기록 (DB 실패·롤백 시 status_mark가 KPI를 부풀리는 것 방지)
+    if (!succeeded) return;
     if (isUnmark) {
       track("status_unmark", { post_id: postId, previous: target });
     } else {
@@ -81,7 +87,8 @@ export function StatusButtons({ postId, loggedIn, initialStatus }: Props) {
   const interestedActive = hydrated && status === "interested";
 
   return (
-    <div className="flex gap-2">
+    <div className="space-y-1.5">
+      <div className="flex gap-2">
       <button
         type="button"
         onClick={() => toggle("interested")}
@@ -108,6 +115,12 @@ export function StatusButtons({ postId, loggedIn, initialStatus }: Props) {
       >
         {appliedActive ? "✓ 신청함" : "신청함 체크"}
       </button>
+      </div>
+      {hydrated && !loggedIn && (
+        <p className="text-center text-[11px] text-slate-400">
+          이 기기에만 저장돼요 · 로그인하면 모든 기기에 동기화 ♥
+        </p>
+      )}
     </div>
   );
 }

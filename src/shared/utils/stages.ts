@@ -53,9 +53,12 @@ export function calcMonthsOld(birthDate: string): number {
   const birth = new Date(birthDate);
   if (Number.isNaN(birth.getTime())) return 0;
   const now = new Date();
-  const months =
+  let months =
     (now.getFullYear() - birth.getFullYear()) * 12 +
     (now.getMonth() - birth.getMonth());
+  // 일(day) 보정 — 아직 그 달의 'day'에 도달 못 했으면 1개월 덜 산 것.
+  // (예: 오늘 6/14, 예정일 6/30 → 0이 아니라 -1 = 임신중. '임신부에게 신생아 카드' 오매칭 방지)
+  if (now.getDate() < birth.getDate()) months -= 1;
   return months;
 }
 

@@ -100,7 +100,13 @@ export function FilterBar({
             placeholder="브랜드·키워드 검색"
             className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 pl-10 text-sm outline-none focus:border-rose-400"
           />
-          <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+          <button
+            type="submit"
+            aria-label="검색"
+            className="absolute left-1.5 top-1/2 -translate-y-1/2 rounded-lg p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-rose-500"
+          >
+            <SearchIcon />
+          </button>
           {searchInput && (
             <button
               type="button"

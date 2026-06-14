@@ -9,7 +9,7 @@ import { getServerSupabase } from "@/shared/db/supabase-ssr";
 import { supabaseServer } from "@/shared/db/supabase-server";
 import type { Post, StageCategory } from "@/shared/types/post";
 import { getStagesForChildren } from "@/shared/utils/stages";
-import { kstTodayStartIso } from "@/shared/utils/dday";
+import { kstTodayStartIso, calcDDay } from "@/shared/utils/dday";
 import type { UserPostStatusValue } from "./service";
 
 /** 알림 항목 — 카드 + 알림 종류 + 시간 */
@@ -168,13 +168,15 @@ export async function getInterestedDeadlineSoon(
 
     if (!posts) return [];
 
-    const now = Date.now();
     const items: Array<{ post: Post; daysLeft: number }> = [];
 
     for (const post of posts as Post[]) {
       if (!post.deadline) continue;
-      const deadlineMs = new Date(post.deadline).getTime();
-      const daysLeft = Math.ceil((deadlineMs - now) / (24 * 60 * 60 * 1000));
+      // KST 자정 캘린더 기준(D-day 배지와 동일). Math.ceil(시각차) 패턴은 dday.ts가 금지 —
+      // "오늘 마감"을 D-1로 오표기하거나 윈도우 경계를 1일 어긋나게 함.
+      const dd = calcDDay(post.deadline);
+      if (!dd) continue;
+      const daysLeft = dd.days;
       if (daysLeft > 0 && daysLeft <= DEADLINE_NOTIFY_DAYS) {
         items.push({ post, daysLeft });
       }
