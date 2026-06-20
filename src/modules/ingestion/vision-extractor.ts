@@ -221,13 +221,28 @@ function parseVisionJson(text: string): VisionExtractResult | null {
 
 /** caption 이 있으면 user message 에 prefix 로 붙일 텍스트 */
 function buildUserPrompt(caption: string | null | undefined): string {
+  // 연도 미표기 마감일("6/28"·"6월 28일")을 모델이 과거 연도로 추측해 카드가
+  // 곧바로 "마감"으로 잡히던 버그 방지 — 항상 오늘(KST)을 알려주고 미래로 못박는다.
+  const todayKST = new Date().toLocaleDateString("en-CA", {
+    timeZone: "Asia/Seoul",
+  }); // "YYYY-MM-DD"
+  const dateRule =
+    `오늘은 ${todayKST} (KST)입니다. ` +
+    `캡션에 연도 없이 "X월 Y일"·"X/Y" 형식으로만 적힌 마감일·발표일은 ` +
+    `반드시 오늘 이후 가장 가까운 미래로 연도를 정하세요(과거 연도 절대 금지). ` +
+    `예: 오늘이 ${todayKST}이면 "6/28"은 ${todayKST.slice(0, 4)}-06-28.`;
+
   const trimmed = caption?.trim();
   if (!trimmed) {
-    return "캡션을 못 받았어요. 이미지만 보고 분석해 구조화된 JSON으로 정보를 반환해주세요. 마크다운 백틱 없이 JSON만.";
+    return (
+      `${dateRule}\n\n` +
+      "캡션을 못 받았어요. 이미지만 보고 분석해 구조화된 JSON으로 정보를 반환해주세요. 마크다운 백틱 없이 JSON만."
+    );
   }
   // 캡션이 너무 길면 token 절약 위해 자름 (2000자 = 약 1000 tokens)
   const capped = trimmed.length > 2000 ? trimmed.slice(0, 2000) + "…" : trimmed;
   return (
+    `${dateRule}\n\n` +
     `다음 인스타그램 게시물의 [캡션] 본문이에요. ` +
     `**캡션이 1차 정보원**이고 이미지는 보조입니다. ` +
     `캡션의 제품명·브랜드명·마감일·시기 단서를 적극 활용해서 ` +
