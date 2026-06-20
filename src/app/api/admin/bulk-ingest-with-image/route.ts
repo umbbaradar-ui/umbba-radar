@@ -29,6 +29,8 @@ interface RequestBody {
   caption?: string | null;
   image_base64: string;
   image_mime: string;
+  // raw=true: Vision 안 부르고 미분류(status='draft') 카드만 생성. 분류는 별도 루틴(로컬 Claude).
+  raw?: boolean;
 }
 
 interface SuccessResponse {
@@ -104,7 +106,7 @@ export async function POST(
     );
   }
 
-  const { url, caption, image_base64, image_mime } = body;
+  const { url, caption, image_base64, image_mime, raw } = body;
   if (!url || !image_base64 || !image_mime) {
     return NextResponse.json(
       { ok: false, error: "Missing required fields (url, image_base64, image_mime)" },
@@ -156,6 +158,42 @@ export async function POST(
       { ok: false, error: "Storage upload failed" },
       { status: 500 }
     );
+  }
+
+  // 5.5 raw 모드 — Vision 안 부르고 미분류(draft) 카드만 생성. 분류는 별도 루틴(로컬 Claude)이
+  //      나중에 draft → pending 으로 확정/삭제. (유료 Vision API 비용 0 경로)
+  if (raw) {
+    const { data: inserted, error: insertError } = await supabaseServer
+      .from("posts")
+      .insert({
+        kind: "recruiting" as const,
+        title: "(미분류 — 분류 대기)",
+        brand_name: null,
+        thumbnail_url: thumbnailUrl,
+        source_url: url,
+        body: caption?.slice(0, 2000) ?? null,
+        deadline: null,
+        deadline_unknown: false,
+        stage_categories: [],
+        type_tags: [],
+        topic: "parenting",
+        is_sponsored: false,
+        status: "draft" as const, // 미분류 마커 (분류 루틴이 픽업)
+        source_type: "ingestion" as const,
+      })
+      .select("id")
+      .single();
+    if (insertError) {
+      return NextResponse.json(
+        { ok: false, error: `Insert failed: ${insertError.message}` },
+        { status: 500 }
+      );
+    }
+    return NextResponse.json({
+      ok: true,
+      status: "created",
+      post_id: (inserted as { id: string }).id,
+    });
   }
 
   // 6. Vision API 호출 (이미지 + 캡션 input — 캡션을 1차 정보원으로 활용)
