@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  맥 24시간 자동 수집용 launchd 정의 (옵션 C: bd-local.sh = BD 수집 + 로컬 Claude 분류, 유료 API 0).
+  설치:
+    1) 아래 __UMBBA_CLI_DIR__ 를 실제 경로로 치환 (예: /Users/이름/umbba-cli)
+    2) Hour/Minute 를 "다른 작업과 안 겹치는 시각"으로 조정
+    3) cp com.umbba.bdscan.plist ~/Library/LaunchAgents/
+    4) launchctl load ~/Library/LaunchAgents/com.umbba.bdscan.plist
+  해제: launchctl unload ~/Library/LaunchAgents/com.umbba.bdscan.plist
+  즉시 1회 테스트: launchctl start com.umbba.bdscan
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.umbba.bdscan</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/bash</string>
+    <string>__UMBBA_CLI_DIR__/bd-local.sh</string>
+    <string>1</string>   <!-- scan-days (실행 주기와 맞추기: 매일이면 1) -->
+  </array>
+
+  <!-- 매일 이 시각에 실행. 다른 작업과 안 겹치게 조정. -->
+  <key>StartCalendarInterval</key>
+  <dict>
+    <key>Hour</key><integer>4</integer>
+    <key>Minute</key><integer>30</integer>
+  </dict>
+
+  <key>StandardOutPath</key>
+  <string>__UMBBA_CLI_DIR__/bd-launchd.log</string>
+  <key>StandardErrorPath</key>
+  <string>__UMBBA_CLI_DIR__/bd-launchd.err</string>
+</dict>
+</plist>
