@@ -84,10 +84,10 @@ def classify_batch(claude_bin: str, items: list[dict], tkst: str, workdir: Path)
         proc = subprocess.run(
             [claude_bin, "-p", "--permission-mode", "bypassPermissions", "--model", "sonnet"],
             cwd=str(workdir), input=CLASSIFY_PROMPT,
-            capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=900,
+            capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=240,
         )
     except subprocess.TimeoutExpired:
-        return None, "claude timeout(900s)"
+        return None, "claude timeout(240s) — 막힌 배치, 건너뜀(다음 run 재시도)"
     except Exception as e:
         return None, f"claude 실행 오류: {e}"
     res = workdir / "results.json"
