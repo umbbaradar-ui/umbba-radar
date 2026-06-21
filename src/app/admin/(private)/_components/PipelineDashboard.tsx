@@ -1,13 +1,16 @@
 // ============================================
 // 수집 파이프라인 현황 대시보드 — /admin 상단
-// 팔로잉 계정 → 수집 큐(찾은 게시물) → 발행 카드 퍼널 + 최근 7일 일별 + 저조 경고
+// 모니터링 계정 → 미분류(draft) → 검수 대기(pending) → 발행(published) 퍼널
+// (BD 수집 → 로컬 Claude 분류 → 검수 구조. docs/COLLECTION-DIRECTION-FINAL-2026-06-21.md)
 // ============================================
 
 import Link from "next/link";
 import type { PipelineStats } from "@/modules/curation/service";
 
 // 최근 24시간 수집이 이 값 미만이면 "수집 저조" 경고
-const LOW_FOUND_THRESHOLD = 5;
+const LOW_COLLECT_THRESHOLD = 5;
+// 미분류(draft)가 이 값 이상 쌓이면 "분류 루틴 점검" 경고
+const DRAFT_PILE_THRESHOLD = 30;
 
 function fmtDay(date: string): string {
   return new Date(`${date}T00:00:00+09:00`).toLocaleDateString("ko-KR", {
@@ -19,8 +22,8 @@ function fmtDay(date: string): string {
 }
 
 export function PipelineDashboard({ stats }: { stats: PipelineStats }) {
-  const low = stats.last24h.found < LOW_FOUND_THRESHOLD;
-  const foundButNoCards = !low && stats.last24h.created === 0;
+  const low = stats.last24h.collected < LOW_COLLECT_THRESHOLD;
+  const draftPiling = stats.draftTotal >= DRAFT_PILE_THRESHOLD;
 
   return (
     <section className="mb-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -31,32 +34,35 @@ export function PipelineDashboard({ stats }: { stats: PipelineStats }) {
         <span className="text-[11px] text-slate-400">최근 24시간 / 7일</span>
       </div>
 
-      {/* 저조 경고 */}
+      {/* 수집 저조 경고 */}
       {low && (
         <div className="mb-3 rounded-xl bg-rose-50 px-4 py-2.5 text-sm font-medium text-rose-700">
-          ⚠️ 최근 24시간 수집 <strong>{stats.last24h.found}건</strong> — 평소보다
-          적어요. 인스타 쿠키 만료(401)·스캔 작동을 점검하세요.
+          ⚠️ 최근 24시간 수집 <strong>{stats.last24h.collected}건</strong> —
+          평소보다 적어요. BD 수집 루틴(bd_ingest --raw) 작동을 점검하세요.
         </div>
       )}
-      {foundButNoCards && (
+      {/* 분류 정체 경고 — 수집은 되는데 미분류가 쌓임 = 분류 루틴 문제 */}
+      {draftPiling && (
         <div className="mb-3 rounded-xl bg-amber-50 px-4 py-2.5 text-sm font-medium text-amber-800">
-          ⚠️ 수집은 됐는데(24h {stats.last24h.found}건) 카드 생성이 0건 — B루틴
-          (분류·생성) 작동을 점검하세요.
+          ⚠️ 미분류 카드 <strong>{stats.draftTotal}건</strong> 쌓임 — 분류
+          루틴(bd_classify, 로컬 Claude) 작동을 점검하세요.
         </div>
       )}
 
-      {/* 퍼널 */}
+      {/* 퍼널: 계정 → 미분류 → 검수대기 → 발행 */}
       <div className="flex flex-wrap items-stretch gap-2">
-        <FunnelStat icon="📡" label="팔로잉 계정" value={stats.accountsActive} />
-        <Arrow sub={`+${stats.last24h.found} / 24h`} />
-        <FunnelStat icon="🗂️" label="수집 큐 (누적)" value={stats.queueTotal} />
-        <Arrow sub={`+${stats.last24h.created} / 24h`} />
+        <FunnelStat icon="📡" label="모니터링 계정" value={stats.accountsActive} />
+        <Arrow sub={`+${stats.last24h.collected} / 24h`} />
+        <FunnelStat icon="🗂️" label="미분류 (draft)" value={stats.draftTotal} />
+        <Arrow sub="분류" />
         <FunnelStat
-          icon="✅"
-          label="발행 카드 (누적)"
-          value={stats.publishedTotal}
+          icon="📝"
+          label="검수 대기 (pending)"
+          value={stats.pendingTotal}
           href="/admin/queue"
         />
+        <Arrow sub="검수" />
+        <FunnelStat icon="✅" label="발행 (누적)" value={stats.publishedTotal} />
       </div>
 
       {/* 최근 7일 일별 */}
@@ -65,8 +71,7 @@ export function PipelineDashboard({ stats }: { stats: PipelineStats }) {
           <thead className="bg-slate-50 text-left text-[11px] text-slate-500">
             <tr>
               <th className="px-3 py-2 font-medium">날짜 (KST)</th>
-              <th className="px-3 py-2 text-right font-medium">수집(큐)</th>
-              <th className="px-3 py-2 text-right font-medium">카드 생성</th>
+              <th className="px-3 py-2 text-right font-medium">수집</th>
               <th className="px-3 py-2 text-right font-medium">발행</th>
             </tr>
           </thead>
@@ -81,17 +86,10 @@ export function PipelineDashboard({ stats }: { stats: PipelineStats }) {
                 </td>
                 <td
                   className={`px-3 py-1.5 text-right tabular-nums ${
-                    d.found === 0 ? "text-slate-300" : "text-slate-800"
+                    d.collected === 0 ? "text-slate-300" : "text-slate-800"
                   }`}
                 >
-                  {d.found}
-                </td>
-                <td
-                  className={`px-3 py-1.5 text-right tabular-nums ${
-                    d.created === 0 ? "text-slate-300" : "text-slate-800"
-                  }`}
-                >
-                  {d.created}
+                  {d.collected}
                 </td>
                 <td className="px-3 py-1.5 text-right tabular-nums text-emerald-700">
                   {d.published}
@@ -102,8 +100,8 @@ export function PipelineDashboard({ stats }: { stats: PipelineStats }) {
         </table>
       </div>
       <p className="mt-1.5 text-[10px] text-slate-400">
-        수집 = 스캔이 큐에 새로 넣은 게시물 · 카드 생성 = B루틴이 만든 자동수집
-        카드 · 발행 = 그중 승인된 것. (일자는 등록 시각 기준)
+        수집 = BD가 만든 미분류(draft) 카드 · 발행 = 검수 후 승인된 것. 분류(미분류
+        → 검수 대기)는 로컬 Claude가 처리. (일자는 등록 시각 기준)
       </p>
     </section>
   );

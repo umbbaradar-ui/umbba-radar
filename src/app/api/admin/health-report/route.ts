@@ -86,7 +86,7 @@ async function handle(request: Request) {
     );
   } else {
     lines.push(
-      `🟢 A스캔: 정상 (최근24h 수집 +${pipeline.last24h.found}건)`
+      `🟢 수집: 정상 (최근24h +${pipeline.last24h.collected}건)`
     );
   }
 
@@ -107,7 +107,7 @@ async function handle(request: Request) {
   } else {
     const heldStr = (b.held ?? 0) > 0 ? ` / 사진보류 ${b.held}건` : "";
     lines.push(
-      `🟢 B루틴: 정상 (분류 ${b.classified ?? 0} → 카드 +${pipeline.last24h.created}건${heldStr})`
+      `🟢 분류: 정상 (분류 ${b.classified ?? 0} → 카드 +${pipeline.last24h.collected}건${heldStr})`
     );
   }
 

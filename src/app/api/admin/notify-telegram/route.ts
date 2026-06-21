@@ -41,8 +41,8 @@ async function handle(request: Request) {
     `🐻 <b>엄빠레이더 일일 현황</b> (${todayKst})`,
     ``,
     `📡 팔로잉 계정 <b>${pipeline.accountsActive}</b>개 모니터링`,
-    `🗂️ 최근 24시간 수집 <b>+${pipeline.last24h.found}</b>건 (큐 누적 ${pipeline.queueTotal})`,
-    `🆕 카드 생성 <b>+${pipeline.last24h.created}</b>건`,
+    `🗂️ 최근 24시간 수집 <b>+${pipeline.last24h.collected}</b>건 (미분류 ${pipeline.draftTotal} · 검수대기 ${pipeline.pendingTotal})`,
+    `📤 발행 <b>+${pipeline.last24h.published}</b>건 (24h)`,
     pending > 0
       ? `✅ <b>승인 대기 ${pending}건</b> — 검수가 필요해요!`
       : `✅ 승인 대기 없음 — 깔끔합니다 👍`,
@@ -82,7 +82,7 @@ async function handle(request: Request) {
     ok: true,
     sent: true,
     pending,
-    found24h: pipeline.last24h.found,
+    collected24h: pipeline.last24h.collected,
   });
 }
 

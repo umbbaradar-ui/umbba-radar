@@ -299,12 +299,13 @@ export async function selectStatusCounts(): Promise<{
 // ============================================
 export interface PipelineStats {
   accountsActive: number;
-  queueTotal: number;
-  publishedTotal: number;
-  /** 최근 24시간 (직전 야간 스캔 포함, KST 자정 경계 무관) */
-  last24h: { found: number; created: number };
+  draftTotal: number; // 미분류(수집됨, 분류 대기) — BD 수집이 만든 draft 카드
+  pendingTotal: number; // 분류완료, 검수 대기
+  publishedTotal: number; // 발행
+  /** 최근 24시간 자동수집 카드 (생성 / 그중 발행) */
+  last24h: { collected: number; published: number };
   /** 최근 N일 KST 일별 (오늘 포함, 최신이 먼저) */
-  daily: Array<{ date: string; found: number; created: number; published: number }>;
+  daily: Array<{ date: string; collected: number; published: number }>;
 }
 
 const KST_OFFSET_MS = 9 * 60 * 60 * 1000;
@@ -319,14 +320,20 @@ export async function selectPipelineStats(days = 7): Promise<PipelineStats> {
   const since = new Date(now - days * 24 * 60 * 60 * 1000).toISOString();
   const since24h = new Date(now - 24 * 60 * 60 * 1000).toISOString();
 
-  const [accRes, queueTotalRes, queueRowsRes, publishedRes, postRowsRes] =
+  const [accRes, draftRes, pendingRes, publishedRes, postRowsRes] =
     await Promise.all([
       supabaseServer
         .from("instagram_accounts")
         .select("id", { count: "exact", head: true })
         .eq("active", true),
-      supabaseServer.from("ingest_queue").select("id", { count: "exact", head: true }),
-      supabaseServer.from("ingest_queue").select("created_at").gte("created_at", since),
+      supabaseServer
+        .from("posts")
+        .select("id", { count: "exact", head: true })
+        .eq("status", "draft"),
+      supabaseServer
+        .from("posts")
+        .select("id", { count: "exact", head: true })
+        .eq("status", "pending"),
       supabaseServer
         .from("posts")
         .select("id", { count: "exact", head: true })
@@ -344,39 +351,35 @@ export async function selectPipelineStats(days = 7): Promise<PipelineStats> {
       new Date(now + KST_OFFSET_MS - i * 86400000).toISOString().slice(0, 10)
     );
   }
-  const bucket = new Map<
-    string,
-    { found: number; created: number; published: number }
-  >();
-  for (const d of dayKeys) bucket.set(d, { found: 0, created: 0, published: 0 });
+  const bucket = new Map<string, { collected: number; published: number }>();
+  for (const d of dayKeys) bucket.set(d, { collected: 0, published: 0 });
 
-  let found24 = 0;
-  for (const r of (queueRowsRes.data ?? []) as { created_at: string }[]) {
-    const b = bucket.get(toKstDate(r.created_at));
-    if (b) b.found++;
-    if (r.created_at >= since24h) found24++;
-  }
-
-  let created24 = 0;
+  // 자동수집(ingestion) 카드: 생성=collected(draft+pending+published 무관), 그중 published 집계
+  let collected24 = 0;
+  let published24 = 0;
   for (const p of (postRowsRes.data ?? []) as {
     created_at: string;
     status: string;
     source_type: string;
   }[]) {
-    if (p.source_type !== "ingestion") continue; // 자동수집 카드만 (파이프라인 산출물)
+    if (p.source_type !== "ingestion") continue;
     const b = bucket.get(toKstDate(p.created_at));
     if (b) {
-      b.created++;
+      b.collected++;
       if (p.status === "published") b.published++;
     }
-    if (p.created_at >= since24h) created24++;
+    if (p.created_at >= since24h) {
+      collected24++;
+      if (p.status === "published") published24++;
+    }
   }
 
   return {
     accountsActive: accRes.count ?? 0,
-    queueTotal: queueTotalRes.count ?? 0,
+    draftTotal: draftRes.count ?? 0,
+    pendingTotal: pendingRes.count ?? 0,
     publishedTotal: publishedRes.count ?? 0,
-    last24h: { found: found24, created: created24 },
+    last24h: { collected: collected24, published: published24 },
     daily: dayKeys.map((d) => ({ date: d, ...bucket.get(d)! })),
   };
 }
