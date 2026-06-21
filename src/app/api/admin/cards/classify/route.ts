@@ -90,21 +90,23 @@ export async function POST(request: Request) {
             .slice(0, 200)
         : null;
 
+      const upd: Record<string, unknown> = {
+        status: "pending",
+        kind: it.kind === "group_buy" ? "group_buy" : "recruiting",
+        title: it.title.slice(0, 120),
+        brand_name: it.brand_name ?? null,
+        search_keywords: searchKeywords,
+        deadline: effectiveDeadline,
+        deadline_unknown: deadlineUnknown,
+        stage_categories: it.stage_categories ?? [],
+        type_tags: it.type_tags ?? [],
+        topic: it.topic === "living" ? "living" : "parenting",
+      };
+      // body 는 제공된 경우만 갱신 — 미제공 시 draft 의 원문 캡션 보존(요약/누락 방지)
+      if (it.body !== undefined) upd.body = it.body?.slice(0, 2000) ?? null;
       const { error } = await supabaseServer
         .from("posts")
-        .update({
-          status: "pending",
-          kind: it.kind === "group_buy" ? "group_buy" : "recruiting",
-          title: it.title.slice(0, 120),
-          brand_name: it.brand_name ?? null,
-          body: it.body?.slice(0, 2000) ?? null,
-          search_keywords: searchKeywords,
-          deadline: effectiveDeadline,
-          deadline_unknown: deadlineUnknown,
-          stage_categories: it.stage_categories ?? [],
-          type_tags: it.type_tags ?? [],
-          topic: it.topic === "living" ? "living" : "parenting",
-        })
+        .update(upd)
         .eq("id", it.id)
         .eq("status", "draft");
       if (error) throw new Error(error.message);
