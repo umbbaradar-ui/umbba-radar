@@ -16,10 +16,11 @@ export async function POST(request: Request) {
   if (!(await isAdminRequest(request))) {
     return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
   }
+  // pending(검수대기)·published(앱 노출 중) 양쪽의 junk 를 draft 로 — title 매칭이라 정상 카드는 안 건드림.
   const { data, error } = await supabaseServer
     .from("posts")
     .update({ status: "draft" })
-    .eq("status", "pending")
+    .in("status", ["pending", "published"])
     .eq("source_type", "ingestion")
     .like("title", "%Vision 실패%")
     .select("id");
