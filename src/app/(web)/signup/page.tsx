@@ -1,12 +1,15 @@
 // ============================================
 // 가입 안내 페이지 — /signup
 // ViewGate 가 2건째 카드 클릭 시 이쪽으로 보냄
-// 가치 제안 + OAuth 버튼
+// 가치 제안 + 소셜 로그인(카카오/구글, env 토글) + 이메일 가입
 // ============================================
 
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { GoogleSignInButton } from "@/modules/user/ui/SignInButton";
+import {
+  GoogleSignInButton,
+  KakaoSignInButton,
+} from "@/modules/user/ui/SignInButton";
 import { Logo } from "@/shared/ui/Logo";
 import { getCurrentUser } from "@/modules/user/service";
 import { safeNext } from "@/shared/utils/safe-next";
@@ -17,6 +20,8 @@ interface PageProps {
 
 export default async function SignupPage({ searchParams }: PageProps) {
   const { next, reason } = await searchParams;
+  const kakaoEnabled = process.env.NEXT_PUBLIC_KAKAO_OAUTH_ENABLED === "true";
+  const googleEnabled = process.env.NEXT_PUBLIC_GOOGLE_OAUTH_ENABLED === "true";
   const user = await getCurrentUser();
 
   // 이미 로그인 상태면 다음 페이지로
@@ -48,12 +53,15 @@ export default async function SignupPage({ searchParams }: PageProps) {
           <li>✓ 마감 임박 알림 (출시 예정)</li>
         </ul>
 
-        {/* Google OAuth는 계정 정지 풀리면 NEXT_PUBLIC_GOOGLE_OAUTH_ENABLED=true 로 켜기 */}
-        {process.env.NEXT_PUBLIC_GOOGLE_OAUTH_ENABLED === "true" && (
+        {/* 소셜 로그인 — provider별 env 토글로 on/off (콘솔 설정 완료 후 켜기) */}
+        {(kakaoEnabled || googleEnabled) && (
           <>
-            <GoogleSignInButton next={next} />
+            <div className="space-y-3">
+              {kakaoEnabled && <KakaoSignInButton next={next} />}
+              {googleEnabled && <GoogleSignInButton next={next} />}
+            </div>
             <p className="mt-3 text-center text-[11px] text-slate-400">
-              구글 1초 · 비밀번호 X
+              1초 가입 · 비밀번호 X
             </p>
             <div className="my-5 flex items-center gap-3">
               <div className="h-px flex-1 bg-slate-200" />

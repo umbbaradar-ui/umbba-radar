@@ -120,8 +120,10 @@
 - ViewGate FREE_VIEW_LIMIT = 4 (5번째 카드부터 가입 유도)
 - 이메일 로그인 후 `window.location.href` 풀 리로드 (router.push의 쿠키 race condition 회피)
 - proxy.ts: 로그인 + 자녀 정보 없으면 `/signup/profile` 강제
-- Google OAuth는 env 토글(`NEXT_PUBLIC_GOOGLE_OAUTH_ENABLED`)로 비활성 (계정 정지 대응)
-- 카카오·네이버 로그인 미구현 (향후)
+- 소셜 로그인 버튼: `SignInButton.tsx` (카카오/구글, 공통 `signInWithOAuth`). 콜백 `/auth/callback`은 provider 무관
+- 각 provider는 env 토글로 노출 제어 — 구글 `NEXT_PUBLIC_GOOGLE_OAUTH_ENABLED`, 카카오 `NEXT_PUBLIC_KAKAO_OAUTH_ENABLED` (Supabase Dashboard provider 활성화 + 토글 ON 필요)
+- 구글은 계정 정지 이력으로 OFF 상태였음 → 재활성 시 Google Cloud OAuth 클라이언트 + Supabase 설정 확인
+- 카카오 로그인 코드 구현 완료(2026-06-25). 네이버는 미구현 (향후)
 
 ---
 

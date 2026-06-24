@@ -1,10 +1,14 @@
 // ============================================
 // 로그인 페이지 — /login
-// Phase 1.5에서 코드 준비. Supabase Dashboard에서 Google Provider 활성화 필요.
+// 소셜 로그인(카카오/구글)은 각 provider env 토글로 노출 제어.
+// Supabase Dashboard에서 Provider 활성화 + 토글 ON 필요.
 // ============================================
 
 import Link from "next/link";
-import { GoogleSignInButton } from "@/modules/user/ui/SignInButton";
+import {
+  GoogleSignInButton,
+  KakaoSignInButton,
+} from "@/modules/user/ui/SignInButton";
 import { Logo } from "@/shared/ui/Logo";
 
 interface PageProps {
@@ -13,6 +17,8 @@ interface PageProps {
 
 export default async function LoginPage({ searchParams }: PageProps) {
   const { next } = await searchParams;
+  const kakaoEnabled = process.env.NEXT_PUBLIC_KAKAO_OAUTH_ENABLED === "true";
+  const googleEnabled = process.env.NEXT_PUBLIC_GOOGLE_OAUTH_ENABLED === "true";
 
   return (
     <main className="mx-auto max-w-md px-5 py-10">
@@ -29,10 +35,14 @@ export default async function LoginPage({ searchParams }: PageProps) {
           </p>
         </header>
 
-        {/* Google OAuth는 계정 정지 풀리면 NEXT_PUBLIC_GOOGLE_OAUTH_ENABLED=true 로 켜기 */}
-        {process.env.NEXT_PUBLIC_GOOGLE_OAUTH_ENABLED === "true" && (
+        {/* 소셜 로그인 — provider별 env 토글로 on/off (콘솔 설정 완료 후 켜기)
+            카카오: NEXT_PUBLIC_KAKAO_OAUTH_ENABLED / 구글: NEXT_PUBLIC_GOOGLE_OAUTH_ENABLED */}
+        {(kakaoEnabled || googleEnabled) && (
           <>
-            <GoogleSignInButton next={next} />
+            <div className="space-y-3">
+              {kakaoEnabled && <KakaoSignInButton next={next} />}
+              {googleEnabled && <GoogleSignInButton next={next} />}
+            </div>
             <div className="my-5 flex items-center gap-3">
               <div className="h-px flex-1 bg-slate-200" />
               <span className="text-[11px] text-slate-400">또는</span>
