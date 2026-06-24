@@ -12,7 +12,6 @@
 // ============================================
 
 import { useEffect, useMemo, useState } from "react";
-import Link from "next/link";
 import type { Post } from "@/shared/types/post";
 import { PostCard } from "@/modules/content/ui/PostCard";
 import {
@@ -233,8 +232,12 @@ function PastView({
           <ul className="space-y-1.5">
             {posts.map((p) => (
               <li key={p.id}>
-                <Link
-                  href={`/post/${p.id}`}
+                {/* 만료 카드는 상세(/post/[id])가 published만 서빙 → 404.
+                    과거 카드는 원문(인스타/블로그) source_url로 바로 연결. */}
+                <a
+                  href={p.source_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
                   className="flex items-center gap-3 rounded-xl border border-slate-100 bg-white px-3 py-2.5 transition hover:bg-slate-50"
                 >
                   <span
@@ -256,7 +259,11 @@ function PastView({
                       {p.title}
                     </p>
                   </div>
-                </Link>
+                  {/* 외부 원문으로 이동함을 알리는 표시 */}
+                  <span aria-hidden className="shrink-0 text-sm text-slate-300">
+                    ↗
+                  </span>
+                </a>
               </li>
             ))}
           </ul>
