@@ -9,7 +9,11 @@
 import { listPosts } from "@/modules/content/service";
 import type { SortMode } from "@/modules/content/service";
 import { DiscoveryView } from "@/modules/discovery/ui/DiscoveryView";
-import { getUserChildrenBirths } from "@/modules/personalization/service-server";
+import {
+  getUserChildrenBirths,
+  getUserStatusMap,
+} from "@/modules/personalization/service-server";
+import { getCurrentUser } from "@/modules/user/service";
 import { getStagesForChildren } from "@/shared/utils/stages";
 import { calcDDay, kstTodayStartIso } from "@/shared/utils/dday";
 import type { StageCategory } from "@/shared/types/post";
@@ -39,7 +43,12 @@ export default async function HomePage({ searchParams }: PageProps) {
   const q = (sp.q ?? "").trim();
 
   // 자녀 시기 계산 (로그인 + 자녀 등록 사용자만 non-empty)
-  const childrenBirths = await getUserChildrenBirths();
+  // + 사용자 체크 상태(관심/신청) — 메인 그리드 정렬·표시용 (비로그인이면 {})
+  const [childrenBirths, user, statusMap] = await Promise.all([
+    getUserChildrenBirths(),
+    getCurrentUser(),
+    getUserStatusMap(),
+  ]);
   const hasChildren = childrenBirths.length > 0;
   const myChildStages = hasChildren ? getStagesForChildren(childrenBirths) : [];
 
@@ -82,6 +91,8 @@ export default async function HomePage({ searchParams }: PageProps) {
       myChildStages={myChildStages}
       hasChildren={hasChildren}
       scan={scan}
+      loggedIn={Boolean(user)}
+      initialStatusMap={statusMap}
     />
   );
 }

@@ -6,7 +6,7 @@
 // 시기·유형·주제·정렬은 여기서 메모리 필터 → 클릭 시 서버 왕복 0회 (즉시 반응).
 // ============================================
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { Post, StageCategory } from "@/shared/types/post";
 import type { SortMode } from "@/modules/content/service";
 import { filterPosts, sortPosts } from "@/modules/discovery/service";
@@ -14,6 +14,11 @@ import { FilterBar } from "./FilterBar";
 import { OnboardingHint } from "./OnboardingHint";
 import { PostCard } from "@/modules/content/ui/PostCard";
 import { AdSlot } from "@/modules/advertising/ui/AdSlot";
+import {
+  listUserPostStatuses,
+  subscribe,
+  type UserPostStatusValue,
+} from "@/modules/personalization/service";
 
 /** "오늘의 스캔" 배너 요약 (서버에서 계산해 내려줌) */
 export interface ScanSummary {
@@ -32,6 +37,10 @@ interface Props {
   myChildStages: StageCategory[];
   hasChildren: boolean;
   scan: ScanSummary;
+  /** 로그인 사용자면 true (상태 소스: 서버 DB vs localStorage 결정) */
+  loggedIn?: boolean;
+  /** 로그인 사용자의 서버 체크 상태 맵 (비로그인은 클라이언트에서 localStorage로 채움) */
+  initialStatusMap?: Record<string, UserPostStatusValue>;
 }
 
 export function DiscoveryView({
@@ -44,11 +53,31 @@ export function DiscoveryView({
   myChildStages,
   hasChildren,
   scan,
+  loggedIn,
+  initialStatusMap,
 }: Props) {
   const [stage, setStage] = useState(initialStage);
   const [type, setType] = useState(initialType);
   const [topic, setTopic] = useState(initialTopic);
   const [sort, setSort] = useState<SortMode>(initialSort);
+
+  // 사용자 체크 상태 (관심/신청) — 로그인: 서버 statusMap, 비로그인: localStorage
+  const [statusMap, setStatusMap] = useState<
+    Record<string, UserPostStatusValue>
+  >(initialStatusMap ?? {});
+  const [statusHydrated, setStatusHydrated] = useState(Boolean(loggedIn));
+
+  useEffect(() => {
+    if (loggedIn) {
+      setStatusHydrated(true);
+      return;
+    }
+    // 비로그인 — localStorage에서 읽고 변경 구독 (StatusButtons 토글 즉시 반영)
+    setStatusMap(listUserPostStatuses());
+    setStatusHydrated(true);
+    const unsub = subscribe(() => setStatusMap(listUserPostStatuses()));
+    return unsub;
+  }, [loggedIn]);
 
   const shown = useMemo(
     () =>
@@ -58,6 +87,18 @@ export function DiscoveryView({
       ),
     [posts, stage, type, topic, sort, myChildStages]
   );
+
+  // "신청함" 표시한 카드는 그리드 맨 뒤로 (기존 정렬은 유지, applied만 후순위로 분리).
+  // 하이드레이션 전에는 원본 순서 유지 → 서버/클라 첫 렌더 일치(깜빡임·mismatch 방지).
+  const ordered = useMemo(() => {
+    if (!statusHydrated) return shown;
+    const rest: Post[] = [];
+    const applied: Post[] = [];
+    for (const p of shown) {
+      (statusMap[p.id] === "applied" ? applied : rest).push(p);
+    }
+    return rest.concat(applied);
+  }, [shown, statusMap, statusHydrated]);
 
   const filterActive = stage !== "all" || type !== "all" || topic !== "all";
 
@@ -116,8 +157,12 @@ export function DiscoveryView({
         </p>
       ) : (
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-          {shown.map((post) => (
-            <PostCard key={post.id} post={post} />
+          {ordered.map((post) => (
+            <PostCard
+              key={post.id}
+              post={post}
+              status={statusHydrated ? statusMap[post.id] ?? null : null}
+            />
           ))}
         </div>
       )}

@@ -12,11 +12,13 @@ import { calcDDay } from "@/shared/utils/dday";
 
 interface Props {
   post: Post;
+  /** 사용자 체크 상태 — 메인 그리드에서 신청/관심 구분 표시용 (옵션) */
+  status?: "applied" | "interested" | null;
 }
 
 const NEW_THRESHOLD_MS = 3 * 24 * 60 * 60 * 1000;
 
-export function PostCard({ post }: Props) {
+export function PostCard({ post, status }: Props) {
   const dday = calcDDay(post.deadline);
   const isReview = post.kind === "review";
   const isNew =
@@ -25,7 +27,11 @@ export function PostCard({ post }: Props) {
   return (
     <Link
       href={`/post/${post.id}`}
-      className="group flex flex-col overflow-hidden rounded-2xl bg-white shadow-[0_2px_12px_rgba(15,23,42,0.06)] transition duration-200 hover:-translate-y-0.5 hover:shadow-[0_8px_24px_rgba(15,23,42,0.10)]"
+      className={`group flex flex-col overflow-hidden rounded-2xl bg-white shadow-[0_2px_12px_rgba(15,23,42,0.06)] transition duration-200 hover:-translate-y-0.5 hover:shadow-[0_8px_24px_rgba(15,23,42,0.10)] ${
+        status === "applied"
+          ? "opacity-65 hover:opacity-100"
+          : ""
+      }`}
     >
       {/* 이미지 영역 — 1:1 프레임 + 블러 백드롭으로 잘림 방지
           포트레이트(4:5)·정사각(1:1)·랜드스케이프 모두 잘리지 않고 표시.
@@ -91,6 +97,20 @@ export function PostCard({ post }: Props) {
           {isReview && (
             <span className="absolute right-3 top-3 rounded-full bg-amber-400 px-2.5 py-1 text-[11px] font-extrabold tracking-tight text-amber-900 shadow-sm">
               후기
+            </span>
+          )}
+
+          {/* 체크 상태 배지 (우측 하단) — 신청함은 강조(빨강), 관심은 보조(노랑).
+              신청함 카드는 카드 전체가 반투명(opacity) 처리되어 "완료" 느낌. */}
+          {status && (
+            <span
+              className={`absolute bottom-2.5 right-2.5 rounded-full px-2.5 py-1 text-[11px] font-extrabold tracking-tight shadow-sm ${
+                status === "applied"
+                  ? "bg-rose-500 text-white"
+                  : "bg-amber-400 text-amber-900"
+              }`}
+            >
+              {status === "applied" ? "✓ 신청함" : "★ 관심"}
             </span>
           )}
         </div>
