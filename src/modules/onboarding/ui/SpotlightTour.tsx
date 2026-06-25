@@ -61,7 +61,15 @@ export function SpotlightTour({ steps, onFinish }: Props) {
     setIndex((i) => Math.max(0, i - 1));
   }
 
-  const cardStyle = computeCardStyle(rect, step.placement);
+  // 코치카드: 항상 가로 가운데 + 폭 제한(PC에서 가로로 길어지지 않게). 모바일은
+  // 화면폭-32px, 데스크탑은 max-w-sm로 캡. 세로 위치만 계산.
+  const centered = !rect;
+  const cardWrapperClass = centered
+    ? "pb-safe absolute left-1/2 top-1/2 w-[calc(100%-2rem)] max-w-sm -translate-x-1/2 -translate-y-1/2"
+    : "pb-safe absolute left-1/2 w-[calc(100%-2rem)] max-w-sm -translate-x-1/2";
+  const cardWrapperStyle = rect
+    ? computeVertical(rect, step.placement ?? "below")
+    : undefined;
 
   return createPortal(
     <div
@@ -113,7 +121,7 @@ export function SpotlightTour({ steps, onFinish }: Props) {
       )}
 
       {/* 코치카드 */}
-      <div className="pb-safe absolute" style={cardStyle}>
+      <div className={cardWrapperClass} style={cardWrapperStyle}>
         <CoachCard
           step={step}
           index={index}
@@ -128,14 +136,11 @@ export function SpotlightTour({ steps, onFinish }: Props) {
   );
 }
 
-/** 대상 위/아래 중 공간 있는 쪽에 카드 배치. 대상 없으면 가운데. */
-function computeCardStyle(
-  rect: TargetRect | null,
+/** 대상 위/아래 중 공간 있는 쪽에 카드의 세로 위치(top|bottom)를 정한다. */
+function computeVertical(
+  rect: TargetRect,
   placement: "above" | "below"
 ): CSSProperties {
-  if (!rect) {
-    return { left: 16, right: 16, top: Math.round(window.innerHeight * 0.4) };
-  }
   const bottomRoom = window.innerHeight - (rect.top + rect.height);
   const topRoom = rect.top;
 
@@ -144,11 +149,7 @@ function computeCardStyle(
   if (!below && topRoom < CARD_EST && bottomRoom >= CARD_EST) below = true;
 
   if (below) {
-    return { left: 16, right: 16, top: Math.round(rect.top + rect.height + PAD + 6) };
+    return { top: Math.round(rect.top + rect.height + PAD + 6) };
   }
-  return {
-    left: 16,
-    right: 16,
-    bottom: Math.round(window.innerHeight - rect.top + PAD + 6),
-  };
+  return { bottom: Math.round(window.innerHeight - rect.top + PAD + 6) };
 }

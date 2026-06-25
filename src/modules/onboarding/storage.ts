@@ -36,3 +36,13 @@ export function markTutorialSeen(): void {
     // 무시
   }
 }
+
+/** "사용법 다시보기" — 본 기록 삭제(메인에서 다시 자동 노출되게) */
+export function clearTutorialSeen(): void {
+  if (!isBrowser()) return;
+  try {
+    window.localStorage.removeItem(SEEN_KEY);
+  } catch {
+    // 무시
+  }
+}

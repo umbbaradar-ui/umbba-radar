@@ -15,6 +15,7 @@ import { SpotlightTour } from "./SpotlightTour";
 /** 스텝 앵커 중 실제로 그려진(크기>0) 게 하나라도 있으면 콘텐츠 준비 완료로 본다. */
 function anyAnchorVisible(): boolean {
   for (const step of TUTORIAL_STEPS) {
+    if (!step.selector) continue;
     const matches = document.querySelectorAll(step.selector);
     for (const node of matches) {
       const r = node.getBoundingClientRect();

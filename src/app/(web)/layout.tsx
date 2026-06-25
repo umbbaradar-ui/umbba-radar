@@ -59,6 +59,7 @@ export default async function WebLayout({
             </Link>
             <Link
               href="/my"
+              data-tutorial="tab-my"
               className="rounded-full px-3 py-1.5 font-medium text-slate-600 transition hover:bg-amber-100/60 hover:text-slate-900"
             >
               내 레이더

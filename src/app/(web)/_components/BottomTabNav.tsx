@@ -19,6 +19,7 @@ import { usePathname } from "next/navigation";
 import type { SimpleUser } from "@/modules/user/service";
 import { signOutAction } from "@/modules/user/actions";
 import { InstallSheetEntry } from "@/modules/user/ui/InstallActions";
+import { clearTutorialSeen } from "@/modules/onboarding/storage";
 
 interface Props {
   user: SimpleUser | null;
@@ -121,6 +122,21 @@ export function BottomTabNav({ user }: Props) {
               label="알림 모아보기"
               onClick={() => setMoreOpen(false)}
             />
+            {/* 온보딩 튜토리얼 다시보기 — 본 기록 지우고 홈에서 재노출 */}
+            <button
+              type="button"
+              onClick={() => {
+                setMoreOpen(false);
+                clearTutorialSeen();
+                window.location.href = "/";
+              }}
+              className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm text-slate-700 hover:bg-slate-50"
+            >
+              <span aria-hidden="true" className="text-base">
+                🐻
+              </span>
+              <span>사용법 다시보기</span>
+            </button>
             {user && (
               <SheetLink
                 href="/me"
