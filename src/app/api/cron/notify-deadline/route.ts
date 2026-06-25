@@ -44,8 +44,8 @@ export async function GET(request: Request) {
     return NextResponse.json({ ok: true, watchdog: w });
   }
 
-  // B루틴 독립 워치독 — 매 cron(09:00 KST) 실행. 인스타 호출 0, best-effort
-  // (어젯밤 큐 처리 0 + 대기 backlog 있으면 = B루틴 미실행 → 🔴 알림).
+  // 새벽 파이프라인 워치독 — 매 cron(09:00 KST) 실행. 외부 호출 0, best-effort.
+  // posts 기준 수집(24h)·미분류 backlog·검수 대기 요약을 텔레그램으로 보고.
   await runHealthWatchdog().catch((e) =>
     console.error("[cron/notify-deadline] watchdog failed:", e)
   );

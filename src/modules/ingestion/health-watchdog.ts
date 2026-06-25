@@ -1,93 +1,98 @@
 // ============================================
-// B루틴 독립 워치독 — 서버에서 "어젯밤 B루틴이 실제로 돌았나" 점검.
+// 새벽 파이프라인 워치독 — 서버에서 "어젯밤 수집·분류가 제대로 돌았나" 점검 후 텔레그램 보고.
 //
-// run-b.ps1(로컬) 바깥, 서버에서 돈다. 그래서 로컬 PC가 꺼졌거나 작업이
-// 통째로 죽어 헬스리포트조차 못 보낸 "조용한 실패"까지 잡아낸다.
-// ⚠️ 인스타 API 호출 0 — Supabase DB만 조회한다 (밴/부하 무관).
+// 현재 파이프라인(옵션 C): BrightData 수집 → posts(status=draft) → 헤드리스 분류 → pending.
+// ⚠️ 인스타/외부 API 호출 0 — Supabase posts 테이블만 조회한다.
 //
-// 트리거: notify-deadline cron(매일 09:00 KST)이 호출. B루틴(03:30, 최대 5h)이
-// 끝난 직후라 타이밍이 맞다.
+// 트리거: notify-deadline cron(매일 09:00 KST)이 호출. 3시 수집·분류가 끝난 직후라 타이밍이 맞다.
+// 매 실행마다 현재 상태 요약을 보낸다 (정상/주의/경보를 한눈에).
 // ============================================
 
 import { supabaseServer } from "@/shared/db/supabase-server";
 
 export interface WatchdogResult {
-  ran: boolean;
-  processedRecently: number;
-  todo: number;
-  cardsRecently: number;
-  problem: boolean;
+  collected24: number; // 최근 24h BrightData 수집 카드 수
+  draftBacklog: number; // 미분류(분류 대기) 누적
+  pending: number; // 분류완료, 검수 대기
+  problem: boolean; // 수집 실패 or 분류 밀림
   sent: boolean;
 }
 
-// 09:00 점검 기준 최근 8h = ~01:00부터 → 03:30 B런은 포함, 전날 런은 제외.
-const WINDOW_HOURS = 8;
+// BrightData 수집은 새벽 1회 → 최근 24h 안에 신규 수집이 있어야 정상.
+const COLLECT_WINDOW_HOURS = 24;
+// 미분류가 이 이상 쌓여 있으면 "분류 밀림"(분류 미실행/한도 초과) 주의.
+const BACKLOG_WARN = 100;
 
 export async function runHealthWatchdog(
   opts: { force?: boolean } = {}
 ): Promise<WatchdogResult> {
-  const sinceIso = new Date(Date.now() - WINDOW_HOURS * 3600 * 1000).toISOString();
+  const since24h = new Date(
+    Date.now() - COLLECT_WINDOW_HOURS * 3600 * 1000
+  ).toISOString();
 
-  const [procRes, todoRes, cardRes] = await Promise.all([
-    // B루틴이 done/duplicate/failed로 마킹하며 남기는 processed_at = "처리 활동"
-    supabaseServer
-      .from("ingest_queue")
-      .select("id", { count: "exact", head: true })
-      .gte("processed_at", sinceIso),
-    supabaseServer
-      .from("ingest_queue")
-      .select("id", { count: "exact", head: true })
-      .eq("status", "todo"),
+  const [collectedRes, draftRes, pendingRes] = await Promise.all([
+    // 최근 24h 자동수집(ingestion) 카드 = BrightData 수집이 정상으로 큐를 긁었다는 신호
     supabaseServer
       .from("posts")
       .select("id", { count: "exact", head: true })
-      .gte("created_at", sinceIso),
+      .eq("source_type", "ingestion")
+      .gte("created_at", since24h),
+    // 미분류(draft) = 분류 대기/밀림
+    supabaseServer
+      .from("posts")
+      .select("id", { count: "exact", head: true })
+      .eq("status", "draft"),
+    // 분류완료, 검수 대기
+    supabaseServer
+      .from("posts")
+      .select("id", { count: "exact", head: true })
+      .eq("status", "pending"),
   ]);
 
-  const processedRecently = procRes.count ?? 0;
-  const todo = todoRes.count ?? 0;
-  const cardsRecently = cardRes.count ?? 0;
-  const ran = processedRecently > 0;
-  // 문제 = 큐는 쌓였는데 밤새 한 건도 처리 안 됨 (B루틴 미실행/조기사망 = 조용한 실패)
-  const problem = !ran && todo > 0;
+  const collected24 = collectedRes.count ?? 0;
+  const draftBacklog = draftRes.count ?? 0;
+  const pending = pendingRes.count ?? 0;
 
-  // 쿨다운: 인스타 계정 플래그 회복 대기 등 계획된 중단 중엔 cron 경보(🔴) 억제.
-  // 이 날짜(KST)가 지나면 자동으로 다시 경보 재개(fail-safe — 끄고 잊어버려도 살아남). 재개 시 과거 날짜로.
-  const COOLDOWN_UNTIL = "2026-06-06"; // 재개(06-06): 쿨다운 해제 → 워치독 정상 감시. 다시 멈추려면 미래 날짜로.
-  const inCooldown =
-    new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 10) < COOLDOWN_UNTIL;
+  // 문제 = 수집 0건(BD/3시 작업 죽음) 또는 분류가 크게 밀림(분류 미실행/한도 초과).
+  const collectFail = collected24 === 0;
+  const backlogStuck = draftBacklog >= BACKLOG_WARN;
+  const problem = collectFail || backlogStuck;
 
-  let message: string | null = null;
-  if (opts.force) {
-    // 테스트 모드: 실제 경보(🔴) 대신 현재 판정 상태만 보여준다 (오경보 방지).
-    // 정시(09시) cron이 아닌 시각에 호출하면 8h 창 밖이라 '미실행 신호'가 뜰 수 있음 — 정상.
-    message = [
-      `🧪 <b>워치독 테스트</b>`,
-      ``,
-      inCooldown ? `⏸️ 쿨다운 중 (~${COOLDOWN_UNTIL}): cron 경보 억제됨` : null,
-      problem
-        ? `🟡 지금 기준 '미실행' 신호 (최근 ${WINDOW_HOURS}h 처리 ${processedRecently} / 대기 ${todo}) — 정시(09시)가 아니면 정상일 수 있음`
-        : `🟢 정상 — 최근 ${WINDOW_HOURS}h 처리 ${processedRecently}건, 카드 +${cardsRecently}건`,
-      ``,
-      `이 메시지가 보이면 알림 경로 정상입니다.`,
-    ]
-      .filter(Boolean)
-      .join("\n");
-  } else if (problem && !inCooldown) {
-    message = [
-      `🔴 <b>엄빠레이더 경보 — B루틴 미실행</b>`,
-      ``,
-      `어젯밤 자동 분류가 한 건도 처리되지 않았어요.`,
-      `대기 큐 <b>${todo}건</b>이 그대로 쌓여 있습니다.`,
-      ``,
-      `점검: PC 켜짐·로그인·전원 / 작업 스케줄러 'B루틴' 마지막 실행 결과(0x41306=시간초과)`,
-    ].join("\n");
-  }
+  const todayKst = new Date(Date.now() + 9 * 3600 * 1000)
+    .toISOString()
+    .slice(0, 10);
 
-  let sent = false;
-  if (message) sent = await sendTelegram(message);
+  const lines: string[] = [
+    `🌅 <b>엄빠레이더 새벽 리포트</b> (${todayKst})`,
+  ];
+  if (opts.force) lines.push(`🧪 (테스트 발송 — 알림 경로 점검)`);
+  lines.push(``);
 
-  return { ran, processedRecently, todo, cardsRecently, problem, sent };
+  // 1) 수집 — BrightData가 정상으로 큐를 긁었는지
+  lines.push(
+    collectFail
+      ? `🔴 <b>수집: 0건</b> — BrightData 스캔/3시 작업 점검 필요`
+      : `🟢 수집: 정상 (최근 24h +${collected24}건)`
+  );
+
+  // 2) 분류 — 밀린(비정상) 작업이 있는지 / 정상 처리됐는지
+  lines.push(
+    backlogStuck
+      ? `🟡 <b>분류: 밀림 ${draftBacklog}건</b> — 분류 미실행/한도 점검 필요`
+      : draftBacklog === 0
+        ? `🟢 분류: 완료 (미분류 0건)`
+        : `🟢 분류: 정상 (미분류 ${draftBacklog}건 · 신규 유입분)`
+  );
+
+  // 3) 검수 대기
+  lines.push(``);
+  lines.push(pending > 0 ? `✅ 검수 대기 ${pending}건` : `✅ 검수 대기 없음`);
+  lines.push(``);
+  lines.push(`👉 https://umbba-radar.com/admin/queue`);
+
+  const sent = await sendTelegram(lines.join("\n"));
+
+  return { collected24, draftBacklog, pending, problem, sent };
 }
 
 async function sendTelegram(text: string): Promise<boolean> {
