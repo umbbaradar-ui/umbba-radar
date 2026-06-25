@@ -70,43 +70,101 @@ def find_claude() -> str | None:
     return shutil.which("claude")
 
 
+# 분류 백엔드: UMBBA_CLASSIFIER=codex 면 Codex(ChatGPT 구독, Claude와 쿼터 분리), 그 외 claude(기본)
+CLASSIFIER = os.getenv("UMBBA_CLASSIFIER", "claude").strip().lower()
+
+
+def find_classifier() -> tuple[str | None, str]:
+    """(실행파일 경로, 백엔드명) 반환. codex 면 UMBBA_CODEX → which codex."""
+    if CLASSIFIER == "codex":
+        env = os.getenv("UMBBA_CODEX")
+        if env and Path(env).exists():
+            return env, "codex"
+        return shutil.which("codex"), "codex"
+    return find_claude(), "claude"
+
+
 # ============================================
 # 4) 헤드리스 Claude 한 배치 분류
 # ============================================
-def classify_batch(claude_bin: str, items: list[dict], tkst: str, workdir: Path) -> tuple[list[dict] | None, str | None]:
+def classify_batch(bin_path: str, items: list[dict], tkst: str, workdir: Path) -> tuple[list[dict] | None, str | None]:
     workdir.mkdir(parents=True, exist_ok=True)
     shutil.copy(RULES, workdir / "RULES.md")
     (workdir / "input.json").write_text(
         json.dumps({"today_kst": tkst, "count": len(items), "items": items}, ensure_ascii=False),
         encoding="utf-8",
     )
+    if CLASSIFIER == "codex":
+        # codex exec: 프롬프트를 인자로, workdir 에 쓰기 허용(workspace-write)
+        cmd = [bin_path, "exec", "-C", str(workdir), "-s", "workspace-write",
+               "--skip-git-repo-check", CLASSIFY_PROMPT]
+        stdin_text, timeout_s = None, 300
+    else:
+        cmd = [bin_path, "-p", "--permission-mode", "bypassPermissions", "--model", "sonnet"]
+        stdin_text, timeout_s = CLASSIFY_PROMPT, 240
     try:
         proc = subprocess.run(
-            [claude_bin, "-p", "--permission-mode", "bypassPermissions", "--model", "sonnet"],
-            cwd=str(workdir), input=CLASSIFY_PROMPT,
-            capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=240,
+            cmd, cwd=str(workdir), input=stdin_text,
+            capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=timeout_s,
         )
     except subprocess.TimeoutExpired:
-        return None, "claude timeout(240s) — 막힌 배치, 건너뜀(다음 run 재시도)"
+        return None, f"{CLASSIFIER} timeout({timeout_s}s) — 막힌 배치, 건너뜀(다음 run 재시도)"
     except Exception as e:
-        return None, f"claude 실행 오류: {e}"
+        return None, f"{CLASSIFIER} 실행 오류: {e}"
     res = workdir / "results.json"
     if not res.exists():
         err = (proc.stderr or proc.stdout or "")[:200]
         return None, f"results.json 없음 (exit {proc.returncode}): {err}"
+    raw = res.read_text(encoding="utf-8")
     try:
-        data = json.loads(res.read_text(encoding="utf-8"))
+        return (json.loads(raw).get("items") or []), None
     except Exception as e:
+        # 한 항목의 깨진 JSON(미escape 따옴표/개행 등)으로 전체가 안 풀릴 때:
+        # 성한 항목만 건져내고 깨진 건만 버린다(다음 run 재시도).
+        salvaged = _salvage_result_items(raw)
+        if salvaged:
+            return salvaged, None
         return None, f"results 파싱 실패: {e}"
-    return (data.get("items") or []), None
+
+
+def _salvage_result_items(text: str) -> list[dict]:
+    """results.json 이 통째로 깨졌을 때 items 배열에서 파싱되는 객체만 골라낸다."""
+    dec = json.JSONDecoder()
+    items: list[dict] = []
+    anchor = text.find('"items"')
+    start = text.find("[", anchor if anchor != -1 else 0)
+    if start == -1:
+        return items
+    i, n = start + 1, len(text)
+    while i < n:
+        while i < n and text[i] in " \t\r\n,":
+            i += 1
+        if i >= n or text[i] == "]":
+            break
+        if text[i] != "{":
+            nxt = text.find("{", i)
+            if nxt == -1:
+                break
+            i = nxt
+        try:
+            obj, end = dec.raw_decode(text, i)
+            if isinstance(obj, dict):
+                items.append(obj)
+            i = end
+        except json.JSONDecodeError:
+            nxt = text.find("{", i + 1)
+            if nxt == -1:
+                break
+            i = nxt
+    return items
 
 
 def classify_all(items: list[dict], tkst: str, batch: int) -> list[dict]:
-    claude_bin = find_claude()
-    if not claude_bin:
-        print("❌ claude 실행파일 못 찾음 — Claude Code 설치 + PATH 또는 UMBBA_CLAUDE 환경변수")
+    bin_path, backend = find_classifier()
+    if not bin_path:
+        print(f"❌ {backend} 실행파일 못 찾음 — 설치 + PATH 또는 UMBBA_{backend.upper()} 환경변수")
         return []
-    print(f"   claude: {claude_bin}")
+    print(f"   {backend}: {bin_path}")
     out: list[dict] = []
     with tempfile.TemporaryDirectory(prefix="umbba-bdlocal-") as tmp:
         nb = (len(items) + batch - 1) // batch

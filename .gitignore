@@ -56,5 +56,8 @@ deploy.log
 /tools/umbba-cli/*cookies*.txt
 /tools/umbba-cli/scan-log.txt
 /tools/umbba-cli/b-log.txt
+/tools/umbba-cli/bd-run-log.txt
+/tools/umbba-cli/*.err
+/tools/umbba-cli/*.log.*
 /tools/umbba-cli/exports/
 /tools/umbba-cli/gallery-dl/

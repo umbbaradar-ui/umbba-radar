@@ -27,7 +27,7 @@ if hasattr(sys.stdout, "reconfigure"):
 
 import requests
 import ingest
-from bd_local import classify_batch, find_claude, today_kst  # claude 호출부 재사용
+from bd_local import classify_batch, find_classifier, today_kst  # 분류 호출부 재사용(claude/codex)
 
 
 def fetch_drafts(limit: int) -> list[dict]:
@@ -90,10 +90,10 @@ def main() -> int:
               "caption_preview": d.get("body")} for d in drafts if d.get("id")]
     print(f"📋 미분류(draft) {len(items)}건 분류 (배치 {args.batch}, 배치마다 즉시 저장)")
 
-    claude_bin = find_claude()
+    claude_bin, backend = find_classifier()
     if not claude_bin:
-        print("❌ claude 실행파일 못 찾음 — Claude Code 설치 + PATH 또는 UMBBA_CLAUDE 환경변수"); return 1
-    print(f"   claude: {claude_bin}")
+        print(f"❌ {backend} 실행파일 못 찾음 — 설치 + PATH 또는 UMBBA_{backend.upper()} 환경변수"); return 1
+    print(f"   {backend}: {claude_bin}")
 
     tkst = today_kst()
     tot = {"updated": 0, "deleted": 0, "failed": 0}
