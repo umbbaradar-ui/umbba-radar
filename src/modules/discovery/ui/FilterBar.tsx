@@ -92,7 +92,7 @@ export function FilterBar({
     <div className="space-y-3">
       {/* 검색바 */}
       <form onSubmit={handleSearchSubmit} className="flex gap-2">
-        <div className="relative flex-1">
+        <div data-tutorial="search" className="relative flex-1">
           <input
             type="search"
             value={searchInput}
@@ -143,7 +143,7 @@ export function FilterBar({
       </PillRow>
 
       {/* 시기 */}
-      <PillRow label="시기">
+      <PillRow label="시기" anchor="filter-pills">
         <Pill active={stage === "all"} onClick={() => update("stage", "all")}>
           전체
         </Pill>
@@ -195,9 +195,12 @@ export function FilterBar({
 
 function PillRow({
   label,
+  anchor,
   children,
 }: {
   label: string;
+  /** 온보딩 튜토리얼 앵커(data-tutorial) — 없으면 미설정 */
+  anchor?: string;
   children: React.ReactNode;
 }) {
   return (
@@ -205,7 +208,10 @@ function PillRow({
       <span className="shrink-0 text-[11px] font-bold uppercase tracking-wider text-slate-400">
         {label}
       </span>
-      <div className="flex flex-1 gap-1.5 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <div
+        data-tutorial={anchor}
+        className="flex flex-1 gap-1.5 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+      >
         {children}
       </div>
     </div>

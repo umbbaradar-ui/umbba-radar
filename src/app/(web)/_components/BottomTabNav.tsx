@@ -19,6 +19,7 @@ import { usePathname } from "next/navigation";
 import type { SimpleUser } from "@/modules/user/service";
 import { signOutAction } from "@/modules/user/actions";
 import { InstallSheetEntry } from "@/modules/user/ui/InstallActions";
+import { clearTutorialSeen } from "@/modules/onboarding/storage";
 
 interface Props {
   user: SimpleUser | null;
@@ -39,7 +40,7 @@ export function BottomTabNav({ user }: Props) {
           <Tab href="/" label="홈" active={isHome}>
             <HomeIcon filled={isHome} />
           </Tab>
-          <Tab href="/my" label="내 레이더" active={isMy}>
+          <Tab href="/my" label="내 레이더" active={isMy} dataTutorial="tab-my">
             <BookmarkIcon filled={isMy} />
           </Tab>
           <button
@@ -121,6 +122,21 @@ export function BottomTabNav({ user }: Props) {
               label="알림 모아보기"
               onClick={() => setMoreOpen(false)}
             />
+            {/* 온보딩 튜토리얼 다시보기 — 본 기록 지우고 홈에서 재노출 */}
+            <button
+              type="button"
+              onClick={() => {
+                setMoreOpen(false);
+                clearTutorialSeen();
+                window.location.href = "/";
+              }}
+              className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm text-slate-700 hover:bg-slate-50"
+            >
+              <span aria-hidden="true" className="text-base">
+                🐻
+              </span>
+              <span>사용법 다시보기</span>
+            </button>
             {user && (
               <SheetLink
                 href="/me"
@@ -188,16 +204,20 @@ function Tab({
   href,
   label,
   active,
+  dataTutorial,
   children,
 }: {
   href: string;
   label: string;
   active: boolean;
+  /** 온보딩 튜토리얼 앵커(data-tutorial) — 없으면 미설정 */
+  dataTutorial?: string;
   children: React.ReactNode;
 }) {
   return (
     <Link
       href={href}
+      data-tutorial={dataTutorial}
       className={`flex flex-1 flex-col items-center justify-center gap-0.5 py-2.5 text-[10px] font-medium transition active:scale-95 ${
         active ? "text-rose-600" : "text-slate-400"
       }`}
