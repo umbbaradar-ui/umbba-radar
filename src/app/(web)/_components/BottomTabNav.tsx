@@ -20,6 +20,7 @@ import type { SimpleUser } from "@/modules/user/service";
 import { signOutAction } from "@/modules/user/actions";
 import { InstallSheetEntry } from "@/modules/user/ui/InstallActions";
 import { clearTutorialSeen } from "@/modules/onboarding/storage";
+import { PushSettingsEntry } from "@/modules/notification/ui/PushSettings";
 
 interface Props {
   user: SimpleUser | null;
@@ -122,6 +123,8 @@ export function BottomTabNav({ user }: Props) {
               label="알림 모아보기"
               onClick={() => setMoreOpen(false)}
             />
+            {/* 푸시 알림 설정 — 전체/항목 허용 모달 (PUSH) */}
+            <PushSettingsEntry onOpen={() => setMoreOpen(false)} />
             {/* 온보딩 튜토리얼 다시보기 — 본 기록 지우고 홈에서 재노출 */}
             <button
               type="button"
@@ -145,13 +148,6 @@ export function BottomTabNav({ user }: Props) {
                 onClick={() => setMoreOpen(false)}
               />
             )}
-            {/* 혜택 제보 — 메인 동선에서 강등(2026-06-02), 여기로 이동 */}
-            <SheetLink
-              href="/submit"
-              icon="💡"
-              label="혜택 제보하기"
-              onClick={() => setMoreOpen(false)}
-            />
             {/* 앱 설치 진입점 — 푸시·자동 배너와 별개 보조 경로 */}
             <InstallSheetEntry onClick={() => setMoreOpen(false)} />
             <SheetLink
