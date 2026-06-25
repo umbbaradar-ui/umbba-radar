@@ -193,7 +193,10 @@ function TodayScanBanner({
     : "매일 새 혜택을 자동으로 모으고 있어요";
 
   return (
-    <section className="mb-5 rounded-2xl border border-rose-100 bg-gradient-to-br from-rose-50 to-pink-50 px-4 py-3">
+    <section
+      data-tutorial="scan-banner"
+      className="mb-5 rounded-2xl border border-rose-100 bg-gradient-to-br from-rose-50 to-pink-50 px-4 py-3"
+    >
       <div className="flex items-center gap-3">
         <span aria-hidden className="shrink-0 text-2xl leading-none">
           🐻

@@ -27,6 +27,7 @@ export function PostCard({ post, status }: Props) {
   return (
     <Link
       href={`/post/${post.id}`}
+      data-tutorial="post-card"
       className={`group flex flex-col overflow-hidden rounded-2xl bg-white shadow-[0_2px_12px_rgba(15,23,42,0.06)] transition duration-200 hover:-translate-y-0.5 hover:shadow-[0_8px_24px_rgba(15,23,42,0.10)] ${
         status === "applied"
           ? "opacity-65 hover:opacity-100"

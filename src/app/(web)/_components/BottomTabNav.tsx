@@ -39,7 +39,7 @@ export function BottomTabNav({ user }: Props) {
           <Tab href="/" label="홈" active={isHome}>
             <HomeIcon filled={isHome} />
           </Tab>
-          <Tab href="/my" label="내 레이더" active={isMy}>
+          <Tab href="/my" label="내 레이더" active={isMy} dataTutorial="tab-my">
             <BookmarkIcon filled={isMy} />
           </Tab>
           <button
@@ -188,16 +188,20 @@ function Tab({
   href,
   label,
   active,
+  dataTutorial,
   children,
 }: {
   href: string;
   label: string;
   active: boolean;
+  /** 온보딩 튜토리얼 앵커(data-tutorial) — 없으면 미설정 */
+  dataTutorial?: string;
   children: React.ReactNode;
 }) {
   return (
     <Link
       href={href}
+      data-tutorial={dataTutorial}
       className={`flex flex-1 flex-col items-center justify-center gap-0.5 py-2.5 text-[10px] font-medium transition active:scale-95 ${
         active ? "text-rose-600" : "text-slate-400"
       }`}

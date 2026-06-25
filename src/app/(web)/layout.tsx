@@ -12,6 +12,7 @@ import { ServiceWorkerRegister } from "./_components/ServiceWorkerRegister";
 import { InstallBanner } from "./_components/InstallBanner";
 import { InstallNavChip } from "@/modules/user/ui/InstallActions";
 import { MigrationOnLogin } from "@/modules/personalization/ui/MigrationOnLogin";
+import { TutorialGate } from "@/modules/onboarding/ui/TutorialGate";
 import { NotificationBell } from "./_components/NotificationBell";
 import { getNotifications } from "@/modules/personalization/service-server";
 
@@ -33,6 +34,7 @@ export default async function WebLayout({
       <ServiceWorkerRegister />
       <InstallBanner />
       {user && <MigrationOnLogin userId={user.id} />}
+      <TutorialGate />
 
       {/* 본문 wrapper — sticky footer 패턴 (이전엔 body가 flex였으나
           fixed 자식 호환성 위해 wrapper로 분리) */}
