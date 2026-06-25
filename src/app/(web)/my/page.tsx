@@ -8,6 +8,7 @@ import { MyRadarTabs } from "@/modules/personalization/ui/MyRadarTabs";
 import { getUserStatusMap } from "@/modules/personalization/service-server";
 import { getCurrentUser } from "@/modules/user/service";
 import { AdSlot } from "@/modules/advertising/ui/AdSlot";
+import { PushPromptCard } from "@/modules/notification/ui/PushSettings";
 
 // 로그인 사용자의 DB 데이터를 매 요청마다 fresh하게
 export const dynamic = "force-dynamic";
@@ -24,6 +25,9 @@ export default async function MyPage() {
     <>
       <div className="mx-auto max-w-6xl px-4 pt-6">
         <AdSlot id="my_top" />
+        {user && (
+          <PushPromptCard desc="관심·신청한 카드 마감을 놓치지 않게 알려드려요." />
+        )}
       </div>
       <MyRadarTabs
         activePosts={activePosts}

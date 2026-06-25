@@ -10,6 +10,7 @@ import { getUserChildrenBirths } from "@/modules/personalization/service-server"
 import { getCurrentUser } from "@/modules/user/service";
 import { NotificationsList } from "./_components/NotificationsList";
 import { NotificationsHeader } from "./_components/NotificationsHeader";
+import { PushPromptCard } from "@/modules/notification/ui/PushSettings";
 
 export const dynamic = "force-dynamic";
 
@@ -34,6 +35,9 @@ export default async function NotificationsPage() {
       <NotificationsHeader subtitle={subtitle} />
 
       <main className="mx-auto max-w-3xl px-4 py-5">
+        {user && (
+          <PushPromptCard desc="안 본 사이 새로 뜬 맞춤 혜택을 폰으로 알려드려요." />
+        )}
         {!user ? (
           <CTACard
             icon="🔔"

@@ -18,6 +18,7 @@ import { subscribePushAction } from "../actions";
 
 const VAPID_PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ?? "";
 const PREF_KEY = "umbba-radar:push-categories";
+const PROMO_DISMISS_KEY = "umbba-radar:push-promo-dismissed";
 
 const CATEGORIES = [
   { id: "deadline", label: "마감 임박", desc: "관심 카드 마감 1일 전" },
@@ -61,6 +62,83 @@ export function PushSettingsEntry({ onOpen }: { onOpen?: () => void }) {
         </span>
         <span>푸시 알림 설정</span>
       </button>
+      {open && <PushSettingsModal onClose={() => setOpen(false)} />}
+    </>
+  );
+}
+
+// ============================================
+// 유도 배너 — /notifications·/my 등에서 푸시 켜기 권유.
+// 이미 구독 중(on)·미지원·iOS미설치면 숨김. 세션 내 닫으면 다시 안 뜸.
+// ============================================
+export function PushPromptCard({ desc }: { desc?: string }) {
+  const [status, setStatus] = useState<Status>("loading");
+  const [open, setOpen] = useState(false);
+  const [dismissed, setDismissed] = useState(false);
+
+  useEffect(() => {
+    try {
+      if (sessionStorage.getItem(PROMO_DISMISS_KEY) === "1") {
+        setDismissed(true);
+        return;
+      }
+    } catch {
+      // 무시
+    }
+    detectStatus().then(setStatus);
+  }, []);
+
+  // 켜짐·미지원·iOS미설치·로딩 → 권유 의미 없음 → 숨김
+  if (
+    dismissed ||
+    status === "loading" ||
+    status === "on" ||
+    status === "unsupported" ||
+    status === "ios-not-installed"
+  ) {
+    return null;
+  }
+
+  function dismiss() {
+    try {
+      sessionStorage.setItem(PROMO_DISMISS_KEY, "1");
+    } catch {
+      // 무시
+    }
+    setDismissed(true);
+  }
+
+  return (
+    <>
+      <div className="mb-4 flex items-center gap-3 rounded-2xl border border-rose-100 bg-gradient-to-r from-rose-50 to-amber-50 px-4 py-3">
+        <span className="shrink-0 text-2xl" aria-hidden="true">
+          🔔
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-bold text-slate-900">푸시 알림 받기</p>
+          <p className="mt-0.5 text-xs leading-relaxed text-slate-500">
+            {desc ?? "새 맞춤·마감 임박 소식을 폰으로 받아보세요."}
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          className="shrink-0 rounded-full bg-rose-500 px-3.5 py-2 text-xs font-bold text-white transition hover:bg-rose-600"
+        >
+          켜기
+        </button>
+        <button
+          type="button"
+          onClick={dismiss}
+          aria-label="닫기"
+          className="shrink-0 rounded-full p-1 text-slate-400 transition hover:bg-white/60 hover:text-slate-600"
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+            <line x1="6" y1="6" x2="18" y2="18" />
+            <line x1="18" y1="6" x2="6" y2="18" />
+          </svg>
+        </button>
+      </div>
       {open && <PushSettingsModal onClose={() => setOpen(false)} />}
     </>
   );
