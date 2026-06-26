@@ -1,30 +1,29 @@
 "use client";
 
 // ============================================
-// 푸시 알림 설정 — 더보기 시트에서 진입하는 모달.
-// 전체 허용(추천) / 항목별 허용 분기. 클릭 시 브라우저 권한 요청 + (가능하면) 구독.
+// 푸시 알림 설정 — 더보기 시트/유도 배너에서 진입하는 모달.
+// 상단 "이 기기에서 알림 받기" 마스터 토글 + "받을 알림 종류" 종류별 토글.
+// 직관적 ON/OFF (토스 스타일 스위치).
 //
-// 현재: 푸시 발송 인프라(VAPID·발송 cron)가 순차 도입 중 → 구독이 실패해도
-//       권한·선호는 저장하고 "곧 시작" 안내. VAPID 켜지면 그대로 동작.
-// 우선은 "전체 허용"으로 유도(항목별은 접어둠).
+// 현재: 발송 인프라(VAPID·발송 cron) 순차 도입 중 → 구독이 실패해도 권한·선호는
+//       저장하고 "곧 시작" 안내. VAPID 켜지면 그대로 동작.
 //
-// ⚠️ 모달은 createPortal(body) — 시트 transform / 헤더 backdrop-blur의
-//    containing block 회피 (InstallActions 패턴 동일).
+// ⚠️ 모달은 createPortal(body) — 시트 transform/헤더 backdrop-blur 회피.
 // ============================================
 
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { subscribePushAction } from "../actions";
+import { subscribePushAction, unsubscribePushAction } from "../actions";
 
 const VAPID_PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ?? "";
 const PREF_KEY = "umbba-radar:push-categories";
 const PROMO_DISMISS_KEY = "umbba-radar:push-promo-dismissed";
 
 const CATEGORIES = [
-  { id: "deadline", label: "마감 임박", desc: "관심 카드 마감 1일 전" },
-  { id: "new", label: "새 협찬·체험단", desc: "새 혜택이 올라오면" },
-  { id: "my_child", label: "내 아이 맞춤", desc: "우리 아이 시기 혜택" },
-  { id: "tips", label: "후기·꿀팁", desc: "엄빠 꿀정보 모음" },
+  { id: "deadline", emoji: "⏰", label: "마감 임박", desc: "관심 카드 마감 1일 전 알려드려요" },
+  { id: "new", emoji: "🎁", label: "새 협찬·체험단", desc: "새 혜택이 올라오면 알려드려요" },
+  { id: "my_child", emoji: "💛", label: "내 아이 맞춤", desc: "우리 아이 시기 맞춤 혜택" },
+  { id: "tips", emoji: "💡", label: "후기·꿀팁", desc: "엄빠 꿀정보를 알려드려요" },
 ] as const;
 
 const ALL_IDS = CATEGORIES.map((c) => c.id);
@@ -34,8 +33,8 @@ type Status =
   | "unsupported"
   | "ios-not-installed"
   | "permission-denied"
-  | "ready"
-  | "on"
+  | "ready" // 지원됨 · 아직 꺼짐
+  | "on" // 구독 중
   | "working";
 
 // ============================================
@@ -45,7 +44,6 @@ export function PushSettingsEntry({ onOpen }: { onOpen?: () => void }) {
   const [open, setOpen] = useState(false);
 
   function handle() {
-    // 시트 닫힘 애니(300ms) 끝난 뒤 모달 (겹침 방지)
     onOpen?.();
     setTimeout(() => setOpen(true), 320);
   }
@@ -88,7 +86,6 @@ export function PushPromptCard({ desc }: { desc?: string }) {
     detectStatus().then(setStatus);
   }, []);
 
-  // 켜짐·미지원·iOS미설치·로딩 → 권유 의미 없음 → 숨김
   if (
     dismissed ||
     status === "loading" ||
@@ -145,13 +142,12 @@ export function PushPromptCard({ desc }: { desc?: string }) {
 }
 
 // ============================================
-// 설정 모달
+// 설정 모달 — 마스터 토글 + 종류별 토글
 // ============================================
 function PushSettingsModal({ onClose }: { onClose: () => void }) {
   const [mounted, setMounted] = useState(false);
   const [status, setStatus] = useState<Status>("loading");
   const [error, setError] = useState<string | null>(null);
-  const [byCategory, setByCategory] = useState(false);
   const [selected, setSelected] = useState<string[]>(ALL_IDS);
 
   useEffect(() => setMounted(true), []);
@@ -161,7 +157,7 @@ function PushSettingsModal({ onClose }: { onClose: () => void }) {
     detectStatus().then(setStatus);
   }, []);
 
-  async function allow(categories: string[]) {
+  async function enable(categories: string[]) {
     setError(null);
     setStatus("working");
     try {
@@ -170,7 +166,6 @@ function PushSettingsModal({ onClose }: { onClose: () => void }) {
         setStatus(permission === "denied" ? "permission-denied" : "ready");
         return;
       }
-      // 권한 OK → 선호 저장(즉시) + 구독 시도(실패해도 무시: VAPID/로그인 미비 가능)
       savePref(categories);
       try {
         if (VAPID_PUBLIC_KEY) {
@@ -189,8 +184,7 @@ function PushSettingsModal({ onClose }: { onClose: () => void }) {
           });
         }
       } catch {
-        // 구독 단계 실패(VAPID 미설정·미로그인 등) — 권한·선호는 이미 저장됨.
-        // 푸시 발송 시작 시 자동 연결되므로 사용자에겐 성공으로 안내.
+        // 구독 단계 실패(VAPID 미설정·미로그인) — 권한·선호는 이미 저장됨.
       }
       setStatus("on");
     } catch (e) {
@@ -199,13 +193,57 @@ function PushSettingsModal({ onClose }: { onClose: () => void }) {
     }
   }
 
+  async function disable() {
+    setError(null);
+    setStatus("working");
+    try {
+      if ("serviceWorker" in navigator) {
+        const reg = await navigator.serviceWorker.ready;
+        const sub = await reg.pushManager.getSubscription();
+        if (sub) {
+          try {
+            await unsubscribePushAction(sub.endpoint);
+          } catch {
+            // 서버 해지 실패 무시
+          }
+          await sub.unsubscribe();
+        }
+      }
+      setStatus("ready");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+      setStatus("on");
+    }
+  }
+
+  function toggleMaster() {
+    if (status === "on") disable();
+    else enable(selected);
+  }
+
   function toggleCategory(id: string) {
-    setSelected((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
-    );
+    setSelected((prev) => {
+      const next = prev.includes(id)
+        ? prev.filter((x) => x !== id)
+        : [...prev, id];
+      savePref(next);
+      return next;
+    });
   }
 
   if (!mounted) return null;
+
+  const masterOn = status === "on";
+  const masterDisabled =
+    status === "loading" ||
+    status === "working" ||
+    status === "unsupported" ||
+    status === "ios-not-installed" ||
+    status === "permission-denied";
+  const catDisabled =
+    status === "loading" ||
+    status === "unsupported" ||
+    status === "ios-not-installed";
 
   return createPortal(
     <>
@@ -220,23 +258,15 @@ function PushSettingsModal({ onClose }: { onClose: () => void }) {
         aria-modal="true"
         aria-label="푸시 알림 설정"
       >
-        <div className="flex items-start gap-3">
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-rose-100 to-amber-100 text-2xl">
-            🔔
-          </div>
-          <div className="flex-1">
-            <h3 className="text-base font-extrabold tracking-tight text-slate-900">
-              푸시 알림 설정
-            </h3>
-            <p className="mt-1 text-xs leading-relaxed text-slate-600">
-              새 협찬·마감 임박 소식을 폰으로 받아보세요.
-            </p>
-          </div>
+        <div className="mb-4 flex items-center justify-between">
+          <h3 className="flex items-center gap-2 text-base font-extrabold tracking-tight text-slate-900">
+            <span aria-hidden="true">🔔</span> 푸시 알림 설정
+          </h3>
           <button
             type="button"
             onClick={onClose}
             aria-label="닫기"
-            className="-mr-1 -mt-1 shrink-0 rounded-full p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+            className="-mr-1 rounded-full p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
               <line x1="6" y1="6" x2="18" y2="18" />
@@ -245,137 +275,123 @@ function PushSettingsModal({ onClose }: { onClose: () => void }) {
           </button>
         </div>
 
-        <div className="mt-4">
-          {status === "loading" && (
-            <p className="text-xs text-slate-400">상태 확인 중…</p>
-          )}
-
-          {status === "unsupported" && (
-            <p className="rounded-xl bg-slate-50 px-3 py-2.5 text-xs leading-relaxed text-slate-600">
-              이 브라우저는 푸시 알림을 지원하지 않아요. Chrome·삼성 인터넷 등에서
-              열어주세요.
-            </p>
-          )}
-
-          {status === "ios-not-installed" && (
-            <p className="rounded-xl bg-amber-50 px-3 py-2.5 text-xs leading-relaxed text-amber-800">
-              iPhone은 <strong>홈 화면에 추가</strong> 후 켤 수 있어요. (Safari →
-              공유 → 홈 화면에 추가)
-            </p>
-          )}
-
-          {status === "permission-denied" && (
-            <p className="rounded-xl bg-rose-50 px-3 py-2.5 text-xs leading-relaxed text-rose-700">
-              알림이 차단돼 있어요. 브라우저 설정 → 사이트 알림에서{" "}
-              <strong>umbba-radar.com</strong>을 허용해주세요.
-            </p>
-          )}
-
-          {status === "on" && (
-            <div className="rounded-xl bg-emerald-50 px-3 py-3 text-center">
-              <p className="text-sm font-bold text-emerald-700">
-                ✓ 알림을 받을게요!
+        {/* 마스터 토글 */}
+        <div className="rounded-2xl border border-slate-100 bg-slate-50/60 px-4 py-3.5">
+          <div className="flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-sm font-bold text-slate-900">
+                이 기기에서 알림 받기
               </p>
-              <p className="mt-1 text-[11px] leading-relaxed text-emerald-600">
-                푸시 알림은 순차 도입 중이라, 시작되면 이 설정대로 바로
-                보내드려요.
+              <p className="mt-0.5 text-xs leading-relaxed text-slate-500">
+                {masterSubtext(status)}
               </p>
             </div>
-          )}
-
-          {(status === "ready" || status === "working") && (
-            <div className="space-y-3">
-              {/* 전체 허용 — 추천(기본 유도) */}
-              <button
-                type="button"
-                disabled={status === "working"}
-                onClick={() => allow(ALL_IDS)}
-                className="flex w-full items-center justify-between rounded-2xl bg-rose-500 px-4 py-3.5 text-left text-white transition hover:bg-rose-600 active:scale-[0.99] disabled:opacity-60"
-              >
-                <span>
-                  <span className="flex items-center gap-1.5 text-sm font-bold">
-                    전체 허용
-                    <span className="rounded-full bg-white/25 px-1.5 py-0.5 text-[9px] font-bold">
-                      추천
-                    </span>
-                  </span>
-                  <span className="mt-0.5 block text-[11px] text-rose-50">
-                    새 혜택·마감 임박·맞춤 소식을 모두 받아요
-                  </span>
-                </span>
-                <span aria-hidden="true" className="text-base">
-                  →
-                </span>
-              </button>
-
-              {/* 항목별 — 보조(접어둠) */}
-              <button
-                type="button"
-                onClick={() => setByCategory((v) => !v)}
-                className="flex w-full items-center justify-between px-1 text-xs font-medium text-slate-500"
-              >
-                <span>항목별로 직접 고르기</span>
-                <span aria-hidden="true">{byCategory ? "▲" : "▼"}</span>
-              </button>
-
-              {byCategory && (
-                <div className="space-y-1.5 rounded-xl border border-slate-100 p-2">
-                  {CATEGORIES.map((c) => {
-                    const on = selected.includes(c.id);
-                    return (
-                      <button
-                        key={c.id}
-                        type="button"
-                        onClick={() => toggleCategory(c.id)}
-                        className="flex w-full items-center gap-3 rounded-lg px-2.5 py-2 text-left hover:bg-slate-50"
-                      >
-                        <span
-                          className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-md border text-[11px] ${
-                            on
-                              ? "border-rose-500 bg-rose-500 text-white"
-                              : "border-slate-300 text-transparent"
-                          }`}
-                        >
-                          ✓
-                        </span>
-                        <span className="flex-1">
-                          <span className="block text-[13px] font-semibold text-slate-800">
-                            {c.label}
-                          </span>
-                          <span className="block text-[11px] text-slate-400">
-                            {c.desc}
-                          </span>
-                        </span>
-                      </button>
-                    );
-                  })}
-                  <button
-                    type="button"
-                    disabled={status === "working" || selected.length === 0}
-                    onClick={() => allow(selected)}
-                    className="mt-1 w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-bold text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
-                  >
-                    선택 항목만 허용
-                  </button>
-                </div>
-              )}
-
-              <p className="px-1 text-[11px] leading-relaxed text-slate-400">
-                푸시 알림은 순차 도입 중이에요. 지금 허용해두면 시작될 때 바로
-                받아볼 수 있어요.
-              </p>
-            </div>
-          )}
-
-          {error && (
-            <p className="mt-2 rounded-lg bg-rose-50 px-3 py-2 text-[11px] text-rose-700">
-              {error}
-            </p>
-          )}
+            <Toggle on={masterOn} disabled={masterDisabled} onClick={toggleMaster} />
+          </div>
         </div>
+
+        {/* 종류별 토글 */}
+        <p className="mb-1.5 mt-4 px-1 text-xs font-bold tracking-wide text-slate-400">
+          받을 알림 종류
+        </p>
+        <div className="divide-y divide-slate-100 rounded-2xl border border-slate-100 bg-white">
+          {CATEGORIES.map((c) => (
+            <div
+              key={c.id}
+              className="flex items-center justify-between gap-3 px-3.5 py-3"
+            >
+              <div className="flex min-w-0 items-center gap-2.5">
+                <span className="shrink-0 text-lg" aria-hidden="true">
+                  {c.emoji}
+                </span>
+                <div className="min-w-0">
+                  <p className="text-[13px] font-bold text-slate-800">
+                    {c.label}
+                  </p>
+                  <p className="mt-0.5 text-[11px] leading-relaxed text-slate-400">
+                    {c.desc}
+                  </p>
+                </div>
+              </div>
+              <Toggle
+                on={selected.includes(c.id)}
+                disabled={catDisabled}
+                onClick={() => toggleCategory(c.id)}
+              />
+            </div>
+          ))}
+        </div>
+
+        {status === "permission-denied" && (
+          <p className="mt-3 rounded-xl bg-rose-50 px-3 py-2.5 text-[11px] leading-relaxed text-rose-700">
+            브라우저에서 알림이 차단돼 있어요. 사이트 설정 → 알림에서{" "}
+            <strong>umbba-radar.com</strong>을 허용하면 켤 수 있어요.
+          </p>
+        )}
+
+        <p className="mt-3 px-1 text-[11px] leading-relaxed text-slate-400">
+          푸시 알림은 순차 도입 중이에요. 지금 설정해두면 시작될 때 바로 적용돼요.
+        </p>
+
+        {error && (
+          <p className="mt-2 rounded-lg bg-rose-50 px-3 py-2 text-[11px] text-rose-700">
+            {error}
+          </p>
+        )}
       </div>
     </>,
     document.body
+  );
+}
+
+function masterSubtext(status: Status): string {
+  switch (status) {
+    case "on":
+      return "켜져 있어요 · 마감·새 혜택을 폰으로 받아요";
+    case "working":
+      return "처리 중…";
+    case "permission-denied":
+      return "브라우저에서 차단됨";
+    case "unsupported":
+      return "이 브라우저는 푸시를 지원하지 않아요";
+    case "ios-not-installed":
+      return "홈 화면에 추가한 뒤 켤 수 있어요";
+    case "loading":
+      return "상태 확인 중…";
+    default:
+      return "꺼져 있어요 · 켜면 알림을 받아요";
+  }
+}
+
+// ============================================
+// 토글 스위치 (토스 스타일)
+// ============================================
+function Toggle({
+  on,
+  disabled,
+  onClick,
+}: {
+  on: boolean;
+  disabled?: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      role="switch"
+      aria-checked={on}
+      className={`relative inline-flex h-7 w-12 shrink-0 items-center rounded-full transition ${
+        on ? "bg-rose-500" : "bg-slate-300"
+      } ${disabled ? "opacity-40" : ""}`}
+    >
+      <span
+        className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition ${
+          on ? "translate-x-6" : "translate-x-1"
+        }`}
+      />
+    </button>
   );
 }
 
