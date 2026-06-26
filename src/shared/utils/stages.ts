@@ -21,7 +21,7 @@ interface StageRange {
  *   시기       | 코어 범위        | 버퍼   | 최종 (개월)
  *   -----------|-----------------|--------|------------
  *   임신중     | 출산 전 ~ 0     | —      | -10 ~ 0
- *   신생아     | 0~3개월         | -1~+3개월 | -1 ~ 6  ← 출산 1개월 전(막달)부터
+ *   신생아     | 출생(0) 기준    | -1 / +3 | -1 ~ 3  ← 막달 ~ 생후 3개월
  *   영아       | 3~12개월        | ±3개월 | 3 ~ 15
  *   유아       | 1~7세 (12~84)   | ±6개월 | 6 ~ 90
  *   초등생     | 7~13세 (84~156) | ±12개월| 72 ~ 168
@@ -29,7 +29,7 @@ interface StageRange {
  *
  * 전환 영역 (겹침):
  *   임신중↔신생아: -1~0개월 (막달 — 임신중+신생아 둘 다 매칭)
- *   신생아↔영아: 3~6개월
+ *   신생아↔영아: 맞닿음(겹침 없음) — 신생아 끝(3) = 영아 시작(3)
  *   영아↔유아:   6~15개월 (1세 전후)
  *   유아↔초등생: 72~90개월 (6세~7세 6개월, 초등 입학 시기)
  *
@@ -41,7 +41,7 @@ interface StageRange {
  */
 export const STAGE_RANGES: StageRange[] = [
   { stage: "pregnancy", minMonths: -10, maxMonths: 0 },
-  { stage: "newborn", minMonths: -1, maxMonths: 6 }, // 출산 1개월 전(막달)부터 노출
+  { stage: "newborn", minMonths: -1, maxMonths: 3 }, // 버퍼 -1/+3 → 막달 ~ 생후 3개월
   { stage: "infant", minMonths: 3, maxMonths: 15 },
   { stage: "toddler", minMonths: 6, maxMonths: 90 }, // 코어 1~7세 + ±6개월
   { stage: "elementary", minMonths: 72, maxMonths: 168 }, // 코어 7~13세 + ±12개월
