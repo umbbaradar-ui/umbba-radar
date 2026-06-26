@@ -73,10 +73,10 @@ export default async function HomePage({ searchParams }: PageProps) {
   const scan = {
     newToday: matching.filter((p) => p.created_at >= todayStartIso).length,
     matchingTotal: matching.length,
-    closingSoon: matching.filter((p) => {
-      if (p.deadline_unknown) return false; // "상시" 카드는 마감 임박 아님
+    closingToday: matching.filter((p) => {
+      if (p.deadline_unknown) return false; // "상시" 카드는 오늘 마감 아님
       const d = calcDDay(p.deadline);
-      return d !== null && d.days >= 0 && d.days <= 3;
+      return d !== null && d.days === 0; // 오늘 마감(D-day)만
     }).length,
   };
 

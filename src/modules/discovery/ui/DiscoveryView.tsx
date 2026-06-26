@@ -24,7 +24,7 @@ import {
 export interface ScanSummary {
   newToday: number;
   matchingTotal: number;
-  closingSoon: number;
+  closingToday: number;
 }
 
 interface Props {
@@ -172,7 +172,7 @@ export function DiscoveryView({
 
 /**
  * 홈 상단 "오늘의 스캔" 배너 — 곰이 매일 스캔한다는 daily loop 정체성.
- * 새로 들어온 건수(가변 보상) + 곧 마감 건수(손실회피)를 한 줄로.
+ * 새로 들어온 건수(가변 보상) + 오늘 마감 건수(손실회피)를 한 줄로.
  */
 function TodayScanBanner({
   scan,
@@ -210,10 +210,10 @@ function TodayScanBanner({
         </div>
       </div>
       {/* 마감 칩은 별도 줄 — 헤드라인 가로폭을 뺏지 않도록(모바일 잘림 방지) */}
-      {scan.closingSoon > 0 && (
+      {scan.closingToday > 0 && (
         <div className="mt-2">
           <span className="inline-block rounded-full bg-rose-500 px-2.5 py-1 text-xs font-bold text-white">
-            ⏰ 곧 마감 {scan.closingSoon}건
+            ⏰ 오늘 마감 {scan.closingToday}건
           </span>
         </div>
       )}
