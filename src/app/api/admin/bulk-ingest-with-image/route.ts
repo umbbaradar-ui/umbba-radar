@@ -31,6 +31,8 @@ interface RequestBody {
   image_mime: string;
   // raw=true: Vision 안 부르고 미분류(status='draft') 카드만 생성. 분류는 별도 루틴(로컬 Claude).
   raw?: boolean;
+  /** 원문(인스타) 게시일 ISO — 상시 자동마감(게시일+7) 기준. best-effort 저장(컬럼 없으면 무시). */
+  source_post_date?: string | null;
 }
 
 interface SuccessResponse {
@@ -106,7 +108,7 @@ export async function POST(
     );
   }
 
-  const { url, caption, image_base64, image_mime, raw } = body;
+  const { url, caption, image_base64, image_mime, raw, source_post_date } = body;
   if (!url || !image_base64 || !image_mime) {
     return NextResponse.json(
       { ok: false, error: "Missing required fields (url, image_base64, image_mime)" },
@@ -189,10 +191,24 @@ export async function POST(
         { status: 500 }
       );
     }
+    const newId = (inserted as { id: string }).id;
+    // 원문 게시일 best-effort 저장 — 컬럼(migration 021) 없으면 조용히 무시(draft는 이미 생성됨)
+    if (source_post_date) {
+      const { error: spdErr } = await supabaseServer
+        .from("posts")
+        .update({ source_post_date })
+        .eq("id", newId);
+      if (spdErr) {
+        console.warn(
+          "[bulk-ingest] source_post_date 저장 실패(021 미적용?):",
+          spdErr.message
+        );
+      }
+    }
     return NextResponse.json({
       ok: true,
       status: "created",
-      post_id: (inserted as { id: string }).id,
+      post_id: newId,
     });
   }
 

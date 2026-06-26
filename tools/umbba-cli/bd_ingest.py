@@ -36,15 +36,19 @@ import ingest  # 재사용(무수정): fetch_active_usernames, report_account_sc
 CARD_SLEEP = 4.5
 
 
-def upload_bytes(url: str, caption: str, image_bytes: bytes, mime: str, raw: bool = False) -> dict:
+def upload_bytes(url: str, caption: str, image_bytes: bytes, mime: str, raw: bool = False,
+                 source_post_date: str | None = None) -> dict:
     """bulk-ingest-with-image 로 이미지 bytes + 캡션 POST.
-    raw=False: Vision 분류 + pending 카드(유료). raw=True: Vision 안 부르고 draft(미분류) 카드."""
+    raw=False: Vision 분류 + pending 카드(유료). raw=True: Vision 안 부르고 draft(미분류) 카드.
+    source_post_date: 원문 게시일(인스타 date_posted) — 상시 자동마감(게시일+7) 기준."""
     if not ingest.API_TOKEN:
         return {"ok": False, "error": "ADMIN_CLI_TOKEN 미설정"}
     b64 = base64.b64encode(image_bytes).decode("ascii")
     payload = {"url": url, "caption": caption, "image_base64": b64, "image_mime": mime}
     if raw:
         payload["raw"] = True
+    if source_post_date:
+        payload["source_post_date"] = source_post_date
     try:
         r = requests.post(
             f"{ingest.API_URL}/api/admin/bulk-ingest-with-image",
@@ -160,7 +164,8 @@ def main() -> int:
             per_user_new[author] = per_user_new.get(author, 0) + 1
             continue
 
-        res = upload_bytes(it["url"], it.get("caption_preview") or "", img, mime, raw=args.raw)
+        res = upload_bytes(it["url"], it.get("caption_preview") or "", img, mime, raw=args.raw,
+                           source_post_date=it.get("source_post_date"))
         st = res.get("status")
         if res.get("ok") and st == "created":
             ai = res.get("ai", {})

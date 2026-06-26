@@ -8,6 +8,7 @@
 import { NextResponse } from "next/server";
 import { supabaseServer } from "@/shared/db/supabase-server";
 import { isAdminRequest } from "@/shared/utils/admin-session";
+import { isPastDeadline } from "@/shared/utils/dday";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -76,9 +77,41 @@ export async function POST(request: Request) {
         continue;
       }
       const deadlineUnknown = !it.deadline;
-      const effectiveDeadline = deadlineUnknown
-        ? new Date(Date.now() + UNKNOWN_DEADLINE_DAYS * 86400000).toISOString()
-        : it.deadline;
+      let effectiveDeadline: string;
+      if (it.deadline) {
+        effectiveDeadline = it.deadline;
+      } else {
+        // 상시(마감 미정) → 원문 게시일 + 7 (없으면 등록일 + 7).
+        // 인스타 BD = source_post_date. 컬럼(021) 미생성 시 created_at 폴백(안 깨짐).
+        const { data: row, error: selErr } = await supabaseServer
+          .from("posts")
+          .select("source_post_date, created_at")
+          .eq("id", it.id)
+          .single();
+        let baseIso: string | null = null;
+        if (selErr || !row) {
+          const { data: row2 } = await supabaseServer
+            .from("posts")
+            .select("created_at")
+            .eq("id", it.id)
+            .single();
+          baseIso = (row2 as { created_at?: string } | null)?.created_at ?? null;
+        } else {
+          const r = row as {
+            source_post_date?: string | null;
+            created_at?: string | null;
+          };
+          baseIso = r.source_post_date ?? r.created_at ?? null;
+        }
+        const baseMs = baseIso ? new Date(baseIso).getTime() : Date.now();
+        effectiveDeadline = new Date(
+          baseMs + UNKNOWN_DEADLINE_DAYS * 86400000
+        ).toISOString();
+      }
+      // 계산된(또는 명시) 마감이 이미 오늘(KST)보다 과거면 발행 대신 마감(expired)
+      const computedStatus = isPastDeadline(effectiveDeadline)
+        ? "expired"
+        : "pending";
       const searchKeywords = it.search_keywords
         ? Array.from(
             new Set(
@@ -91,7 +124,7 @@ export async function POST(request: Request) {
         : null;
 
       const upd: Record<string, unknown> = {
-        status: "pending",
+        status: computedStatus,
         kind: it.kind === "group_buy" ? "group_buy" : "recruiting",
         title: it.title.slice(0, 120),
         brand_name: it.brand_name ?? null,
