@@ -323,10 +323,37 @@ function PushSettingsModal({ onClose }: { onClose: () => void }) {
         </div>
 
         {status === "permission-denied" && (
-          <p className="mt-3 rounded-xl bg-rose-50 px-3 py-2.5 text-[11px] leading-relaxed text-rose-700">
-            브라우저에서 알림이 차단돼 있어요. 사이트 설정 → 알림에서{" "}
-            <strong>umbba-radar.com</strong>을 허용하면 켤 수 있어요.
-          </p>
+          <div className="mt-3 rounded-xl bg-rose-50 px-3.5 py-3">
+            <p className="text-xs font-bold text-rose-800">
+              브라우저에서 알림이 차단돼 있어요
+            </p>
+            <p className="mt-1 text-[11px] leading-relaxed text-rose-700">
+              한 번 차단하면 앱에서 바로 못 켜요(브라우저 보안). 아래처럼 직접
+              풀어주세요:
+            </p>
+            <ol className="mt-1.5 list-decimal space-y-0.5 pl-4 text-[11px] leading-relaxed text-rose-700">
+              <li>
+                주소창 왼쪽 <strong>자물쇠</strong>(또는 <strong>ⓘ</strong>) 탭
+              </li>
+              <li>
+                <strong>알림</strong>(권한) → <strong>허용</strong>으로 변경
+              </li>
+              <li>
+                아래 <strong>다시 확인</strong> 누르기
+              </li>
+            </ol>
+            <button
+              type="button"
+              onClick={() => {
+                setError(null);
+                setStatus("loading");
+                detectStatus().then(setStatus);
+              }}
+              className="mt-2.5 w-full rounded-lg bg-rose-500 px-4 py-2 text-xs font-bold text-white transition hover:bg-rose-600"
+            >
+              다시 확인
+            </button>
+          </div>
         )}
 
         <p className="mt-3 px-1 text-[11px] leading-relaxed text-slate-400">
