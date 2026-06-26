@@ -91,6 +91,7 @@ export default async function HomePage({ searchParams }: PageProps) {
       myChildStages={myChildStages}
       hasChildren={hasChildren}
       scan={scan}
+      todayStartIso={todayStartIso}
       loggedIn={Boolean(user)}
       initialStatusMap={statusMap}
     />

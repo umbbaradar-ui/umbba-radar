@@ -24,6 +24,8 @@ interface Props {
   q: string;
   /** 자녀 등록된 사용자만 true → "내 아이" pill 노출 */
   hasChildren?: boolean;
+  /** "오늘 등록"만 보기 활성 여부 (정렬행 pill active 표시용) */
+  todayOnly?: boolean;
   /** 있으면 시기·유형·주제·정렬을 URL 이동 없이 즉시(클라이언트 상태) 변경.
    *  없으면 기존처럼 URL 이동(서버 재요청). 검색(q)은 항상 URL 이동. */
   onFilterChange?: (
@@ -39,6 +41,7 @@ export function FilterBar({
   sort,
   q,
   hasChildren,
+  todayOnly,
   onFilterChange,
 }: Props) {
   const router = useRouter();
@@ -120,25 +123,25 @@ export function FilterBar({
         </div>
       </form>
 
-      {/* 정렬 */}
+      {/* 정렬 (+ "오늘 등록"은 오늘 등록분만 보기 토글) */}
       <PillRow label="정렬">
         <Pill
-          active={sort === "deadline_asc" || !sort}
+          active={!todayOnly && (sort === "deadline_asc" || !sort)}
           onClick={() => update("sort", "deadline_asc")}
         >
           마감 임박순
         </Pill>
         <Pill
-          active={sort === "created_desc"}
+          active={!todayOnly && sort === "created_desc"}
           onClick={() => update("sort", "created_desc")}
         >
           최신 등록순
         </Pill>
         <Pill
-          active={sort === "deadline_desc"}
-          onClick={() => update("sort", "deadline_desc")}
+          active={Boolean(todayOnly)}
+          onClick={() => update("sort", "today")}
         >
-          마감 늦은순
+          오늘 등록
         </Pill>
       </PillRow>
 

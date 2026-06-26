@@ -18,6 +18,10 @@ export interface PostFilters {
   topic?: string;
   /** "내 아이" 필터용 — 사용자 자녀들의 시기 합집합 */
   myChildStages?: StageCategory[];
+  /** "오늘 등록"만 보기 — created_at이 todayStartIso 이상인 것만 */
+  todayOnly?: boolean;
+  /** 오늘(KST) 0시 ISO (todayOnly와 함께 사용) */
+  todayStartIso?: string;
 }
 
 export interface SearchAndSort {
@@ -27,9 +31,14 @@ export interface SearchAndSort {
 
 /** 클라이언트 측 필터 — stage·type·topic 카테고리 매칭 */
 export function filterPosts(posts: Post[], filters: PostFilters): Post[] {
-  const { stage, type, topic, myChildStages } = filters;
+  const { stage, type, topic, myChildStages, todayOnly, todayStartIso } =
+    filters;
 
   return posts.filter((p) => {
+    // "오늘 등록"만 보기 — 오늘(KST 0시) 이후 등록분만
+    if (todayOnly && todayStartIso && p.created_at < todayStartIso) {
+      return false;
+    }
     if (topic && topic !== "all") {
       if (p.topic !== (topic as TopicCategory)) return false;
     }
