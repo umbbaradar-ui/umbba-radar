@@ -218,7 +218,7 @@ export default async function AdminQueuePage({ searchParams }: PageProps) {
                     >
                       수정 후 발행
                     </Link>
-                    <form action={deletePostAction.bind(null, p.id)}>
+                    <form action={deletePostAction.bind(null, p.id, "queue")}>
                       <button
                         type="submit"
                         className="rounded-lg bg-rose-50 px-3 py-1.5 text-xs font-medium text-rose-700 hover:bg-rose-100"

@@ -222,7 +222,7 @@ export function AdminPostsView({
                       >
                         수정
                       </Link>
-                      <form action={deletePostAction.bind(null, p.id)}>
+                      <form action={deletePostAction.bind(null, p.id, "admin")}>
                         <button
                           type="submit"
                           className="rounded-md bg-rose-50 px-2.5 py-1 text-xs font-medium text-rose-700 hover:bg-rose-100"

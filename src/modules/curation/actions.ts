@@ -274,12 +274,20 @@ export async function updateAndPublishPostAction(
   );
 }
 
-export async function deletePostAction(id: string): Promise<void> {
+export async function deletePostAction(
+  id: string,
+  returnTo: "queue" | "admin" = "admin",
+  _formData?: FormData
+): Promise<void> {
   await ensureAdmin();
   await deletePost(id);
   revalidatePath("/");
   revalidatePath("/admin");
-  redirect("/admin?ok=deleted");
+  revalidatePath("/admin/queue");
+  // 큐(카드승인)에서 반려한 거면 큐에 그대로 남고, 메인 목록에서 삭제면 메인으로.
+  redirect(
+    returnTo === "queue" ? "/admin/queue?ok=deleted" : "/admin?ok=deleted"
+  );
 }
 
 // ============================================
