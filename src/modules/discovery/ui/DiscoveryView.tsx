@@ -199,7 +199,7 @@ export function DiscoveryView({
             {q
               ? `"${q}" 검색 결과가 없어요. 다른 키워드로 시도해보세요.`
               : todayOnly
-                ? "오늘 새로 등록된 카드가 아직 없어요."
+                ? "열심히 엄빠 대신 혜택을 스캔 중이에요! 조금만 기다려주세요 🐻"
                 : stage === "my_child"
                   ? "내 아이 시기에 맞는 카드가 아직 없어요. 다른 필터를 시도해보세요."
                   : "조건에 맞는 카드가 없어요. 필터를 바꿔보세요."}
@@ -256,13 +256,13 @@ function TodayScanBanner({
 
   const cta = hasChildren ? "오늘 우리 아이 거 모아보기" : "오늘 등록된 거 모아보기";
 
-  return (
-    <button
-      type="button"
-      data-tutorial="scan-banner"
-      onClick={onGoToday}
-      className="mb-5 block w-full rounded-2xl border border-rose-100 bg-gradient-to-br from-rose-50 to-pink-50 px-4 py-3 text-left transition hover:border-rose-200 active:scale-[0.99]"
-    >
+  // 오늘 등록 건이 있을 때만 버튼(클릭+CTA) 노출. 없으면 정보용 배너(클릭 X, CTA X).
+  const clickable = scan.newToday > 0;
+  const baseClass =
+    "mb-5 block w-full rounded-2xl border border-rose-100 bg-gradient-to-br from-rose-50 to-pink-50 px-4 py-3 text-left";
+
+  const inner = (
+    <>
       <div className="flex items-center gap-3">
         <span aria-hidden className="shrink-0 text-2xl leading-none">
           🐻
@@ -274,19 +274,45 @@ function TodayScanBanner({
           </p>
           <p className="mt-0.5 text-xs text-slate-500">{subline}</p>
         </div>
-        <span aria-hidden className="shrink-0 text-lg text-rose-300">
-          ›
-        </span>
-      </div>
-      {/* 마감 칩 + 모아보기 CTA — 별도 줄(모바일 잘림 방지, 줄바꿈 허용) */}
-      <div className="mt-2 flex flex-wrap items-center gap-2">
-        {scan.closingToday > 0 && (
-          <span className="inline-block rounded-full bg-rose-500 px-2.5 py-1 text-xs font-bold text-white">
-            ⏰ 오늘 마감 {scan.closingToday}건
+        {clickable && (
+          <span aria-hidden className="shrink-0 text-lg text-rose-300">
+            ›
           </span>
         )}
-        <span className="text-[11px] font-bold text-rose-600">{cta} →</span>
       </div>
-    </button>
+      {/* 마감 칩 + 모아보기 CTA(오늘 등록 있을 때만) — 줄바꿈 허용 */}
+      {(scan.closingToday > 0 || clickable) && (
+        <div className="mt-2 flex flex-wrap items-center gap-2">
+          {scan.closingToday > 0 && (
+            <span className="inline-block rounded-full bg-rose-500 px-2.5 py-1 text-xs font-bold text-white">
+              ⏰ 오늘 마감 {scan.closingToday}건
+            </span>
+          )}
+          {clickable && (
+            <span className="text-[11px] font-bold text-rose-600">
+              {cta} →
+            </span>
+          )}
+        </div>
+      )}
+    </>
+  );
+
+  if (clickable) {
+    return (
+      <button
+        type="button"
+        data-tutorial="scan-banner"
+        onClick={onGoToday}
+        className={`${baseClass} transition hover:border-rose-200 active:scale-[0.99]`}
+      >
+        {inner}
+      </button>
+    );
+  }
+  return (
+    <section data-tutorial="scan-banner" className={baseClass}>
+      {inner}
+    </section>
   );
 }
