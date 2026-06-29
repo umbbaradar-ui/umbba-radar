@@ -108,6 +108,22 @@ export async function listActiveUsernames(): Promise<string[]> {
   return (data ?? []).map((r) => r.username as string);
 }
 
+// CLI 신규-계정 첫스캔(과거 N일 백필) 판별용 — last_scanned_at(null=한번도 스캔 안 함)까지 노출.
+export async function listActiveAccounts(): Promise<
+  Array<{ username: string; last_scanned_at: string | null }>
+> {
+  const { data, error } = await supabaseServer
+    .from("instagram_accounts")
+    .select("username, last_scanned_at")
+    .eq("active", true)
+    .order("last_scanned_at", { ascending: true, nullsFirst: true });
+  if (error) throw new Error(error.message);
+  return (data ?? []).map((r) => ({
+    username: r.username as string,
+    last_scanned_at: (r.last_scanned_at as string | null) ?? null,
+  }));
+}
+
 export async function setActive(id: string, active: boolean): Promise<void> {
   const { error } = await supabaseServer
     .from("instagram_accounts")

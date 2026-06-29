@@ -71,6 +71,9 @@ def main() -> int:
     ap.add_argument("--recent", type=int, default=3, help="계정당 최근 N개(상한)")
     ap.add_argument("--scan-days", type=int, default=3,
                     help="최근 N일 글만(start_date) = 신규필터·비용↓. 0=필터없음")
+    ap.add_argument("--new-scan-days", type=int, default=3,
+                    help="신규 계정(첫 스캔=last_scanned 없음)만 과거 N일 백필. 기존 계정은 --scan-days. "
+                         "0=날짜무관 최근 recent개. (놓친 최근 딜 회수용, 계정당 recent 상한)")
     ap.add_argument("--accounts", nargs="*",
                     help="계정 직접 지정(테스트용, 서버 fetch 대신)")
     ap.add_argument("--snapshot",
@@ -96,10 +99,15 @@ def main() -> int:
         print(f"🔁 기존 스냅샷 재처리(재과금 없음): {sid}")
         prog = bd_client.progress(sid)
     else:
+        # 신규 계정(last_scanned 없음) 판별용 집합. 수동 --accounts 는 메타 없음 → 백필 대상 아님.
+        new_set: set[str] = set()
         if args.accounts:
             usernames = [u.strip().lstrip("@") for u in args.accounts if u.strip()]
         else:
-            usernames = ingest.fetch_active_usernames()
+            accounts = ingest.fetch_active_accounts()
+            usernames = [a["username"] for a in accounts if a.get("username")]
+            new_set = {a["username"].lower() for a in accounts
+                       if a.get("username") and a.get("last_scanned_at") is None}
         if not usernames:
             print("📡 활성 계정 0개. /admin/accounts 에서 등록.")
             return 0
@@ -107,18 +115,28 @@ def main() -> int:
             print(f"⚠️ {len(usernames)}개 중 {args.max_accounts}개만 이번 회차 (last_scanned 오래된 순)")
             usernames = usernames[:args.max_accounts]
 
-        # start_date(신규필터) — MM-DD-YYYY
+        # start_date(신규필터) — MM-DD-YYYY. 기존 계정 공통값.
         start_date = ""
         if args.scan_days > 0:
             d = datetime.datetime.now() - datetime.timedelta(days=args.scan_days)
             start_date = d.strftime("%m-%d-%Y")
+        # 신규 계정 첫스캔 백필: 과거 new_scan_days 일까지(계정별 오버라이드). 0이면 날짜무관(최근 recent개).
+        new_start_date = ""
+        if args.new_scan_days > 0:
+            d = datetime.datetime.now() - datetime.timedelta(days=args.new_scan_days)
+            new_start_date = d.strftime("%m-%d-%Y")
+        scanned_new = [u for u in usernames if u.lower() in new_set]
+        start_dates = {u: new_start_date for u in scanned_new} if scanned_new else None
 
-        print(f"🔭 BD 풀스캔: {len(usernames)}계정, recent {args.recent}, "
+        print(f"🔭 BD 풀스캔: {len(usernames)}계정"
+              f"(신규 백필 {len(scanned_new)}개), recent {args.recent}, "
               f"start_date {start_date or '(없음)'}"
+              f"/ 신규 {new_start_date or '(없음)'}"
               + ("  [DRY RUN]" if args.dry_run else ""))
 
-        # BD discover (비동기 1콜 -> 폴링)
-        sid, err = bd_client.trigger_discover(usernames, args.recent, start_date)
+        # BD discover (비동기 1콜 -> 폴링). 신규 계정만 start_dates 로 과거 백필 창 적용.
+        sid, err = bd_client.trigger_discover(usernames, args.recent, start_date,
+                                              start_dates=start_dates)
         if err:
             print(f"❌ {err}")
             return 1

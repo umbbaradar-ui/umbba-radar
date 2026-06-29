@@ -47,12 +47,17 @@ def _auth() -> dict:
 # ============================================
 # 1) trigger — discover by url (비동기). 여러 계정 = input 배열 1회 = 폴링 1번.
 # ============================================
-def trigger_discover(usernames: list[str], recent: int, start_date: str = "") -> tuple[str | None, str | None]:
+def trigger_discover(usernames: list[str], recent: int, start_date: str = "",
+                     start_dates: dict[str, str] | None = None) -> tuple[str | None, str | None]:
+    """start_dates: {username(lower): start_date} — 계정별 start_date 오버라이드(신규=과거 N일 백필).
+    없는 계정은 공통 start_date 사용. 한 호출 안에서 계정마다 다른 창을 줄 수 있음."""
+    sd_map = {k.lower(): v for k, v in (start_dates or {}).items()}
     inputs = [
         {
             "url": f"https://www.instagram.com/{u.strip().lstrip('@')}",
             "num_of_posts": recent,
-            "start_date": start_date or "",   # 비면 최근 recent개, 있으면 그 이후만(신규 = 비용↓)
+            # 계정별 오버라이드 우선, 없으면 공통 start_date. 비면 최근 recent개(신규필터 없음).
+            "start_date": sd_map.get(u.strip().lstrip("@").lower(), start_date) or "",
             "end_date": "",
             "post_type": "",                   # 빈칸 = Post/Reel 전체
         }

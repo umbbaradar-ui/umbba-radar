@@ -5,7 +5,7 @@
 // ============================================
 
 import { NextResponse } from "next/server";
-import { listActiveUsernames } from "@/modules/ingestion/accounts/repository";
+import { listActiveAccounts } from "@/modules/ingestion/accounts/repository";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -27,8 +27,10 @@ export async function GET(request: Request) {
   }
 
   try {
-    const usernames = await listActiveUsernames();
-    return NextResponse.json({ ok: true, usernames });
+    // accounts: 신규-계정 첫스캔 백필 판별용(last_scanned_at 포함). usernames는 하위호환.
+    const accounts = await listActiveAccounts();
+    const usernames = accounts.map((a) => a.username);
+    return NextResponse.json({ ok: true, usernames, accounts });
   } catch (e) {
     return NextResponse.json(
       {

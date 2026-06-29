@@ -396,6 +396,39 @@ def fetch_active_usernames() -> list[str]:
         return []
 
 
+def fetch_active_accounts() -> list[dict]:
+    """활성 계정 + last_scanned_at 메타 [{username, last_scanned_at}].
+    신규 계정(last_scanned_at=None) 첫스캔 백필 판별용.
+    구버전 서버(accounts 미제공)면 usernames만으로 last_scanned_at=None 채워 폴백.
+    정렬은 서버가 last_scanned nullsFirst(오래된 순)로 보장."""
+    if not API_TOKEN:
+        return []
+    try:
+        r = requests.get(
+            f"{API_URL}/api/admin/accounts/active",
+            headers={"Authorization": f"Bearer {API_TOKEN}"},
+            timeout=30,
+        )
+        data = r.json()
+        if not data.get("ok"):
+            print(f"❌ accounts/active 실패: {data.get('error', 'unknown')}")
+            return []
+        accounts = data.get("accounts")
+        if isinstance(accounts, list) and accounts:
+            return [
+                {"username": a.get("username"),
+                 "last_scanned_at": a.get("last_scanned_at")}
+                for a in accounts if a.get("username")
+            ]
+        # 폴백: 구버전 서버 — accounts 미제공 → 신규 판별 불가.
+        # 안전하게 전부 "기존"(sentinel)으로 취급해 백필 과금 폭증 방지.
+        return [{"username": u, "last_scanned_at": "unknown"}
+                for u in data.get("usernames", [])]
+    except requests.RequestException as e:
+        print(f"❌ accounts/active 네트워크 오류: {e}")
+        return []
+
+
 def report_account_scan(
     username: str, new_count: int, error: str | None = None
 ) -> None:
