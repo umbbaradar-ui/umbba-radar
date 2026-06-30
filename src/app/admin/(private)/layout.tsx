@@ -39,97 +39,84 @@ export default async function AdminPrivateLayout({
   }
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen overflow-x-hidden bg-slate-50">
       <nav className="border-b border-slate-200 bg-white">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-5 py-3">
-          <div className="flex items-center gap-4">
+        <div className="mx-auto max-w-6xl px-4">
+          {/* 상단: 로고 + 로그아웃 (항상 한 줄, justify-between) */}
+          <div className="flex items-center justify-between gap-2 py-2.5">
             <Link
               href="/admin"
-              className="flex items-center gap-2 text-sm font-extrabold tracking-tight text-slate-900"
+              className="flex min-w-0 items-center gap-2 text-sm font-extrabold tracking-tight text-slate-900"
             >
-              <Logo size={20} className="text-rose-500" />
-              <span>엄빠레이더 · 관리자</span>
+              <Logo size={20} className="shrink-0 text-rose-500" />
+              <span className="truncate">엄빠레이더 · 관리자</span>
             </Link>
-            <Link
-              href="/admin"
-              className="rounded-full px-3 py-1 text-xs font-medium text-slate-600 hover:bg-slate-100"
-            >
-              카드 목록
-            </Link>
-            <Link
-              href="/admin/accounts"
-              className="rounded-full px-3 py-1 text-xs font-medium text-slate-600 hover:bg-slate-100"
-              title="1단계: 모니터링할 인스타 팔로잉 계정 등록"
-            >
-              ① 팔로잉 계정
-            </Link>
-            <Link
-              href="/admin/bulk-ingest"
-              className="rounded-full px-3 py-1 text-xs font-medium text-slate-600 hover:bg-slate-100"
-              title="2단계: CLI 가 자동 발견한 URL 검수 + Claude 분석 트리거"
-            >
-              ② URL 큐
-            </Link>
-            <Link
-              href="/admin/queue"
-              className="flex items-center gap-1 rounded-full px-3 py-1 text-xs font-medium text-slate-600 hover:bg-slate-100"
-              title="3단계: Claude 분석 끝난 카드 검수 + 발행"
-            >
-              <span>③ 카드 승인</span>
-              {pendingCount > 0 && (
-                <span className="rounded-full bg-rose-500 px-1.5 py-0.5 text-[10px] font-bold text-white">
-                  {pendingCount}
-                </span>
-              )}
-            </Link>
-            <Link
-              href="/admin/new"
-              className="rounded-full px-3 py-1 text-xs font-medium text-slate-600 hover:bg-slate-100"
-            >
-              새 카드
-            </Link>
-            <Link
-              href="/admin/stats"
-              className="rounded-full px-3 py-1 text-xs font-medium text-slate-600 hover:bg-slate-100"
-            >
-              통계
-            </Link>
-            <Link
-              href="/admin/users"
-              className="rounded-full px-3 py-1 text-xs font-medium text-slate-600 hover:bg-slate-100"
-            >
-              회원 관리
-            </Link>
-            <Link
-              href="/admin/business"
-              className="flex items-center gap-1 rounded-full px-3 py-1 text-xs font-medium text-slate-600 hover:bg-slate-100"
-              title="업체 입점·상품·제휴·인스타 모니터링 문의"
-            >
-              <span>업체 문의</span>
-              {newInquiryCount > 0 && (
-                <span className="rounded-full bg-rose-500 px-1.5 py-0.5 text-[10px] font-bold text-white">
-                  {newInquiryCount}
-                </span>
-              )}
-            </Link>
-            <Link
-              href="/"
-              className="rounded-full px-3 py-1 text-xs font-medium text-slate-400 hover:bg-slate-100"
-            >
-              사이트 보기 ↗
-            </Link>
+            <form action={logoutAction} className="shrink-0">
+              <button
+                type="submit"
+                className="rounded-full bg-slate-100 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-200"
+              >
+                로그아웃
+              </button>
+            </form>
           </div>
-          <form action={logoutAction}>
-            <button
-              type="submit"
-              className="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700 hover:bg-slate-200"
-            >
-              로그아웃
-            </button>
-          </form>
+          {/* 메뉴: 가로 스크롤 스트립 — 모바일에서 넘쳐도 페이지가 아닌 이 줄만 스크롤 */}
+          <div className="-mx-4 flex gap-1 overflow-x-auto px-4 pb-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <NavTab href="/admin">카드 목록</NavTab>
+            <NavTab href="/admin/accounts" title="1단계: 모니터링할 인스타 팔로잉 계정 등록">
+              ① 팔로잉 계정
+            </NavTab>
+            <NavTab href="/admin/bulk-ingest" title="2단계: CLI 가 자동 발견한 URL 검수 + Claude 분석 트리거">
+              ② URL 큐
+            </NavTab>
+            <NavTab href="/admin/queue" title="3단계: Claude 분석 끝난 카드 검수 + 발행" badge={pendingCount}>
+              ③ 카드 승인
+            </NavTab>
+            <NavTab href="/admin/new">새 카드</NavTab>
+            <NavTab href="/admin/stats">통계</NavTab>
+            <NavTab href="/admin/users">회원 관리</NavTab>
+            <NavTab href="/admin/business" title="업체 입점·상품·제휴·인스타 모니터링 문의" badge={newInquiryCount}>
+              업체 문의
+            </NavTab>
+            <NavTab href="/" muted>
+              사이트 보기 ↗
+            </NavTab>
+          </div>
         </div>
       </nav>
       {children}
     </div>
+  );
+}
+
+// 관리자 네비 탭 — shrink-0 + whitespace-nowrap 로 가로 스크롤 스트립에서 안 찌그러지게
+function NavTab({
+  href,
+  children,
+  title,
+  badge,
+  muted,
+}: {
+  href: string;
+  children: React.ReactNode;
+  title?: string;
+  badge?: number;
+  muted?: boolean;
+}) {
+  return (
+    <Link
+      href={href}
+      title={title}
+      className={`flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-medium transition hover:bg-slate-100 ${
+        muted ? "text-slate-400" : "text-slate-600"
+      }`}
+    >
+      <span>{children}</span>
+      {badge != null && badge > 0 && (
+        <span className="rounded-full bg-rose-500 px-1.5 py-0.5 text-[10px] font-bold text-white">
+          {badge}
+        </span>
+      )}
+    </Link>
   );
 }
