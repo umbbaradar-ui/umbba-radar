@@ -33,7 +33,7 @@ DATASET_ID = (os.getenv("BRIGHTDATA_DATASET_ID") or "gd_lk5ns7kz21pck8jpis").str
 BASE = "https://api.brightdata.com/datasets/v3"
 CAPTION_MAX = 2000        # DB·UI 정책과 동일
 POLL_EVERY = 8            # 초
-POLL_TIMEOUT = 600        # 초 (10분)
+POLL_TIMEOUT = 1200       # 초 (20분) — 800계정 대형 스캔이 10분을 넘겨 0건 리턴되던 문제 완화
 
 
 def configured() -> bool:
