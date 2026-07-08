@@ -49,6 +49,8 @@ export async function POST(request: Request) {
   }
 
   let updated = 0;
+  let pendingCnt = 0;
+  let expiredCnt = 0;
   let deleted = 0;
   let failed = 0;
   const errors: Array<{ id: string; message: string }> = [];
@@ -144,11 +146,13 @@ export async function POST(request: Request) {
         .eq("status", "draft");
       if (error) throw new Error(error.message);
       updated++;
+      if (computedStatus === "expired") expiredCnt++;
+      else pendingCnt++;
     } catch (e) {
       failed++;
       errors.push({ id: it.id, message: e instanceof Error ? e.message : String(e) });
     }
   }
 
-  return NextResponse.json({ ok: true, updated, deleted, failed, errors: errors.slice(0, 50) });
+  return NextResponse.json({ ok: true, updated, pending: pendingCnt, expired: expiredCnt, deleted, failed, errors: errors.slice(0, 50) });
 }

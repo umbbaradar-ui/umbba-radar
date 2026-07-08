@@ -19,6 +19,7 @@ from __future__ import annotations
 import argparse
 import sys
 import tempfile
+import time
 from pathlib import Path
 
 if hasattr(sys.stdout, "reconfigure"):
@@ -45,7 +46,7 @@ def fetch_drafts(limit: int) -> list[dict]:
 
 def post_classify(items: list[dict]) -> dict:
     """한 배치 결과를 /cards/classify POST. 반환 합계."""
-    updated = deleted = failed = 0
+    updated = deleted = failed = pending = expired = 0
     for off in range(0, len(items), 200):
         chunk = items[off:off + 200]
         try:
@@ -60,7 +61,8 @@ def post_classify(items: list[dict]) -> dict:
         if not d.get("ok"):
             print(f"   ❌ classify 실패 HTTP {r.status_code}: {str(d)[:150]}"); failed += len(chunk); continue
         updated += d.get("updated", 0); deleted += d.get("deleted", 0); failed += d.get("failed", 0)
-    return {"updated": updated, "deleted": deleted, "failed": failed}
+        pending += d.get("pending", 0); expired += d.get("expired", 0)
+    return {"updated": updated, "deleted": deleted, "failed": failed, "pending": pending, "expired": expired}
 
 
 def to_classify_item(r: dict) -> dict:
@@ -77,6 +79,8 @@ def main() -> int:
     ap = argparse.ArgumentParser(description="옵션 C 분류 루틴: 미분류 draft → 로컬 Claude → 확정/삭제")
     ap.add_argument("--limit", type=int, default=200, help="한 회차 draft fetch 상한")
     ap.add_argument("--batch", type=int, default=6, help="Claude 배치 크기(작게=빠르고 안전)")
+    ap.add_argument("--retries", type=int, default=2, help="배치가 막히면(타임아웃) 기다렸다 재시도할 횟수")
+    ap.add_argument("--retry-wait", type=int, default=120, help="재시도 전 대기 초(다른 작업과 겹칠 때 양보)")
     ap.add_argument("--dry-run", action="store_true", help="분류만, 확정/삭제 안 함")
     args = ap.parse_args()
 
@@ -96,13 +100,20 @@ def main() -> int:
     print(f"   {backend}: {claude_bin}")
 
     tkst = today_kst()
-    tot = {"updated": 0, "deleted": 0, "failed": 0}
+    tot = {"updated": 0, "deleted": 0, "failed": 0, "pending": 0, "expired": 0}
     nb = (len(items) + args.batch - 1) // args.batch
     with tempfile.TemporaryDirectory(prefix="umbba-bdcls-") as tmp:
         for b in range(nb):
             chunk = items[b * args.batch:(b + 1) * args.batch]
             print(f"   배치 {b+1}/{nb} ({len(chunk)}건) 분류…", flush=True)
             res, err = classify_batch(claude_bin, chunk, tkst, Path(tmp) / f"b{b}")
+            # 막힌(타임아웃) 배치 = 다른 작업과 쿼터 경합일 때가 대부분 → 기다렸다 천천히 재요청.
+            attempt = 0
+            while err and "timeout" in err.lower() and attempt < args.retries:
+                attempt += 1
+                print(f"   ⏳ 배치 {b+1} 막힘 — {args.retry_wait}s 대기 후 재시도 {attempt}/{args.retries}", flush=True)
+                time.sleep(args.retry_wait)
+                res, err = classify_batch(claude_bin, chunk, tkst, Path(tmp) / f"b{b}r{attempt}")
             if err:
                 print(f"   ⚠ 배치 {b+1} 실패: {err} — 건너뜀(다음 실행때 재시도)")
                 continue
@@ -113,10 +124,11 @@ def main() -> int:
             out = [to_classify_item(r) for r in res if r.get("queue_id")]
             s = post_classify(out)
             tot["updated"] += s["updated"]; tot["deleted"] += s["deleted"]; tot["failed"] += s["failed"]
-            print(f"   ✅ 배치 {b+1}: 확정 {s['updated']} / 삭제 {s['deleted']} / 실패 {s['failed']}"
-                  f"  (누적 확정 {tot['updated']})", flush=True)
+            tot["pending"] += s["pending"]; tot["expired"] += s["expired"]
+            print(f"   ✅ 배치 {b+1}: 검수대기 {s['pending']} / 마감보관 {s['expired']} / 삭제 {s['deleted']} / 실패 {s['failed']}"
+                  f"  (누적 검수대기 {tot['pending']})", flush=True)
 
-    print(f"\n✅ 완료 — 확정(pending) {tot['updated']} / 삭제 {tot['deleted']} / 실패 {tot['failed']}")
+    print(f"\n✅ 완료 — 검수대기 {tot['pending']} / 마감보관(expired) {tot['expired']} / 삭제 {tot['deleted']} / 실패 {tot['failed']}")
     print(f"   검수: {ingest.API_URL}/admin/queue")
     return 0
 

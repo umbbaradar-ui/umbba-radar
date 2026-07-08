@@ -42,6 +42,7 @@ async function handle(request: Request) {
     ``,
     `📡 팔로잉 계정 <b>${pipeline.accountsActive}</b>개 모니터링`,
     `🗂️ 최근 24시간 수집 <b>+${pipeline.last24h.collected}</b>건 (미분류 ${pipeline.draftTotal} · 검수대기 ${pipeline.pendingTotal})`,
+    `   └ 검수대기 진입 <b>+${pipeline.last24h.pending}</b> · 마감보관 +${pipeline.last24h.expired} (24h)`,
     `📤 발행 <b>+${pipeline.last24h.published}</b>건 (24h)`,
     pending > 0
       ? `✅ <b>승인 대기 ${pending}건</b> — 검수가 필요해요!`
@@ -83,6 +84,8 @@ async function handle(request: Request) {
     sent: true,
     pending,
     collected24h: pipeline.last24h.collected,
+    pendingEntered24h: pipeline.last24h.pending,
+    expired24h: pipeline.last24h.expired,
   });
 }
 
