@@ -29,6 +29,13 @@ if hasattr(sys.stdout, "reconfigure"):
 import requests
 import ingest
 from bd_local import classify_batch, find_classifier, today_kst  # 분류 호출부 재사용(claude/codex)
+from bd_notify import alert  # 무인 실행 장애를 텔레그램으로 (6일 침묵 재발 방지)
+
+
+def _is_auth_error(err: str) -> bool:
+    """토큰 폐기·만료 = 재발급 전까지 100% 실패 → 1건만 나와도 즉시 알려야 함."""
+    e = (err or "").lower()
+    return "401" in e or "authentication" in e or "revoked" in e or "unauthorized" in e
 
 
 def fetch_drafts(limit: int) -> list[dict]:
@@ -101,6 +108,9 @@ def main() -> int:
 
     tkst = today_kst()
     tot = {"updated": 0, "deleted": 0, "failed": 0, "pending": 0, "expired": 0}
+    fail_batches = 0
+    first_err: str | None = None
+    auth_failed = False
     nb = (len(items) + args.batch - 1) // args.batch
     with tempfile.TemporaryDirectory(prefix="umbba-bdcls-") as tmp:
         for b in range(nb):
@@ -116,6 +126,22 @@ def main() -> int:
                 res, err = classify_batch(claude_bin, chunk, tkst, Path(tmp) / f"b{b}r{attempt}")
             if err:
                 print(f"   ⚠ 배치 {b+1} 실패: {err} — 건너뜀(다음 실행때 재시도)")
+                fail_batches += 1
+                if first_err is None:
+                    first_err = err
+                # 인증 실패는 재발급 전까지 전부 실패 → 남은 배치 돌릴 이유 없음. 즉시 알리고 중단.
+                if _is_auth_error(err):
+                    alert(
+                        "엄빠레이더 분류 중단 — 인증 실패",
+                        [f"배치 {b+1}/{nb}에서 토큰 인증 실패로 분류를 멈췄습니다.",
+                         f"미분류(draft) {len(items)}건이 그대로 쌓입니다.",
+                         "", f"<code>{err[:300]}</code>"],
+                        "맥에서 <code>claude setup-token</code> 후 .env의 "
+                        "CLAUDE_CODE_OAUTH_TOKEN 교체 필요",
+                    )
+                    print("   ⛔ 인증 실패 — 토큰 재발급 전까지 무의미하므로 중단")
+                    auth_failed = True
+                    break
                 continue
             if args.dry_run:
                 keep = [r for r in res if not r.get("skip")]
@@ -130,7 +156,17 @@ def main() -> int:
 
     print(f"\n✅ 완료 — 검수대기 {tot['pending']} / 마감보관(expired) {tot['expired']} / 삭제 {tot['deleted']} / 실패 {tot['failed']}")
     print(f"   검수: {ingest.API_URL}/admin/queue")
-    return 0
+
+    # 인증 외 사유(쿼터·타임아웃 등)로 절반 이상 실패 = 사람이 봐야 함. 인증 실패는 위에서 이미 발송.
+    if not auth_failed and fail_batches and fail_batches * 2 >= nb:
+        alert(
+            "엄빠레이더 분류 대량 실패",
+            [f"배치 {fail_batches}/{nb} 실패 — 미분류가 계속 쌓입니다.",
+             f"처리분: 검수대기 {tot['pending']} / 삭제 {tot['deleted']}",
+             "", f"첫 오류: <code>{(first_err or '')[:300]}</code>"],
+            "쿼터 한도 또는 로컬 claude 상태 확인 필요",
+        )
+    return 1 if auth_failed else 0
 
 
 if __name__ == "__main__":

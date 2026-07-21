@@ -31,6 +31,7 @@ if hasattr(sys.stdout, "reconfigure"):
 import requests
 import bd_client
 import ingest  # 재사용(무수정): fetch_active_usernames, report_account_scan, API_URL/API_TOKEN/REQUEST_TIMEOUT
+from bd_notify import alert  # 수집 실패를 텔레그램으로 (조용한 0건 종료 방지)
 
 # Gemini RPM 한도(OWNERSHIP: 15/분) 대응 — 카드 생성(=AI 호출) 사이 간격
 CARD_SLEEP = 4.5
@@ -242,6 +243,18 @@ def main() -> int:
     print(f"   과금 {tot['billed']} records ≈ {cost_won:.0f}원{tail}")
     if not args.dry_run:
         print(f"   검수: {ingest.API_URL}/admin/queue")
+
+    # 청크 실패로 수집이 통째로 비면(07-21 스냅샷 빌드 실패처럼) 조용히 넘어가지 않게 알린다.
+    if not args.dry_run and failed_chunks:
+        all_dead = failed_chunks == len(chunks)
+        alert(
+            "엄빠레이더 수집 실패" if all_dead else "엄빠레이더 수집 일부 실패",
+            [f"청크 {failed_chunks}/{len(chunks)} 실패 — 신규 카드 {tot['created']}건.",
+             "BD 스냅샷 빌드 실패(계정 잠금·한도·장애) 가능성이 높습니다."
+             if all_dead else "일부 계정이 이번 회차에서 누락됐습니다.",
+             "", f"과금 {tot['billed']} records ≈ {cost_won:.0f}원"],
+            "BD 대시보드에서 계정 상태·잔여 크레딧 확인 필요",
+        )
     return 0 if failed_chunks < len(chunks) else 1
 
 
