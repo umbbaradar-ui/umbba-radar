@@ -13,7 +13,7 @@
 //     4. 우리 아이 시기, 새로 뜬 혜택 — 캐러셀
 //   존 B 🐻 엄빠레이더 추천 (전 상태 동일)
 //     5. 추천 픽 — pinned 우선 + 신규 채움
-//     6. 기간 없이, 상시 혜택 — deadline NULL 전용 선반
+//     6. 마감미정 혜택 — deadline NULL 전용 선반
 //     7. 시기별로 둘러보기 — 허브 칩 그리드
 //   [전체 탐색 CTA]
 //
@@ -299,7 +299,7 @@ export function TestHomeView({
     return s;
   }, [usedIds2, radarPick]);
 
-  // 6. 상시 혜택 — deadline NULL만 (추정마감 제외, '상시' 라벨 신뢰 유지)
+  // 6. 마감미정 혜택 — deadline NULL만 (추정마감 카드와 별개 선반)
   const alwaysOpen = useMemo(
     () =>
       posts
@@ -521,11 +521,11 @@ export function TestHomeView({
           </div>
         )}
 
-        {/* 6. 상시 혜택 */}
+        {/* 6. 마감미정 혜택 */}
         {alwaysOpen.length > 0 && (
           <div className="mb-6">
             <SectionHeader
-              title="기간 없이, 상시 혜택"
+              title="마감미정 혜택"
               right={
                 <span className="text-[11px] font-semibold text-slate-400">
                   천천히 봐도 돼요

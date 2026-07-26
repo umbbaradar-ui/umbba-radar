@@ -163,10 +163,10 @@ export default async function PostDetailPage({ params }: PageProps) {
                 />
               </>
             )}
-            {/* 마감 미정은 "상시"(중립), 실제 마감일만 D-day(긴급=빨강). 본문 아래 안내박스에서 상세 설명 */}
+            {/* 마감 미정은 "마감미정"(중립), 실제 마감일만 D-day(긴급=빨강). 본문 아래 안내박스에서 상세 설명 */}
             {post.deadline_unknown ? (
               <span className="absolute left-4 top-4 rounded-full bg-slate-700/80 px-4 py-1.5 text-sm font-bold text-white">
-                상시
+                마감미정
               </span>
             ) : (
               dday && (

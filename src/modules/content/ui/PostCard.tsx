@@ -64,7 +64,7 @@ export function PostCard({ post, status }: Props) {
 
           {/* 좌측 상단 배지 그룹 — D-day + NEW
               마감 미정(deadline_unknown) 카드는 자동마감일이 D-day로 보이면 "오늘 마감!"
-              같은 가짜 긴급감을 줘서, D-day 대신 "상시" 중립 배지로 표시.
+              같은 가짜 긴급감을 줘서, D-day 대신 "마감미정" 중립 배지로 표시.
               실제 마감일 있는 카드만 D-day(긴급=빨강) 노출. */}
           {(dday || isNew) && (
             <div className="absolute left-3 top-3 flex gap-1">
@@ -73,7 +73,7 @@ export function PostCard({ post, status }: Props) {
                   className="rounded-full bg-slate-900/70 px-2.5 py-1 text-[11px] font-extrabold tracking-tight text-white shadow-sm backdrop-blur"
                   title="마감일 미정 — 원문에서 마감을 확인하세요"
                 >
-                  상시
+                  마감미정
                 </span>
               ) : (
                 dday && (

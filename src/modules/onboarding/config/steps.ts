@@ -52,7 +52,7 @@ export const TUTORIAL_STEPS: TutorialStep[] = [
     id: "post-card-read",
     selector: '[data-tutorial="post-card"]',
     title: "혜택 카드 읽는 법",
-    body: "빨간 ‘D-2’는 마감 임박! 초록 ‘NEW’는 새로 올라온 글, ‘상시’는 마감 없는 혜택이에요.",
+    body: "빨간 ‘D-2’는 마감 임박! 초록 ‘NEW’는 새로 올라온 글, ‘마감미정’은 마감일이 확인 안 된 혜택이에요.",
     placement: "above",
     optional: true,
   },
