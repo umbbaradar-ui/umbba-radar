@@ -1,16 +1,14 @@
 // ============================================
-// /test — 새 홈(마이레이더 + 엄빠레이더 추천) 미리보기
+// /test — 홈 미리보기 (로그인 상태별 화면 확인용)
 //
-// 정식 반영 전 실데이터 검증용 페이지. 기존 홈(/)은 건드리지 않는다.
-// 승인되면 이 페이지의 TestHomeView를 (web)/page.tsx로 이관하는 방식으로 교체.
-//
+// 실제 홈(/)과 동일한 HomeView를 렌더하되, 상태 스위처를 노출한다.
 // ?view=guest  → 비로그인 화면 강제 (로그인 상태여도)
 // ?view=member → 로그인+자녀 미등록 화면 강제
-// (기본은 실제 내 상태)
 // ============================================
 
 import type { Metadata } from "next";
 import { listPosts } from "@/modules/content/service";
+import { HomeView } from "@/modules/discovery/ui/HomeView";
 import {
   getUserChildrenBirths,
   getUserStatusMap,
@@ -18,13 +16,12 @@ import {
 import { getCurrentUser } from "@/modules/user/service";
 import { getStagesForChildren } from "@/shared/utils/stages";
 import { kstTodayStartIso } from "@/shared/utils/dday";
-import { TestHomeView } from "./_components/TestHomeView";
 
 export const revalidate = 60;
 
 // 미리보기 페이지 — 검색엔진 인덱싱 금지
 export const metadata: Metadata = {
-  title: "새 홈 미리보기",
+  title: "홈 미리보기",
   robots: { index: false, follow: false },
 };
 
@@ -63,14 +60,14 @@ export default async function TestHomePage({ searchParams }: PageProps) {
   }
 
   return (
-    <TestHomeView
+    <HomeView
       posts={posts}
       loggedIn={loggedIn}
       hasChildren={hasChildren}
       myChildStages={myChildStages}
       statusMap={effectiveStatusMap}
       todayStartIso={kstTodayStartIso()}
-      viewMode={view}
+      previewMode={view}
     />
   );
 }

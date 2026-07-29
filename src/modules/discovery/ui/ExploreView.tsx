@@ -1,14 +1,15 @@
 "use client";
 
 // ============================================
-// ExploreView — 새 탐색 화면 (미리보기)
+// ExploreView — 탐색 화면 (/explore)
+// 2026-07 홈 개편: 전체 그리드·검색·필터가 홈에서 여기로 분리됨.
 //
-// 개선안 반영 사항:
-// - 필터 pill 4행 제거 → sticky 컨트롤바 1행(필터 버튼 + 활성 칩 + 정렬)
+// - 필터 pill 4행 → sticky 컨트롤바 1행(필터 버튼 + 활성 칩 + 정렬)
 // - 필터 바텀시트: 시기·유형 다중선택 + 주제 + "N건 보기" 실시간 건수 CTA
 // - 전 필터 상태 URL 동기화(history.replaceState) → 상세 복귀·새로고침·공유 보존
 // - 그리드 24장 청크 렌더 + 무한스크롤(IntersectionObserver, '더 보기' 폴백)
 // - 0건 빈 상태: 어떤 필터를 풀지 원탭 제안
+// - 검색·필터 전부 인메모리(현 규모 ≤300건) — 발행 1,000건 도달 시 서버 keyset 전환
 // ============================================
 
 import Link from "next/link";
@@ -23,6 +24,7 @@ import {
   ACTIVE_TOPIC_CATEGORIES,
 } from "@/shared/types/post";
 import { PostCard } from "@/modules/content/ui/PostCard";
+import { AdSlot } from "@/modules/advertising/ui/AdSlot";
 import { sortPosts } from "@/modules/discovery/service";
 import type { SortMode } from "@/modules/content/service";
 import { track } from "@/modules/analytics/service";
@@ -223,8 +225,8 @@ export function ExploreView({
       {/* 상단: 뒤로 + 검색 */}
       <div className="mb-3 flex items-center gap-2">
         <Link
-          href="/test"
-          aria-label="새 홈으로"
+          href="/"
+          aria-label="홈으로"
           className="shrink-0 rounded-full p-2 text-slate-500 transition hover:bg-slate-100"
         >
           ←
@@ -346,6 +348,14 @@ export function ExploreView({
         {shown.length}건
         {filters.today && " · 오늘 등록"}
       </p>
+
+      {/* 필터 적용 시 광고 슬롯 (기존 홈의 category_top 자리 승계, Phase 1 = null) */}
+      {activeFilterCount > 0 && (
+        <AdSlot
+          id="category_top"
+          context={{ stage: filters.stages[0], type: filters.types[0] }}
+        />
+      )}
 
       {/* 그리드 */}
       {ordered.length === 0 ? (

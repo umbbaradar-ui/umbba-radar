@@ -30,8 +30,10 @@
 
 **Owns**:
 - `src/modules/content/` — PostCard, PostCardSkeleton, ContentService
-- `src/modules/discovery/` — FilterBar, filterPosts, sortPosts
-- `src/app/(web)/page.tsx` — 메인 그리드
+- `src/modules/discovery/` — HomeView(2존 홈), ExploreView(탐색), FilterBar·DiscoveryView(구 홈, 레거시), filterPosts, sortPosts
+- `src/app/(web)/page.tsx` — 홈 (마이레이더+추천 2존, 구 필터 URL은 /explore 리다이렉트)
+- `src/app/(web)/explore/page.tsx` — 전체 탐색 (검색+바텀시트 필터+그리드)
+- `src/app/(web)/test/page.tsx` — 홈 미리보기 (로그인 상태 스위처)
 - `src/app/(web)/post/[id]/page.tsx` — 카드 상세
 - `src/app/(web)/loading.tsx`, `src/app/(web)/post/[id]/loading.tsx` — 스켈레톤
 - `src/app/(web)/_components/SplashScreen.tsx` — (BRAND과 공유)
@@ -48,6 +50,9 @@
 - 컨테이너: `max-w-6xl px-4`
 - 카드 텍스트 영역 분리 (이미지 위 오버레이 X)
 - "본문(post.body)"은 리스트에서 미노출, NEW 배지로 3일 이내 표시
+- 2026-07 홈 개편: 홈=마이레이더(개인화 4섹션)+엄빠레이더 추천(3섹션) 2존, 전체 그리드·검색·필터는 /explore 분리. 필터는 바텀시트(시기·유형 다중선택+N건 보기 CTA), 전 필터 상태 URL 동기화. 홈 데이터는 전량 로드+인메모리(발행 1,000건 도달 시 섹션별 쿼리 분리)
+- deadline_unknown 배지 워딩 = "마감미정" (상시모집 오독 방지, 2026-07-26). 컴팩트 카드에선 "~D-n 추정"
+- 키워드 레일은 프리셋 큐레이션(개인 키워드 등록·알림은 user_keywords 마이그레이션과 함께 후속)
 
 ---
 

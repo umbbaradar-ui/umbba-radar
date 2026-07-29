@@ -18,7 +18,8 @@ export interface TutorialStep {
 }
 
 /** 카피·스텝을 바꿔 전체 재노출 시키고 싶을 때 올리는 버전(localStorage 값) */
-export const TUTORIAL_VERSION = 1;
+// v2: 2026-07 홈 개편(마이레이더+추천 2존, 탐색 분리) — 기존 사용자에게도 재노출
+export const TUTORIAL_VERSION = 2;
 
 export const TUTORIAL_STEPS: TutorialStep[] = [
   {
@@ -38,15 +39,16 @@ export const TUTORIAL_STEPS: TutorialStep[] = [
     id: "search",
     selector: '[data-tutorial="search"]',
     title: "찾는 게 있으면 검색하세요",
-    body: "브랜드 이름이나 키워드로 원하는 협찬·체험단을 바로 찾을 수 있어요.",
+    body: "여기를 누르면 탐색 화면이 열려요. 브랜드 이름이나 키워드로 원하는 협찬·체험단을 바로 찾을 수 있어요.",
     placement: "below",
   },
   {
     id: "filter-pills",
     selector: '[data-tutorial="filter-pills"]',
-    title: "우리 아이 맞춤으로 좁히기",
-    body: "아이 시기를 등록하면 ‘💛 내 아이’에서 맞춤 혜택만 골라봐요. 시기·주제·유형으로도 좁힐 수 있어요.",
-    placement: "below",
+    title: "시기별로 골라보기",
+    body: "우리 아이 시기를 누르면 그 시기 혜택만 모아 볼 수 있어요. 탐색 화면의 ‘필터’에서 시기·유형을 여러 개 겹쳐 고를 수도 있어요.",
+    placement: "above",
+    optional: true,
   },
   {
     id: "post-card-read",
