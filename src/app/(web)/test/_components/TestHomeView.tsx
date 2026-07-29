@@ -328,9 +328,9 @@ export function TestHomeView({
     <main className="mx-auto max-w-6xl px-4 py-4">
       <PreviewNotice viewMode={viewMode} />
 
-      {/* 가짜 검색바 — 탭하면 전체 탐색(현재는 기존 홈)의 검색으로 */}
+      {/* 가짜 검색바 — 탭하면 새 탐색 페이지 검색으로 */}
       <Link
-        href="/"
+        href="/test/explore?focus=1"
         className="mb-4 flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-400"
       >
         <span aria-hidden>🔍</span> 브랜드·키워드 검색
@@ -551,7 +551,7 @@ export function TestHomeView({
               return (
                 <Link
                   key={s}
-                  href={`/?stage=${s}`}
+                  href={`/test/explore?stage=${s}`}
                   className={`relative flex min-h-16 flex-col items-center justify-center gap-0.5 rounded-2xl border px-2 py-3 transition ${
                     n === 0
                       ? "border-slate-100 bg-slate-50 opacity-50"
@@ -581,7 +581,7 @@ export function TestHomeView({
 
       {/* 8. 전체 탐색 CTA */}
       <Link
-        href="/"
+        href="/test/explore"
         className="mb-4 block rounded-2xl bg-slate-900 px-4 py-3.5 text-center text-sm font-bold text-white transition hover:bg-slate-800"
       >
         전체 {posts.length}건 카드 모두 보기 →
