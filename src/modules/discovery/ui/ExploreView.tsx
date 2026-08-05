@@ -25,6 +25,7 @@ import {
 } from "@/shared/types/post";
 import { PostCard } from "@/modules/content/ui/PostCard";
 import { AdSlot } from "@/modules/advertising/ui/AdSlot";
+import { VISITED_LIST_KEY } from "@/modules/content/ui/BackToListLink";
 import { sortPosts } from "@/modules/discovery/service";
 import type { SortMode } from "@/modules/content/service";
 import { track } from "@/modules/analytics/service";
@@ -60,6 +61,15 @@ interface FilterState {
 
 const CHUNK = 24;
 
+// 스크롤·로드 위치 복원 (테스터 피드백: "상세·원문 다녀오면 처음부터 다시 무한 내리기")
+// - RESTORE_KEY: 마지막 탐색 상태(필터 URL·스크롤·로드 청크) 스냅샷
+// - RETURN_FLAG: 카드 상세로 이동하는 클릭 순간에 심는 "돌아올 예정" 표시
+//   → 복원은 (a) 이 플래그가 있거나 (b) 문서 자체가 reload/back_forward로
+//   열린 경우(원문 다녀온 뒤 탭 리로드)에만. 홈→탐색 새 진입은 항상 맨 위.
+const RESTORE_KEY = "umbba:explore-state";
+const RETURN_FLAG = "umbba:explore-return";
+const RESTORE_TTL_MS = 30 * 60 * 1000;
+
 function normText(s: string): string {
   return s.toLowerCase().normalize("NFKC");
 }
@@ -91,6 +101,8 @@ export function ExploreView({
   const [visibleCount, setVisibleCount] = useState(CHUNK);
   const searchRef = useRef<HTMLInputElement>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
+  // 복원 대상 스크롤 — 목표 청크(minCount)가 렌더된 뒤에만 적용해야 해서 ref로 보류
+  const pendingScrollRef = useRef<{ y: number; minCount: number } | null>(null);
 
   // 체크 상태 — 로그인: 서버 맵, 비로그인: localStorage
   const [statusMap, setStatusMap] = useState(serverStatusMap);
@@ -184,6 +196,108 @@ export function ExploreView({
   useEffect(() => {
     setVisibleCount(CHUNK);
   }, [filters, sort]);
+
+  // 마운트: "목록 거쳐감" 플래그 + 조건부 스크롤·청크 복원
+  // (청크 리셋 effect보다 뒤에 선언 — 마운트 시 리셋 후 복원값이 이기도록)
+  useEffect(() => {
+    try {
+      sessionStorage.setItem(VISITED_LIST_KEY, "1");
+    } catch {}
+    try {
+      const nav = performance.getEntriesByType("navigation")[0] as
+        | PerformanceNavigationTiming
+        | undefined;
+      const docReturn =
+        nav && (nav.type === "reload" || nav.type === "back_forward");
+      const flagReturn = sessionStorage.getItem(RETURN_FLAG) === "1";
+      sessionStorage.removeItem(RETURN_FLAG);
+      if (!docReturn && !flagReturn) return;
+
+      const raw = sessionStorage.getItem(RESTORE_KEY);
+      if (!raw) return;
+      const saved = JSON.parse(raw) as {
+        search: string;
+        scrollY: number;
+        visibleCount: number;
+        ts: number;
+      };
+      if (saved.search !== location.search) return;
+      if (Date.now() - saved.ts > RESTORE_TTL_MS) return;
+
+      pendingScrollRef.current = {
+        y: saved.scrollY,
+        minCount: saved.visibleCount,
+      };
+      if (saved.visibleCount > CHUNK) setVisibleCount(saved.visibleCount);
+    } catch {}
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // 복원 스크롤 — 목표 청크가 렌더 커밋된 뒤에만 적용.
+  // rAF는 백그라운드 탭에서 얼어붙고, Next 자체 스크롤 복원이 뒤늦게
+  // 짧은(복원 전) 문서 높이로 클램프해 덮어쓸 수 있어 → 즉시 1회 + 지연 2회 보정.
+  useEffect(() => {
+    const pending = pendingScrollRef.current;
+    if (pending == null || visibleCount < pending.minCount) return;
+    pendingScrollRef.current = null;
+    const y = pending.y;
+    window.scrollTo(0, y);
+    const t1 = window.setTimeout(() => window.scrollTo(0, y), 80);
+    const t2 = window.setTimeout(() => window.scrollTo(0, y), 300);
+    return () => {
+      window.clearTimeout(t1);
+      window.clearTimeout(t2);
+    };
+  }, [visibleCount]);
+
+  // 탐색 상태 저장 — 스크롤(스로틀)·청크 변경 시 스냅샷 갱신
+  useEffect(() => {
+    const save = () => {
+      try {
+        sessionStorage.setItem(
+          RESTORE_KEY,
+          JSON.stringify({
+            search: location.search,
+            scrollY: Math.round(window.scrollY),
+            visibleCount,
+            ts: Date.now(),
+          })
+        );
+      } catch {}
+    };
+    save();
+    let t: number | null = null;
+    const onScroll = () => {
+      if (t !== null) return;
+      t = window.setTimeout(() => {
+        t = null;
+        save();
+      }, 250);
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      if (t !== null) window.clearTimeout(t);
+    };
+  }, [visibleCount]);
+
+  // 카드 상세로 나가는 클릭 순간 최종 스냅샷 + "돌아올 예정" 플래그
+  function markLeavingToPost(e: React.MouseEvent) {
+    const target = e.target as HTMLElement;
+    if (!target.closest('a[href^="/post/"]')) return;
+    try {
+      sessionStorage.setItem(RETURN_FLAG, "1");
+      sessionStorage.setItem(
+        RESTORE_KEY,
+        JSON.stringify({
+          search: location.search,
+          scrollY: Math.round(window.scrollY),
+          visibleCount,
+          ts: Date.now(),
+        })
+      );
+    } catch {}
+  }
 
   // 무한스크롤 — 센티널 관찰, 실패 시 '더 보기' 버튼 폴백
   useEffect(() => {
@@ -362,7 +476,10 @@ export function ExploreView({
         <EmptyState filters={filters} onRemoveStage={removeStage} onRemoveType={removeType} onReset={resetFilters} onClearQ={() => setFilters((f) => ({ ...f, q: "" }))} />
       ) : (
         <>
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+          <div
+            className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4"
+            onClickCapture={markLeavingToPost}
+          >
             {ordered.slice(0, visibleCount).map((post) => (
               <PostCard
                 key={post.id}

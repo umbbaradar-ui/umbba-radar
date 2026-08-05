@@ -4,7 +4,6 @@
 // ============================================
 
 import type { Metadata } from "next";
-import Link from "next/link";
 import { ViewTransition } from "react";
 import { notFound } from "next/navigation";
 import { getPost } from "@/modules/content/service";
@@ -15,6 +14,7 @@ import { getUserProfile } from "@/modules/user/service-server";
 import { CardClickTracker } from "@/modules/analytics/ui/CardClickTracker";
 import { ExternalLinkButton } from "@/modules/analytics/ui/ExternalLinkButton";
 import { ShareButton } from "@/modules/content/ui/ShareButton";
+import { BackToListLink } from "@/modules/content/ui/BackToListLink";
 import { AdSlot } from "@/modules/advertising/ui/AdSlot";
 import { ViewGate } from "@/modules/user/ui/ViewGate";
 import { STAGE_LABELS, TYPE_LABELS } from "@/shared/types/post";
@@ -135,12 +135,8 @@ export default async function PostDetailPage({ params }: PageProps) {
       />
       <CardClickTracker postId={post.id} />
       <ViewGate postId={post.id} loggedIn={Boolean(user)} />
-      <Link
-        href="/"
-        className="mb-4 inline-flex items-center gap-1 text-sm text-slate-500 transition hover:text-slate-900"
-      >
-        ← 목록으로
-      </Link>
+      {/* 목록 거쳐 왔으면 뒤로가기(필터·스크롤 보존), 직접 진입이면 홈 폴백 */}
+      <BackToListLink />
 
       <article className="overflow-hidden rounded-2xl bg-white shadow-sm">
         <ViewTransition name={`post-thumb-${post.id}`}>

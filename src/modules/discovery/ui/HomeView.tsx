@@ -30,6 +30,7 @@ import type { Post, StageCategory } from "@/shared/types/post";
 import { STAGE_LABELS } from "@/shared/types/post";
 import { PostCard } from "@/modules/content/ui/PostCard";
 import { AdSlot } from "@/modules/advertising/ui/AdSlot";
+import { VISITED_LIST_KEY } from "@/modules/content/ui/BackToListLink";
 import { calcDDay } from "@/shared/utils/dday";
 import {
   listUserPostStatuses,
@@ -129,6 +130,13 @@ export function HomeView({
     const unsub = subscribe(() => setStatusMap(listUserPostStatuses()));
     return unsub;
   }, [loggedIn]);
+
+  // 상세 "← 목록으로" 뒤로가기 판별용 — 목록(홈)을 거쳐 왔다는 탭 단위 표시
+  useEffect(() => {
+    try {
+      sessionStorage.setItem(VISITED_LIST_KEY, "1");
+    } catch {}
+  }, []);
 
   const now = Date.now();
   const windowStartMs = now - KEYWORD_WINDOW_DAYS * 24 * 60 * 60 * 1000;
@@ -383,7 +391,7 @@ export function HomeView({
                   : "3일 안에 마감되는 카드예요 · 관심 ★을 눌러두면 여기서 챙겨드려요"}
               </p>
             )}
-            <div className="flex flex-col gap-2">
+            <div className="flex flex-col gap-2 md:grid md:grid-cols-3 md:gap-3">
               {deadlineRadar.items.map((p) => (
                 <PostCardCompact key={p.id} post={p} />
               ))}
@@ -567,7 +575,10 @@ export function HomeView({
         {/* 7. 시기별로 둘러보기 */}
         <div className="mb-6">
           <SectionHeader title="시기별로 둘러보기" />
-          <div data-tutorial="filter-pills" className="grid grid-cols-3 gap-2">
+          <div
+            data-tutorial="filter-pills"
+            className="grid grid-cols-3 gap-2 md:grid-cols-6"
+          >
             {HUB_STAGES.map((s) => {
               const n = stageCounts.get(s) ?? 0;
               const mine =
@@ -794,15 +805,15 @@ function PostCardCompact({ post }: { post: Post }) {
   );
 }
 
-/** 가로 카드 레일 — 158px 카드 + 다음 카드 peek */
+/** 가로 카드 레일 — 모바일: 158px 카드 + 다음 카드 peek, 데스크탑(md+): 4열 그리드 */
 function CardRail({ children }: { children: React.ReactNode }) {
   return (
-    <div className="-mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+    <div className="-mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:mx-0 md:grid md:grid-cols-4 md:gap-4 md:overflow-visible md:px-0 md:pb-0">
       {children}
     </div>
   );
 }
 
 function RailCard({ children }: { children: React.ReactNode }) {
-  return <div className="w-[158px] shrink-0 snap-start">{children}</div>;
+  return <div className="w-[158px] shrink-0 snap-start md:w-auto">{children}</div>;
 }
