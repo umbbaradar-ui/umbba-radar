@@ -25,6 +25,7 @@ import {
 } from "@/shared/types/post";
 import { PostCard } from "@/modules/content/ui/PostCard";
 import { AdSlot } from "@/modules/advertising/ui/AdSlot";
+import { SignupSheet } from "@/modules/user/ui/SignupSheet";
 import { VISITED_LIST_KEY } from "@/modules/content/ui/BackToListLink";
 import { sortPosts } from "@/modules/discovery/service";
 import type { SortMode } from "@/modules/content/service";
@@ -98,6 +99,8 @@ export function ExploreView({
   });
   const [sort, setSort] = useState<SortMode>(initialSort);
   const [sheetOpen, setSheetOpen] = useState(false);
+  // 비로그인 소프트 게이트 — 첫 24장은 자유, 그 이후는 가입 시트 (30일 데이터 근거)
+  const [gateOpen, setGateOpen] = useState(false);
   const [visibleCount, setVisibleCount] = useState(CHUNK);
   const searchRef = useRef<HTMLInputElement>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
@@ -224,11 +227,12 @@ export function ExploreView({
       if (saved.search !== location.search) return;
       if (Date.now() - saved.ts > RESTORE_TTL_MS) return;
 
-      pendingScrollRef.current = {
-        y: saved.scrollY,
-        minCount: saved.visibleCount,
-      };
-      if (saved.visibleCount > CHUNK) setVisibleCount(saved.visibleCount);
+      // 비로그인은 게이트 한도(첫 청크)까지만 복원
+      const targetCount = loggedIn
+        ? saved.visibleCount
+        : Math.min(saved.visibleCount, CHUNK);
+      pendingScrollRef.current = { y: saved.scrollY, minCount: targetCount };
+      if (targetCount > CHUNK) setVisibleCount(targetCount);
     } catch {}
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -299,8 +303,9 @@ export function ExploreView({
     } catch {}
   }
 
-  // 무한스크롤 — 센티널 관찰, 실패 시 '더 보기' 버튼 폴백
+  // 무한스크롤 — 센티널 관찰, 실패 시 '더 보기' 버튼 폴백 (로그인 사용자만)
   useEffect(() => {
+    if (!loggedIn) return; // 비로그인은 첫 청크까지 — 이후는 가입 게이트
     const el = sentinelRef.current;
     if (!el) return;
     const io = new IntersectionObserver(
@@ -313,7 +318,7 @@ export function ExploreView({
     );
     io.observe(el);
     return () => io.disconnect();
-  }, [ordered.length]);
+  }, [ordered.length, loggedIn]);
 
   const activeFilterCount =
     (filters.stages.length > 0 ? 1 : 0) +
@@ -488,21 +493,59 @@ export function ExploreView({
               />
             ))}
           </div>
-          {visibleCount < ordered.length && (
-            <div className="py-6 text-center">
-              <div ref={sentinelRef} aria-hidden />
-              <button
-                type="button"
-                onClick={() =>
-                  setVisibleCount((n) => Math.min(n + CHUNK, ordered.length))
-                }
-                className="rounded-full bg-white px-5 py-2.5 text-xs font-bold text-slate-600 ring-1 ring-slate-200"
-              >
-                더 보기 ({ordered.length - visibleCount}건 남음)
-              </button>
-            </div>
-          )}
+          {visibleCount < ordered.length &&
+            (loggedIn ? (
+              <div className="py-6 text-center">
+                <div ref={sentinelRef} aria-hidden />
+                <button
+                  type="button"
+                  onClick={() =>
+                    setVisibleCount((n) => Math.min(n + CHUNK, ordered.length))
+                  }
+                  className="rounded-full bg-white px-5 py-2.5 text-xs font-bold text-slate-600 ring-1 ring-slate-200"
+                >
+                  더 보기 ({ordered.length - visibleCount}건 남음)
+                </button>
+              </div>
+            ) : (
+              // 비로그인 소프트 게이트 — 첫 청크(24장)까지 가치를 보여준 뒤 가입 제안
+              <div className="py-6 text-center">
+                <p className="text-xs text-slate-500">
+                  아직 {ordered.length - visibleCount}건이 더 있어요
+                </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    track("lock_click", {
+                      surface: "explore_more",
+                      target: "open_sheet",
+                    });
+                    setGateOpen(true);
+                  }}
+                  className="mt-2 rounded-full bg-rose-500 px-6 py-3 text-sm font-bold text-white transition hover:bg-rose-600 active:scale-[0.99]"
+                >
+                  가입하고 나머지 {ordered.length - visibleCount}건 보기
+                </button>
+              </div>
+            ))}
         </>
+      )}
+
+      {/* 비로그인 가입 게이트 시트 */}
+      {gateOpen && (
+        <SignupSheet
+          surface="explore_more"
+          next={window.location.pathname + window.location.search}
+          headline="나머지 카드도 놓치지 마세요"
+          sub={
+            <>
+              가입하면 전체 카드를 자유롭게 보고,
+              <br />
+              우리 아이 시기 맞춤으로 골라드려요 ♥
+            </>
+          }
+          onClose={() => setGateOpen(false)}
+        />
       )}
 
       {/* 필터 바텀시트 */}
