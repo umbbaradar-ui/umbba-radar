@@ -23,54 +23,71 @@ function sanitizeSearchTerm(term: string): string {
     .slice(0, 50);
 }
 
+// Supabase(PostgREST) 1회 응답 상한 — 대시보드 Max Rows 기본값과 동일하게 유지할 것
+const PAGE_SIZE = 1000;
+
 export async function selectPublishedPosts(
   options: SelectPostsOptions = {}
 ): Promise<Post[]> {
-  // 기본 limit 상향(100→300) — 발행 카드 누적 시 마감 먼·상시 카드가 조용히 잘리는 것 완화(스톱갭).
-  // 카드 수가 더 늘면 keyset 페이지네이션으로 전환(감사 보고 §5.2).
-  const { q, sort = "deadline_asc", limit = 300 } = options;
+  // limit 미지정 시 "노출 대상 발행 카드 전량"을 페이지 루프로 로드 — 카드 누락 제로가 원칙.
+  // (기존 limit 300 스톱갭은 발행 391건 시점에 91건이 조용히 잘려서 제거, 2026-08-13)
+  const { q, sort = "deadline_asc", limit } = options;
 
-  let query = supabase.from("posts").select("*").eq("status", "published");
+  // Supabase 쿼리 빌더는 1회용이라 페이지마다 새로 조립
+  function buildQuery() {
+    let query = supabase.from("posts").select("*").eq("status", "published");
 
-  // 마감일(KST 날짜)이 지난 카드는 피드에서 즉시 제외.
-  // cron(expireOverduePosts)이 status를 expired로 정리하기 전이라도 사용자에겐 안 보이게 함.
-  // deadline 없는 상시 카드는 유지(deadline.is.null). 기준은 "오늘 KST 00:00".
-  const todayStart = kstTodayStartIso();
-  query = query.or(`deadline.gte.${todayStart},deadline.is.null`);
+    // 마감일(KST 날짜)이 지난 카드는 피드에서 즉시 제외.
+    // cron(expireOverduePosts)이 status를 expired로 정리하기 전이라도 사용자에겐 안 보이게 함.
+    // deadline 없는 상시 카드는 유지(deadline.is.null). 기준은 "오늘 KST 00:00".
+    const todayStart = kstTodayStartIso();
+    query = query.or(`deadline.gte.${todayStart},deadline.is.null`);
 
-  // 검색어 필터 — title/brand_name/body + search_keywords(동의어) 4개 컬럼 ILIKE OR
-  // search_keywords는 관리자 직접 입력 또는 AI 자동 생성한 동의어 (콤마 구분 텍스트)
-  if (q) {
-    const safe = sanitizeSearchTerm(q);
-    if (safe) {
-      const pattern = `%${safe}%`;
-      query = query.or(
-        `title.ilike.${pattern},brand_name.ilike.${pattern},body.ilike.${pattern},search_keywords.ilike.${pattern}`
-      );
+    // 검색어 필터 — title/brand_name/body + search_keywords(동의어) 4개 컬럼 ILIKE OR
+    // search_keywords는 관리자 직접 입력 또는 AI 자동 생성한 동의어 (콤마 구분 텍스트)
+    if (q) {
+      const safe = sanitizeSearchTerm(q);
+      if (safe) {
+        const pattern = `%${safe}%`;
+        query = query.or(
+          `title.ilike.${pattern},brand_name.ilike.${pattern},body.ilike.${pattern},search_keywords.ilike.${pattern}`
+        );
+      }
     }
+
+    // 정렬 — 페이지 경계에서 행이 겹치거나 빠지지 않도록 id 2차 정렬로 순서 고정
+    switch (sort) {
+      case "created_desc":
+        query = query.order("created_at", { ascending: false });
+        break;
+      case "deadline_desc":
+        query = query.order("deadline", { ascending: false, nullsFirst: false });
+        break;
+      case "deadline_asc":
+      default:
+        query = query.order("deadline", { ascending: true, nullsFirst: false });
+        break;
+    }
+    return query.order("id", { ascending: true });
   }
 
-  // 정렬
-  switch (sort) {
-    case "created_desc":
-      query = query.order("created_at", { ascending: false });
-      break;
-    case "deadline_desc":
-      query = query.order("deadline", { ascending: false, nullsFirst: false });
-      break;
-    case "deadline_asc":
-    default:
-      query = query.order("deadline", { ascending: true, nullsFirst: false });
-      break;
-  }
+  const all: Post[] = [];
+  for (;;) {
+    const size = limit ? Math.min(PAGE_SIZE, limit - all.length) : PAGE_SIZE;
+    if (size <= 0) break;
 
-  query = query.limit(limit);
+    const { data, error } = await buildQuery().range(
+      all.length,
+      all.length + size - 1
+    );
+    if (error) {
+      throw new Error(`Failed to fetch published posts: ${error.message}`);
+    }
 
-  const { data, error } = await query;
-  if (error) {
-    throw new Error(`Failed to fetch published posts: ${error.message}`);
+    all.push(...((data ?? []) as Post[]));
+    if (!data || data.length < size) break; // 마지막 페이지
   }
-  return (data ?? []) as Post[];
+  return all;
 }
 
 export async function selectExpiredPosts(): Promise<Post[]> {

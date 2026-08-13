@@ -52,7 +52,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     },
   ];
 
-  // 모든 published 카드. listPosts 기본 limit 100 → 사이트맵용은 1000개까지.
+  // published 카드. listPosts는 limit 미지정 시 전량 로드 — 사이트맵은 1000개 상한 유지.
   try {
     const posts = await listPosts({ limit: 1000 });
     const now = Date.now();

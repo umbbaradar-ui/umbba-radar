@@ -5,7 +5,8 @@
 
 import "server-only";
 import {
-  selectAllPosts,
+  selectActivePostsAdmin,
+  selectExpiredPostsPage,
   selectPostByIdAdmin,
   selectPendingPosts,
   selectStatusCounts,
@@ -17,8 +18,17 @@ import {
 } from "./repository";
 import type { Post, SourceType } from "@/shared/types/post";
 
-export async function listAllPosts(): Promise<Post[]> {
-  return selectAllPosts();
+/** 어드민 메인 초기 로드 — 활성(초안·승인대기·발행)만. 마감은 listExpiredPage로 지연 로드 */
+export async function listActivePosts(): Promise<Post[]> {
+  return selectActivePostsAdmin();
+}
+
+/** 마감 카드 페이지 조회 (최근 마감 순) */
+export async function listExpiredPage(
+  offset: number,
+  pageSize: number
+): Promise<Post[]> {
+  return selectExpiredPostsPage(offset, pageSize);
 }
 
 export async function getPostForAdmin(id: string): Promise<Post | null> {

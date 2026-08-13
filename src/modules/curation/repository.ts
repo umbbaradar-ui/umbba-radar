@@ -9,13 +9,56 @@ import { supabaseServer } from "@/shared/db/supabase-server";
 import type { Post, PostStatus, SourceType } from "@/shared/types/post";
 import { isPastDeadline, kstTodayStartIso } from "@/shared/utils/dday";
 
-export async function selectAllPosts(): Promise<Post[]> {
+// Supabase(PostgREST) 1회 응답 상한. 무제한 select는 여기서 조용히 잘리므로(1000행),
+// "전량"이 필요한 조회는 반드시 fetchAllRows 페이지 루프를 쓸 것.
+const PAGE_SIZE = 1000;
+
+/** 조건에 맞는 행 전량을 페이지 루프로 수집. buildPage는 호출마다 새 쿼리 빌더를 만들어
+ *  .range(from, to)까지 적용해 반환할 것 (Supabase 빌더는 1회용). 정렬에 id 2차 정렬 필수. */
+async function fetchAllRows<T>(
+  label: string,
+  buildPage: (
+    from: number,
+    to: number
+  ) => PromiseLike<{ data: T[] | null; error: { message: string } | null }>
+): Promise<T[]> {
+  const all: T[] = [];
+  for (;;) {
+    const { data, error } = await buildPage(all.length, all.length + PAGE_SIZE - 1);
+    if (error) throw new Error(`${label}: ${error.message}`);
+    all.push(...(data ?? []));
+    if (!data || data.length < PAGE_SIZE) break; // 마지막 페이지
+  }
+  return all;
+}
+
+/** 활성 카드(초안·승인대기·발행) 전량 — 어드민 메인 목록용. 마감 카드는 selectExpiredPostsPage로 지연 로드 */
+export async function selectActivePostsAdmin(): Promise<Post[]> {
+  return fetchAllRows<Post>("selectActivePostsAdmin", (from, to) =>
+    supabaseServer
+      .from("posts")
+      .select("*")
+      .neq("status", "expired")
+      .order("updated_at", { ascending: false })
+      .order("id", { ascending: true }) // 페이지 경계 순서 고정
+      .range(from, to)
+  );
+}
+
+/** 마감 카드 페이지 조회 — 어드민 "마감" 탭에서 필요할 때만 100건 단위로 불러옴 */
+export async function selectExpiredPostsPage(
+  offset: number,
+  pageSize: number
+): Promise<Post[]> {
   const { data, error } = await supabaseServer
     .from("posts")
     .select("*")
-    .order("updated_at", { ascending: false });
+    .eq("status", "expired")
+    .order("deadline", { ascending: false, nullsFirst: false }) // 최근 마감부터
+    .order("id", { ascending: true })
+    .range(offset, offset + pageSize - 1);
 
-  if (error) throw new Error(`selectAllPosts: ${error.message}`);
+  if (error) throw new Error(`selectExpiredPostsPage: ${error.message}`);
   return (data ?? []) as Post[];
 }
 
@@ -149,16 +192,37 @@ export interface AdminStats {
 export async function selectAdminStats(periodDays: number = 7): Promise<AdminStats> {
   const since = new Date(Date.now() - periodDays * 24 * 60 * 60 * 1000).toISOString();
 
-  // 1. 카드 — 상태·소스·시기·유형
-  const { data: posts } = await supabaseServer
-    .from("posts")
-    .select("id, title, status, source_type, stage_categories, type_tags");
+  // 1. 카드 — 상태·소스·시기·유형 (1,000행 상한 회피를 위해 전량 페이지 루프)
+  const posts = await fetchAllRows<{
+    id: string;
+    title: string;
+    status: PostStatus;
+    source_type: SourceType;
+    stage_categories: string[];
+    type_tags: string[];
+  }>("selectAdminStats.posts", (from, to) =>
+    supabaseServer
+      .from("posts")
+      .select("id, title, status, source_type, stage_categories, type_tags")
+      .order("id", { ascending: true })
+      .range(from, to)
+  );
 
-  // 2. 이벤트 (최근 N일)
-  const { data: events } = await supabaseServer
-    .from("events")
-    .select("event_name, post_id, anon_id, user_id, created_at")
-    .gte("created_at", since);
+  // 2. 이벤트 (최근 N일) — 트래픽이 늘면 1,000건을 금방 넘으므로 역시 전량 루프
+  const events = await fetchAllRows<{
+    event_name: string;
+    post_id: string | null;
+    anon_id: string | null;
+    user_id: string | null;
+    created_at: string;
+  }>("selectAdminStats.events", (from, to) =>
+    supabaseServer
+      .from("events")
+      .select("event_name, post_id, anon_id, user_id, created_at")
+      .gte("created_at", since)
+      .order("id", { ascending: true })
+      .range(from, to)
+  );
 
   // 집계
   const totals = {
@@ -270,27 +334,31 @@ export async function selectStatusCounts(): Promise<{
   byStatus: Record<PostStatus, number>;
   bySource: Record<SourceType, number>;
 }> {
-  const { data, error } = await supabaseServer
-    .from("posts")
-    .select("status, source_type");
-  if (error) throw new Error(`selectStatusCounts: ${error.message}`);
+  // 행을 내려받아 세면 PAGE_SIZE 상한에 걸려 1,000에서 멈춤 → count=exact HEAD 쿼리로 정확 집계
+  const countWhere = async (column: "status" | "source_type", value: string) => {
+    const { count, error } = await supabaseServer
+      .from("posts")
+      .select("id", { count: "exact", head: true })
+      .eq(column, value);
+    if (error) throw new Error(`selectStatusCounts(${value}): ${error.message}`);
+    return count ?? 0;
+  };
 
-  const byStatus: Record<PostStatus, number> = {
-    draft: 0,
-    pending: 0,
-    published: 0,
-    expired: 0,
+  const [draft, pending, published, expired, admin, ingestion, submission] =
+    await Promise.all([
+      countWhere("status", "draft"),
+      countWhere("status", "pending"),
+      countWhere("status", "published"),
+      countWhere("status", "expired"),
+      countWhere("source_type", "admin"),
+      countWhere("source_type", "ingestion"),
+      countWhere("source_type", "submission"),
+    ]);
+
+  return {
+    byStatus: { draft, pending, published, expired },
+    bySource: { admin, ingestion, submission },
   };
-  const bySource: Record<SourceType, number> = {
-    admin: 0,
-    ingestion: 0,
-    submission: 0,
-  };
-  for (const row of (data ?? []) as { status: PostStatus; source_type: SourceType }[]) {
-    byStatus[row.status] = (byStatus[row.status] ?? 0) + 1;
-    bySource[row.source_type] = (bySource[row.source_type] ?? 0) + 1;
-  }
-  return { byStatus, bySource };
 }
 
 // ============================================

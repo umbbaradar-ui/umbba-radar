@@ -2,13 +2,16 @@
 
 // ============================================
 // 관리자 카드 목록 — 필터/정렬 클라이언트 즉시 처리
-// 서버는 전체 카드만 내려주고, 탭·상태·시기·유형·정렬은 여기서 메모리 필터.
-// → 필터 클릭 시 서버 왕복 0회 (즉시 반응).
+// 서버는 "활성 카드"만 내려주고, 탭·상태·시기·유형·정렬은 여기서 메모리 필터.
+// 마감 카드(수천 건)는 마감 탭 진입 시 100건씩 지연 로드 → 초기 로드 최소화.
 // ============================================
 
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { deletePostAction } from "@/modules/curation/actions";
+import {
+  deletePostAction,
+  loadExpiredPostsAction,
+} from "@/modules/curation/actions";
 import {
   STAGE_LABELS,
   TYPE_LABELS,
@@ -88,8 +91,14 @@ function applySort(posts: Post[], sort: string): Post[] {
   return arr;
 }
 
+/** 마감 탭 1회 로드 단위 — 서버 액션이 200으로 상한 클램프 */
+const EXPIRED_PAGE_SIZE = 100;
+
 interface Props {
+  /** 활성(초안·승인대기·발행) 카드 전량 — 마감 카드는 지연 로드 */
   posts: Post[];
+  /** 마감 카드 전체 건수 (count=exact) */
+  expiredTotal: number;
   initialTab: AdminTab;
   initialStatus: string;
   initialStage: string;
@@ -99,6 +108,7 @@ interface Props {
 
 export function AdminPostsView({
   posts,
+  expiredTotal,
   initialTab,
   initialStatus,
   initialStage,
@@ -111,18 +121,43 @@ export function AdminPostsView({
   const [type, setType] = useState(initialType);
   const [sort, setSort] = useState(initialSort);
 
-  const activeCount = useMemo(
-    () => posts.filter((p) => ACTIVE_STATUSES.includes(p.status)).length,
-    [posts]
-  );
-  const expiredCount = useMemo(
-    () => posts.filter((p) => p.status === "expired").length,
-    [posts]
-  );
+  // 마감 카드 지연 로드 상태
+  const [expiredPosts, setExpiredPosts] = useState<Post[]>([]);
+  const [expiredLoading, setExpiredLoading] = useState(false);
+  const [expiredDone, setExpiredDone] = useState(expiredTotal === 0);
+  const expiredFetching = useRef(false); // StrictMode 이중 실행·연타 가드
+
+  const loadMoreExpired = useCallback(async () => {
+    if (expiredFetching.current) return;
+    expiredFetching.current = true;
+    setExpiredLoading(true);
+    try {
+      const page = await loadExpiredPostsAction(
+        expiredPosts.length,
+        EXPIRED_PAGE_SIZE
+      );
+      if (page.length < EXPIRED_PAGE_SIZE) setExpiredDone(true);
+      setExpiredPosts((prev) => {
+        const seen = new Set(prev.map((p) => p.id));
+        return [...prev, ...page.filter((p) => !seen.has(p.id))];
+      });
+    } finally {
+      expiredFetching.current = false;
+      setExpiredLoading(false);
+    }
+  }, [expiredPosts.length]);
+
+  // 마감 탭 첫 진입 시 1페이지 자동 로드 (URL로 바로 진입한 경우 포함)
+  useEffect(() => {
+    if (tab !== "expired" || expiredDone || expiredPosts.length > 0) return;
+    void loadMoreExpired();
+  }, [tab, expiredDone, expiredPosts.length, loadMoreExpired]);
+
+  const visiblePosts = tab === "expired" ? expiredPosts : posts;
 
   const filtered = useMemo(
-    () => applySort(applyFilters(posts, tab, status, stage, type), sort),
-    [posts, tab, status, stage, type, sort]
+    () => applySort(applyFilters(visiblePosts, tab, status, stage, type), sort),
+    [visiblePosts, tab, status, stage, type, sort]
   );
 
   function handleChange(key: string, value: string | null) {
@@ -142,13 +177,19 @@ export function AdminPostsView({
           stage={stage}
           type={type}
           sort={sort}
-          counts={{ active: activeCount, expired: expiredCount }}
+          counts={{ active: posts.length, expired: expiredTotal }}
           onChange={handleChange}
         />
       </div>
 
       <p className="mb-2 text-xs text-slate-500">
         결과: <strong>{filtered.length}건</strong>
+        {tab === "expired" && !expiredDone && (
+          <span className="ml-1 text-slate-400">
+            (마감 {expiredTotal.toLocaleString("ko-KR")}건 중{" "}
+            {expiredPosts.length.toLocaleString("ko-KR")}건 로드됨)
+          </span>
+        )}
       </p>
 
       <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
@@ -167,7 +208,9 @@ export function AdminPostsView({
             {filtered.length === 0 ? (
               <tr>
                 <td colSpan={6} className="px-4 py-10 text-center text-slate-400">
-                  조건에 맞는 카드가 없어요.
+                  {tab === "expired" && expiredLoading
+                    ? "마감 카드 불러오는 중…"
+                    : "조건에 맞는 카드가 없어요."}
                 </td>
               </tr>
             ) : (
@@ -238,6 +281,29 @@ export function AdminPostsView({
           </tbody>
         </table>
       </div>
+
+      {/* 마감 탭 — 필요할 때만 100건씩 추가 로드 */}
+      {tab === "expired" && expiredPosts.length > 0 && (
+        <div className="mt-4 flex justify-center">
+          {expiredDone ? (
+            <p className="text-xs text-slate-400">
+              마감 카드 {expiredPosts.length.toLocaleString("ko-KR")}건 모두
+              불러왔어요.
+            </p>
+          ) : (
+            <button
+              type="button"
+              onClick={() => void loadMoreExpired()}
+              disabled={expiredLoading}
+              className="rounded-xl bg-slate-100 px-4 py-2 text-sm font-bold text-slate-700 transition hover:bg-slate-200 disabled:opacity-50"
+            >
+              {expiredLoading
+                ? "불러오는 중…"
+                : `더 불러오기 (${expiredPosts.length.toLocaleString("ko-KR")}/${expiredTotal.toLocaleString("ko-KR")})`}
+            </button>
+          )}
+        </div>
+      )}
     </>
   );
 }

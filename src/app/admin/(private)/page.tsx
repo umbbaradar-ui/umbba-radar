@@ -7,7 +7,7 @@
 
 import Link from "next/link";
 import {
-  listAllPosts,
+  listActivePosts,
   getCounts,
   getPipelineStats,
 } from "@/modules/curation/service";
@@ -88,11 +88,17 @@ export default async function AdminDashboard({ searchParams }: PageProps) {
   const type = normalizeType(sp.type);
   const sort = normalizeSort(sp.sort);
 
+  // 활성 카드만 초기 로드 — 마감(수천 건)은 AdminPostsView가 탭 진입 시 100건씩 지연 로드
   const [posts, counts, pipeline] = await Promise.all([
-    listAllPosts(),
+    listActivePosts(),
     getCounts(),
     getPipelineStats(),
   ]);
+  const totalCount =
+    counts.byStatus.draft +
+    counts.byStatus.pending +
+    counts.byStatus.published +
+    counts.byStatus.expired;
 
   const okMessage =
     sp.ok === "created"
@@ -119,9 +125,10 @@ export default async function AdminDashboard({ searchParams }: PageProps) {
             카드 관리
           </h1>
           <p className="mt-1 text-xs text-slate-500">
-            전체 {posts.length}건 · 발행 {counts.byStatus.published} · 초안{" "}
-            {counts.byStatus.draft} · 승인대기 {counts.byStatus.pending} · 마감{" "}
-            {counts.byStatus.expired}
+            전체 {totalCount.toLocaleString("ko-KR")}건 · 발행{" "}
+            {counts.byStatus.published} · 초안 {counts.byStatus.draft} · 승인대기{" "}
+            {counts.byStatus.pending} · 마감{" "}
+            {counts.byStatus.expired.toLocaleString("ko-KR")}
           </p>
           <p className="mt-0.5 text-xs text-slate-400">
             채널별: {SOURCE_TYPE_LABELS.admin} {counts.bySource.admin} ·{" "}
@@ -155,6 +162,7 @@ export default async function AdminDashboard({ searchParams }: PageProps) {
 
       <AdminPostsView
         posts={posts}
+        expiredTotal={counts.byStatus.expired}
         initialTab={tab}
         initialStatus={status}
         initialStage={stage}

@@ -21,6 +21,7 @@ This version has breaking changes — APIs, conventions, and file structure may 
 - **부수 작업 선제 처리**: enum 추가 → AI 프롬프트도 같이, 타입 변경 → 사용처 일괄
 - **사용자에게 물어볼 것**: 기존 데이터 마이그레이션, 정책 영향, 의견 갈리는 디자인
 - **꼭 빌드 검증 후 커밋·푸시**: `npm run build` → 성공 → git
+  - ⚠️ 이 노트북(한글 경로 `앱프로젝트\`)에선 Turbopack이 파일명 절단 중 한글 바이트 경계에서 패닉(`ident.rs char boundary`, Next 16.2.6 기준). **로컬 검증은 `npx next build --webpack`으로** 할 것. Vercel(리눅스·ASCII 경로)은 기본 Turbopack 그대로 정상. 정션(junction) 우회는 realpath 해석 때문에 무효.
 - **🔴 UI 검증은 항상 "모바일 우선"**: 화면(레이아웃·텍스트·버튼)을 바꾸는 작업은 **모든 검증의 1차로 모바일 뷰포트(375×812 등)에서 먼저 검수**한다. 주 사용자가 모바일이므로, 데스크탑만 보고 끝내지 말 것.
   - 체크리스트: ①텍스트 잘림/말줄임(`truncate`·`whitespace-nowrap` 주의) ②버튼·칩이 좁은 폭에서 겹치거나 줄 넘침 ③탭/터치 영역 ④한 줄 강제 요소가 긴 한글 문구에서 깨지지 않는지.
   - 방법: 프리뷰 `preview_resize`(mobile) 후 확인. 스크린샷이 막히면 DOM/computed style(`white-space`, `text-overflow`, 가로 오버플로)로라도 잘림 여부를 검증.

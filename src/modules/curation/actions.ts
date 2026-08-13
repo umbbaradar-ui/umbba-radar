@@ -13,11 +13,12 @@ import {
   updatePost,
   deletePost,
   approvePost,
+  selectExpiredPostsPage,
   type PostInsertInput,
 } from "./repository";
 import { getServerSupabase } from "@/shared/db/supabase-ssr";
 import { supabaseServer } from "@/shared/db/supabase-server";
-import type { PostStatus } from "@/shared/types/post";
+import type { Post, PostStatus } from "@/shared/types/post";
 import { isPastDeadline } from "@/shared/utils/dday";
 import {
   ADMIN_COOKIE_NAME,
@@ -32,6 +33,17 @@ async function ensureAdmin(): Promise<void> {
   if (!verifyAdminToken(token)) {
     redirect("/admin/login");
   }
+}
+
+/** 어드민 "마감" 탭 지연 로드 — 클라이언트가 필요할 때만 페이지 단위로 가져감 */
+export async function loadExpiredPostsAction(
+  offset: number,
+  pageSize: number
+): Promise<Post[]> {
+  await ensureAdmin();
+  const safeOffset = Math.max(0, Math.floor(offset) || 0);
+  const safeSize = Math.min(Math.max(Math.floor(pageSize) || 0, 1), 200);
+  return selectExpiredPostsPage(safeOffset, safeSize);
 }
 
 /** 마감일 미정 카드의 자동 종료 기간 — 관리자 폼에서 1/3/7일 중 선택.
