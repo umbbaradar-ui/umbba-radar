@@ -9,6 +9,7 @@ import { NextResponse } from "next/server";
 import { supabaseServer } from "@/shared/db/supabase-server";
 import { isAdminRequest } from "@/shared/utils/admin-session";
 import { isPastDeadline } from "@/shared/utils/dday";
+import { sanitizeItemCategories } from "@/shared/types/post";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -26,6 +27,8 @@ interface ClassifyItem {
   kind?: "recruiting" | "group_buy";
   stage_categories?: string[];
   type_tags?: string[];
+  /** 품목 카테고리 (022) — 화이트리스트 통과분만 저장, 최대 2개 */
+  item_categories?: string[];
   topic?: "parenting" | "living";
   deadline?: string | null;
 }
@@ -133,15 +136,25 @@ export async function POST(request: Request) {
         deadline_unknown: deadlineUnknown,
         stage_categories: it.stage_categories ?? [],
         type_tags: it.type_tags ?? [],
+        item_categories: sanitizeItemCategories(it.item_categories),
         topic: it.topic === "living" ? "living" : "parenting",
       };
       // body 는 제공된 경우만 갱신 — 미제공 시 draft 의 원문 캡션 보존(요약/누락 방지)
       if (it.body !== undefined) upd.body = it.body?.slice(0, 2000) ?? null;
-      const { error } = await supabaseServer
+      let { error } = await supabaseServer
         .from("posts")
         .update(upd)
         .eq("id", it.id)
         .eq("status", "draft");
+      // 마이그레이션 022 미적용 DB — 품목만 빼고 재시도 (021 source_post_date와 동일 패턴)
+      if (error && error.message.includes("item_categories")) {
+        delete upd.item_categories;
+        ({ error } = await supabaseServer
+          .from("posts")
+          .update(upd)
+          .eq("id", it.id)
+          .eq("status", "draft"));
+      }
       if (error) throw new Error(error.message);
       updated++;
     } catch (e) {

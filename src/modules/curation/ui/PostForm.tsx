@@ -13,6 +13,8 @@ import {
   ACTIVE_STAGE_CATEGORIES,
   TYPE_LABELS,
   ACTIVE_TYPE_TAGS,
+  ITEM_CATEGORY_LABELS,
+  ACTIVE_ITEM_CATEGORIES,
   TOPIC_LABELS,
   ACTIVE_TOPIC_CATEGORIES,
 } from "@/shared/types/post";
@@ -35,6 +37,7 @@ export interface PostFormDefaults {
   reviewer_handle?: string | null;
   stage_categories?: string[];
   type_tags?: string[];
+  item_categories?: string[];
   topic?: string;
   status?: string;
   is_sponsored?: boolean;
@@ -78,6 +81,7 @@ export function PostForm({ post, defaults, action, publishAction, submitLabel, e
     stage_categories:
       defaults?.stage_categories ?? post?.stage_categories ?? [],
     type_tags: defaults?.type_tags ?? post?.type_tags ?? [],
+    item_categories: defaults?.item_categories ?? post?.item_categories ?? [],
     topic: defaults?.topic ?? post?.topic ?? "parenting",
     status: defaults?.status ?? post?.status ?? "draft",
     is_sponsored: defaults?.is_sponsored ?? post?.is_sponsored ?? false,
@@ -287,6 +291,20 @@ export function PostForm({ post, defaults, action, publishAction, submitLabel, e
               value={k}
               label={TYPE_LABELS[k]}
               defaultChecked={v.type_tags.includes(k)}
+            />
+          ))}
+        </div>
+      </Section>
+
+      <Section title="품목 카테고리 (보통 1개, 최대 2개)">
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+          {ACTIVE_ITEM_CATEGORIES.map((k) => (
+            <Checkbox
+              key={k}
+              name="item_categories"
+              value={k}
+              label={ITEM_CATEGORY_LABELS[k]}
+              defaultChecked={v.item_categories.includes(k)}
             />
           ))}
         </div>

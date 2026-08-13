@@ -15,8 +15,10 @@ import {
 import {
   STAGE_LABELS,
   TYPE_LABELS,
+  ITEM_CATEGORY_LABELS,
   type StageCategory,
   type TypeTag,
+  type ItemCategory,
   type PostStatus,
   type Post,
 } from "@/shared/types/post";
@@ -43,7 +45,8 @@ function applyFilters(
   tab: AdminTab,
   status: string,
   stage: string,
-  type: string
+  type: string,
+  item: string
 ): Post[] {
   return posts.filter((p) => {
     if (tab === "expired") {
@@ -55,6 +58,12 @@ function applyFilters(
     if (stage !== "all" && !p.stage_categories.includes(stage as StageCategory))
       return false;
     if (type !== "all" && !p.type_tags.includes(type as TypeTag)) return false;
+    // item_categories는 022 이전 데이터에서 undefined일 수 있음
+    if (
+      item !== "all" &&
+      !(p.item_categories ?? []).includes(item as ItemCategory)
+    )
+      return false;
     return true;
   });
 }
@@ -103,6 +112,7 @@ interface Props {
   initialStatus: string;
   initialStage: string;
   initialType: string;
+  initialItem: string;
   initialSort: string;
 }
 
@@ -113,12 +123,14 @@ export function AdminPostsView({
   initialStatus,
   initialStage,
   initialType,
+  initialItem,
   initialSort,
 }: Props) {
   const [tab, setTab] = useState<AdminTab>(initialTab);
   const [status, setStatus] = useState(initialStatus);
   const [stage, setStage] = useState(initialStage);
   const [type, setType] = useState(initialType);
+  const [item, setItem] = useState(initialItem);
   const [sort, setSort] = useState(initialSort);
 
   // 마감 카드 지연 로드 상태
@@ -156,8 +168,9 @@ export function AdminPostsView({
   const visiblePosts = tab === "expired" ? expiredPosts : posts;
 
   const filtered = useMemo(
-    () => applySort(applyFilters(visiblePosts, tab, status, stage, type), sort),
-    [visiblePosts, tab, status, stage, type, sort]
+    () =>
+      applySort(applyFilters(visiblePosts, tab, status, stage, type, item), sort),
+    [visiblePosts, tab, status, stage, type, item, sort]
   );
 
   function handleChange(key: string, value: string | null) {
@@ -165,6 +178,7 @@ export function AdminPostsView({
     else if (key === "status") setStatus(value ?? "all");
     else if (key === "stage") setStage(value ?? "all");
     else if (key === "type") setType(value ?? "all");
+    else if (key === "item") setItem(value ?? "all");
     else if (key === "sort") setSort(value ?? "deadline_asc");
   }
 
@@ -176,6 +190,7 @@ export function AdminPostsView({
           status={status}
           stage={stage}
           type={type}
+          item={item}
           sort={sort}
           counts={{ active: posts.length, expired: expiredTotal }}
           onChange={handleChange}
@@ -238,6 +253,13 @@ export function AdminPostsView({
                   </td>
                   <td className="px-4 py-3 text-xs text-slate-600">
                     {p.type_tags.map((t) => TYPE_LABELS[t] ?? t).join(", ") || "—"}
+                    {(p.item_categories ?? []).length > 0 && (
+                      <div className="mt-0.5 text-[10px] text-slate-400">
+                        {(p.item_categories ?? [])
+                          .map((c) => ITEM_CATEGORY_LABELS[c] ?? c)
+                          .join(", ")}
+                      </div>
+                    )}
                   </td>
                   <td className="px-4 py-3 text-xs text-slate-600">
                     {p.deadline ? (

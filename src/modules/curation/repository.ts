@@ -103,6 +103,8 @@ export interface PostInsertInput {
   reviewer_handle?: string | null;
   stage_categories: string[];
   type_tags: string[];
+  /** 품목 카테고리 (022) — sanitizeItemCategories 통과값만 넣을 것 */
+  item_categories?: string[];
   topic?: string; // 'parenting' | 'living' — 미지정 시 DB DEFAULT 'parenting'
   is_sponsored?: boolean;
   status: PostStatus;
@@ -453,11 +455,22 @@ export async function selectPipelineStats(days = 7): Promise<PipelineStats> {
 }
 
 export async function insertPost(input: PostInsertInput): Promise<Post> {
-  const { data, error } = await supabaseServer
+  let { data, error } = await supabaseServer
     .from("posts")
     .insert(input)
     .select()
     .single();
+
+  // 마이그레이션 022 미적용 DB — 품목만 빼고 재시도
+  if (error && error.message.includes("item_categories")) {
+    const { item_categories: _drop, ...rest } = input;
+    void _drop;
+    ({ data, error } = await supabaseServer
+      .from("posts")
+      .insert(rest)
+      .select()
+      .single());
+  }
 
   if (error) throw new Error(`insertPost: ${error.message}`);
   return data as Post;
@@ -467,12 +480,24 @@ export async function updatePost(
   id: string,
   input: Partial<PostInsertInput>
 ): Promise<Post> {
-  const { data, error } = await supabaseServer
+  let { data, error } = await supabaseServer
     .from("posts")
     .update(input)
     .eq("id", id)
     .select()
     .single();
+
+  // 마이그레이션 022 미적용 DB — 품목만 빼고 재시도
+  if (error && error.message.includes("item_categories")) {
+    const { item_categories: _drop, ...rest } = input;
+    void _drop;
+    ({ data, error } = await supabaseServer
+      .from("posts")
+      .update(rest)
+      .eq("id", id)
+      .select()
+      .single());
+  }
 
   if (error) throw new Error(`updatePost: ${error.message}`);
   return data as Post;

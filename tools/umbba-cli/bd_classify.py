@@ -69,6 +69,7 @@ def to_classify_item(r: dict) -> dict:
         "title": r.get("title"), "brand_name": r.get("brand_name"), "body": r.get("body"),
         "search_keywords": r.get("search_keywords"), "kind": r.get("kind"),
         "stage_categories": r.get("stage_categories"), "type_tags": r.get("type_tags"),
+        "item_categories": r.get("item_categories"),
         "topic": r.get("topic"), "deadline": r.get("deadline"),
     }
 

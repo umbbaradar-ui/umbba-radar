@@ -46,6 +46,8 @@ export interface VisionExtractResult {
   kind: "recruiting" | "group_buy";
   stage_categories: string[];
   type_tags: string[];
+  /** 품목 카테고리 (022) — 보통 1개, 최대 2개 */
+  item_categories?: string[];
   topic: "parenting" | "living";
   deadline: string | null;
 }
@@ -73,6 +75,7 @@ const VISION_SYSTEM_PROMPT = `당신은 한국 육아 정보 큐레이션 사이
   "kind": "recruiting" | "group_buy",
   "stage_categories": Array<"pregnancy"|"newborn"|"infant"|"toddler"|"elementary"|"all_ages">,
   "type_tags": Array<"regram"|"experience"|"kids_model"|"supporters"|"form">,
+  "item_categories": Array<"clothing"|"feeding"|"diaper_hygiene"|"skincare_bath"|"toys_edu"|"books_content"|"gear_outing"|"bedding_furniture"|"home_living"|"food_health"|"service_class"|"etc">,  // 품목 — 보통 1개, 최대 2개
   "topic": "parenting" | "living",          // 콘텐츠 주제 (필수)
   "deadline": string | null                 // ISO 8601 with +09:00. 캡션에서 적극 추출, 없으면 null
 }
@@ -116,6 +119,21 @@ const VISION_SYSTEM_PROMPT = `당신은 한국 육아 정보 큐레이션 사이
 - form: 별도 폼 작성 필수 — "구글폼/네이버폼/자체 신청서/카카오톡 채널 신청서" 등 외부 폼 URL 작성을 거쳐야 신청 완료되는 경우. 댓글·DM만으로 신청 가능하면 form 아님
 ※ form은 다른 태그와 직교적이라 자유롭게 조합 가능 (예: experience + form)
 ※ "팔로우만", "추첨 방식", "정부 지원사업"은 type_tags에 포함하지 마세요 (분류 의미 없음)
+
+# item_categories (품목 — "무엇을 주는가" 기준, 보통 1개·최대 2개)
+- clothing: 의류·잡화 (아동복·신발·양말·모자·가방·머플러)
+- feeding: 수유·이유식 (젖병·빨대컵·식판·이유식·분유·수유용품)
+- diaper_hygiene: 기저귀·위생 (기저귀·물티슈·칫솔치약·구강·세정)
+- skincare_bath: 스킨·목욕 (로션·선케어·마스크팩·헤어·욕조·배쓰밤)
+- toys_edu: 완구·교구 (장난감·인형·모빌·교구·문구·미술)
+- books_content: 도서·콘텐츠 (전집·그림책·사운드북·활동지)
+- gear_outing: 외출·이동 (유모차·카시트·아기띠·나들이용품)
+- bedding_furniture: 침구·가구 (침대·매트·베개·이불·수납·가구)
+- home_living: 리빙·가전 (주방·세탁·세제·방향제·생활가전)
+- food_health: 식품·건강 (간식·음료·건강즙·영양제·식품/카페 쿠폰)
+- service_class: 서비스·클래스 (클래스·상담·티켓·숙박·촬영·앱)
+- etc: 기타 (랜덤박스·굿즈·현금성 경품 등 분류 불가)
+※ 브랜드가 아니라 받는 물건 기준 (아동복 브랜드가 커피쿠폰 주면 food_health). 애매하면 가장 가까운 1개.
 
 # topic (콘텐츠 주제, 필수 — 둘 중 하나)
 - parenting: 아이가 주체이거나 직접 사용 (이유식·기저귀·완구·교구·키즈모델·아동 체험단 등)

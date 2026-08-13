@@ -18,7 +18,11 @@ import {
 } from "./repository";
 import { getServerSupabase } from "@/shared/db/supabase-ssr";
 import { supabaseServer } from "@/shared/db/supabase-server";
-import type { Post, PostStatus } from "@/shared/types/post";
+import {
+  sanitizeItemCategories,
+  type Post,
+  type PostStatus,
+} from "@/shared/types/post";
 import { isPastDeadline } from "@/shared/utils/dday";
 import {
   ADMIN_COOKIE_NAME,
@@ -111,6 +115,7 @@ function parseFormToPost(formData: FormData): PostInsertInput {
     reviewer_handle: getOrNull("reviewer_handle"),
     stage_categories: getAll("stage_categories"),
     type_tags: getAll("type_tags"),
+    item_categories: sanitizeItemCategories(getAll("item_categories")),
     topic: topic === "living" ? "living" : "parenting",
     is_sponsored: formData.get("is_sponsored") === "on",
     status: (get("status") || "draft") as PostStatus,

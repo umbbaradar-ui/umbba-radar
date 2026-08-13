@@ -65,6 +65,8 @@ export interface Post {
   reviewer_handle: string | null
   stage_categories: StageCategory[]
   type_tags: TypeTag[]
+  /** 품목 카테고리 (022) — 마이그레이션 미적용 DB에선 undefined일 수 있어 optional. 읽을 땐 `?? []` */
+  item_categories?: ItemCategory[]
   topic: TopicCategory
   is_sponsored: boolean
   pinned_until: string | null
@@ -113,3 +115,65 @@ export const ACTIVE_TYPE_TAGS: readonly TypeTag[] = [
   'supporters',
   'form',
 ] as const
+
+// ============================================
+// 품목 카테고리 (2026-08-13, migration 022) — "무엇을 주는가" axis
+// 시기(stage)·유형(type)과 독립. 카드 등록 시 AI가 자동 부여, 보통 1개(최대 2개).
+// 목적: 품목별 묶음·필터·개인화 추천의 데이터 기반 선행 축적.
+// 변경 시 부수 작업: tools/umbba-cli/RULES.md + bd_local.py CLASSIFY_PROMPT 동기화
+// ============================================
+export type ItemCategory =
+  | 'clothing'          // 의류·잡화 (아동복·신발·모자·양말·가방)
+  | 'feeding'           // 수유·이유식 (젖병·빨대컵·식판·이유식·분유·수유용품)
+  | 'diaper_hygiene'    // 기저귀·위생 (기저귀·물티슈·구강·세정)
+  | 'skincare_bath'     // 스킨·목욕 (로션·선케어·욕조·배쓰밤·헤어·뷰티)
+  | 'toys_edu'          // 완구·교구 (장난감·인형·교구·문구)
+  | 'books_content'     // 도서·콘텐츠 (전집·그림책·사운드북·활동지)
+  | 'gear_outing'       // 외출·이동 (유모차·카시트·아기띠·나들이용품)
+  | 'bedding_furniture' // 침구·가구 (침대·매트·베개·이불·수납·가구)
+  | 'home_living'       // 리빙·가전 (주방·세탁·청소·가전·생활용품)
+  | 'food_health'       // 식품·건강 (간식·음료·영양제·식품 쿠폰)
+  | 'service_class'     // 서비스·클래스 (스냅·클래스·티켓·숙박·상담·앱)
+  | 'etc'               // 기타 (랜덤박스·굿즈·현금성 경품 등 분류 불가)
+
+export const ITEM_CATEGORY_LABELS: Record<ItemCategory, string> = {
+  clothing: '의류·잡화',
+  feeding: '수유·이유식',
+  diaper_hygiene: '기저귀·위생',
+  skincare_bath: '스킨·목욕',
+  toys_edu: '완구·교구',
+  books_content: '도서·콘텐츠',
+  gear_outing: '외출·이동',
+  bedding_furniture: '침구·가구',
+  home_living: '리빙·가전',
+  food_health: '식품·건강',
+  service_class: '서비스·클래스',
+  etc: '기타',
+}
+
+export const ACTIVE_ITEM_CATEGORIES: readonly ItemCategory[] = [
+  'clothing',
+  'feeding',
+  'diaper_hygiene',
+  'skincare_bath',
+  'toys_edu',
+  'books_content',
+  'gear_outing',
+  'bedding_furniture',
+  'home_living',
+  'food_health',
+  'service_class',
+  'etc',
+] as const
+
+/** 미지의 문자열 배열 → 유효한 ItemCategory만 (LLM 출력·폼 입력 화이트리스트) */
+export function sanitizeItemCategories(raw: unknown): ItemCategory[] {
+  if (!Array.isArray(raw)) return []
+  return Array.from(
+    new Set(
+      raw.filter((v): v is ItemCategory =>
+        (ACTIVE_ITEM_CATEGORIES as readonly string[]).includes(v as string)
+      )
+    )
+  ).slice(0, 2)
+}

@@ -13,6 +13,7 @@ import {
 } from "@/modules/curation/service";
 import {
   SOURCE_TYPE_LABELS,
+  ACTIVE_ITEM_CATEGORIES,
   type StageCategory,
   type TypeTag,
 } from "@/shared/types/post";
@@ -27,6 +28,7 @@ interface PageProps {
     status?: string;
     stage?: string;
     type?: string;
+    item?: string;
     sort?: string;
   }>;
 }
@@ -68,6 +70,12 @@ function normalizeType(raw: string | undefined): string {
   return "all";
 }
 
+function normalizeItem(raw: string | undefined): string {
+  if (raw && (ACTIVE_ITEM_CATEGORIES as readonly string[]).includes(raw))
+    return raw;
+  return "all";
+}
+
 function normalizeSort(raw: string | undefined): string {
   const valid = [
     "deadline_asc",
@@ -86,6 +94,7 @@ export default async function AdminDashboard({ searchParams }: PageProps) {
   const status = normalizeStatus(sp.status);
   const stage = normalizeStage(sp.stage);
   const type = normalizeType(sp.type);
+  const item = normalizeItem(sp.item);
   const sort = normalizeSort(sp.sort);
 
   // 활성 카드만 초기 로드 — 마감(수천 건)은 AdminPostsView가 탭 진입 시 100건씩 지연 로드
@@ -167,6 +176,7 @@ export default async function AdminDashboard({ searchParams }: PageProps) {
         initialStatus={status}
         initialStage={stage}
         initialType={type}
+        initialItem={item}
         initialSort={sort}
       />
     </main>

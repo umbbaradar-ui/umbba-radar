@@ -82,6 +82,7 @@
 - 이미지 업로드: Supabase Storage `card-images` 버킷
 - AI 추출은 Gemini 2.0 Flash multimodal (Vision)
 - 2026-08-13 어드민 메인 간소화: 초기 로드는 활성(초안·승인대기·발행) 카드만, 마감 카드(2,000건+)는 "마감" 탭 진입 시 100건씩 지연 로드(`loadExpiredPostsAction`). 헤더·탭 카운트는 `count=exact` 쿼리(Supabase 1,000행 상한에 걸려 "전체 1,000건 고정"으로 보이던 버그 수정). 마감 카드는 수기 검수 대상 아님 — 아카이브 열람용
+- 2026-08-13 품목 카테고리(item_categories, migration 022) 도입: "무엇을 주는가" axis 12종(clothing~etc, `ItemCategory`). 등록 시 AI 분류가 자동 부여(보통 1개·최대 2개) — 지금은 데이터 축적 선행, 공개 UI 노출(필터·묶음·추천)은 데이터 쌓인 뒤 후속. 분류체계 변경 시 RULES.md·bd_local.py·vision-extractor 프롬프트 동기화 필수. 값 검증은 `sanitizeItemCategories` 화이트리스트
 
 ---
 

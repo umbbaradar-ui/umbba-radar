@@ -10,8 +10,10 @@ import { useCallback } from "react";
 import {
   ACTIVE_STAGE_CATEGORIES,
   ACTIVE_TYPE_TAGS,
+  ACTIVE_ITEM_CATEGORIES,
   STAGE_LABELS,
   TYPE_LABELS,
+  ITEM_CATEGORY_LABELS,
 } from "@/shared/types/post";
 
 const STATUS_OPTIONS = [
@@ -36,6 +38,7 @@ interface Props {
   status: string;
   stage: string;
   type: string;
+  item: string;
   sort: string;
   counts: {
     active: number;
@@ -50,6 +53,7 @@ export function AdminFilterBar({
   status,
   stage,
   type,
+  item,
   sort,
   counts,
   onChange,
@@ -131,6 +135,21 @@ export function AdminFilterBar({
             onClick={() => setParam("type", t)}
           >
             {TYPE_LABELS[t]}
+          </Chip>
+        ))}
+      </FilterRow>
+
+      <FilterRow label="품목">
+        <Chip active={item === "all"} onClick={() => setParam("item", "all")}>
+          전체
+        </Chip>
+        {ACTIVE_ITEM_CATEGORIES.map((c) => (
+          <Chip
+            key={c}
+            active={item === c}
+            onClick={() => setParam("item", c)}
+          >
+            {ITEM_CATEGORY_LABELS[c]}
           </Chip>
         ))}
       </FilterRow>
