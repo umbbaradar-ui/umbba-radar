@@ -101,21 +101,22 @@ export async function addUrlsToQueue(
 
   const urlsOnly = normalized.map((n) => n.url);
 
-  // 2) 이미 ingest_queue 에 있는 URL 제외
-  const { data: existingQueue } = await supabaseServer
-    .from("ingest_queue")
-    .select("url")
-    .in("url", urlsOnly);
-  const existingQueueSet = new Set((existingQueue ?? []).map((r) => r.url as string));
-
-  // 3) 이미 posts 에 있는 source_url 제외
-  const { data: existingPosts } = await supabaseServer
-    .from("posts")
-    .select("source_url")
-    .in("source_url", urlsOnly);
-  const existingPostsSet = new Set(
-    (existingPosts ?? []).map((r) => r.source_url as string)
-  );
+  // 2)·3) 중복 확인 — .in()은 청크로 나눠 URL 길이·1,000행 응답 상한 회피,
+  // 에러는 무시하지 말고 표면화 (무시하면 빈 필터처럼 동작해 잘못된 insert로 이어짐)
+  const CHUNK = 200;
+  const existingQueueSet = new Set<string>();
+  const existingPostsSet = new Set<string>();
+  for (let i = 0; i < urlsOnly.length; i += CHUNK) {
+    const chunk = urlsOnly.slice(i, i + CHUNK);
+    const [q, p] = await Promise.all([
+      supabaseServer.from("ingest_queue").select("url").in("url", chunk),
+      supabaseServer.from("posts").select("source_url").in("source_url", chunk),
+    ]);
+    if (q.error) throw new Error(`큐 중복 확인 실패: ${q.error.message}`);
+    if (p.error) throw new Error(`카드 중복 확인 실패: ${p.error.message}`);
+    for (const r of q.data ?? []) existingQueueSet.add(r.url as string);
+    for (const r of p.data ?? []) existingPostsSet.add(r.source_url as string);
+  }
 
   // 4) 큐에 추가할 것만 추리기
   const toInsert: Array<{
@@ -145,10 +146,15 @@ export async function addUrlsToQueue(
 
   if (toInsert.length === 0) return result;
 
-  // 5) 일괄 INSERT
+  // 5) 일괄 UPSERT (url unique 충돌 시 무시) — 중복 확인을 빠져나간 URL이 있어도
+  // 배치 전체가 unique 위반으로 죽지 않게. count는 실제 삽입된 행 수만 집계됨.
   const { error: insertError, count } = await supabaseServer
     .from("ingest_queue")
-    .insert(toInsert, { count: "exact" });
+    .upsert(toInsert, {
+      onConflict: "url",
+      ignoreDuplicates: true,
+      count: "exact",
+    });
 
   if (insertError) {
     throw new Error(`큐 저장 실패: ${insertError.message}`);

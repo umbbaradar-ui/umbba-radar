@@ -59,10 +59,14 @@ export async function addUsernames(raws: string[]): Promise<AddAccountsResult> {
   if (valid.length === 0) return result;
 
   // 2) 이미 있는 username 제외 (lower 매칭)
-  const { data: existing } = await supabaseServer
+  // 에러를 무시하면 중복 필터가 빈 것처럼 동작 → insert가 unique 위반으로 배치 전체 실패.
+  // 여기서 명시적으로 던져서 "재시도" 가능한 에러로 표면화.
+  const { data: existing, error: existErr } = await supabaseServer
     .from("instagram_accounts")
     .select("username")
     .in("username", valid);
+  if (existErr)
+    throw new Error(`중복 확인 실패 (다시 시도해주세요): ${existErr.message}`);
   const existingSet = new Set(
     (existing ?? []).map((r) => (r.username as string).toLowerCase())
   );
@@ -88,24 +92,41 @@ export async function addUsernames(raws: string[]): Promise<AddAccountsResult> {
   return result;
 }
 
+// Supabase(PostgREST) 1회 응답 상한 — 무제한 select는 1,000행에서 조용히 잘리므로
+// "전량"이 필요한 목록 조회는 페이지 루프 필수 (계정 1,000개 도달로 실제 발생, 2026-08-17)
+const PAGE_SIZE = 1000;
+
 export async function listAccounts(): Promise<InstagramAccount[]> {
-  const { data, error } = await supabaseServer
-    .from("instagram_accounts")
-    .select("*")
-    .order("active", { ascending: false })
-    .order("username", { ascending: true });
-  if (error) throw new Error(error.message);
-  return (data ?? []) as InstagramAccount[];
+  const all: InstagramAccount[] = [];
+  for (;;) {
+    const { data, error } = await supabaseServer
+      .from("instagram_accounts")
+      .select("*")
+      .order("active", { ascending: false })
+      .order("username", { ascending: true })
+      .range(all.length, all.length + PAGE_SIZE - 1);
+    if (error) throw new Error(error.message);
+    all.push(...((data ?? []) as InstagramAccount[]));
+    if (!data || data.length < PAGE_SIZE) break;
+  }
+  return all;
 }
 
 export async function listActiveUsernames(): Promise<string[]> {
-  const { data, error } = await supabaseServer
-    .from("instagram_accounts")
-    .select("username")
-    .eq("active", true)
-    .order("last_scanned_at", { ascending: true, nullsFirst: true });
-  if (error) throw new Error(error.message);
-  return (data ?? []).map((r) => r.username as string);
+  const all: string[] = [];
+  for (;;) {
+    const { data, error } = await supabaseServer
+      .from("instagram_accounts")
+      .select("username")
+      .eq("active", true)
+      .order("last_scanned_at", { ascending: true, nullsFirst: true })
+      .order("id", { ascending: true }) // 페이지 경계 순서 고정
+      .range(all.length, all.length + PAGE_SIZE - 1);
+    if (error) throw new Error(error.message);
+    all.push(...(data ?? []).map((r) => r.username as string));
+    if (!data || data.length < PAGE_SIZE) break;
+  }
+  return all;
 }
 
 export async function setActive(id: string, active: boolean): Promise<void> {
