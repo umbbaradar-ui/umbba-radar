@@ -4,9 +4,40 @@
 // ============================================
 
 const ANON_ID_KEY = "umbba-radar:anon-id";
+const SURFACE_KEY = "umbba-radar:surface";
 
 function isBrowser(): boolean {
   return typeof window !== "undefined";
+}
+
+/**
+ * 유입 표면 감지 — 채널별 리텐션·전환 측정용 (2026-08 플레이 출시 대비).
+ *   twa     : 구글 플레이 앱(TWA) — 최초 문서 referrer에 android-app:// 마커
+ *   pwa     : 홈 화면 설치(안드로이드 PWA·iOS 홈화면 추가) — standalone 표시 모드
+ *   browser : 일반 브라우저
+ *
+ * TWA 마커는 앱 실행 첫 내비게이션에만 찍히고 이후 풀 리로드(OAuth 복귀 등)에서
+ * 사라지므로, 최초 감지값을 sessionStorage에 고정해 세션 내내 유지한다.
+ */
+function getSurface(): string {
+  if (!isBrowser()) return "server";
+  try {
+    const stored = sessionStorage.getItem(SURFACE_KEY);
+    if (stored) return stored;
+    let surface = "browser";
+    if (document.referrer.startsWith("android-app://com.umbba_radar.twa")) {
+      surface = "twa";
+    } else if (
+      window.matchMedia?.("(display-mode: standalone)")?.matches ||
+      (navigator as { standalone?: boolean }).standalone === true
+    ) {
+      surface = "pwa";
+    }
+    sessionStorage.setItem(SURFACE_KEY, surface);
+    return surface;
+  } catch {
+    return "browser";
+  }
 }
 
 function getAnonId(): string {
@@ -52,7 +83,8 @@ export function track(event_name: string, properties: TrackProperties = {}): voi
     event_name,
     anon_id: getAnonId(),
     post_id,
-    properties: restProps,
+    // surface는 모든 이벤트에 자동 첨부 (호출부가 명시하면 그 값이 우선)
+    properties: { surface: getSurface(), ...restProps },
   });
 
   // sendBeacon이 가능하면 페이지 이동 직전에도 안전하게 전송
