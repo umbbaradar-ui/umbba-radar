@@ -6,31 +6,9 @@
 
 import "server-only";
 import { supabaseServer } from "@/shared/db/supabase-server";
+import { fetchAllRows } from "@/shared/db/fetch-all-rows";
 import type { Post, PostStatus, SourceType } from "@/shared/types/post";
 import { isPastDeadline, kstTodayStartIso } from "@/shared/utils/dday";
-
-// Supabase(PostgREST) 1회 응답 상한. 무제한 select는 여기서 조용히 잘리므로(1000행),
-// "전량"이 필요한 조회는 반드시 fetchAllRows 페이지 루프를 쓸 것.
-const PAGE_SIZE = 1000;
-
-/** 조건에 맞는 행 전량을 페이지 루프로 수집. buildPage는 호출마다 새 쿼리 빌더를 만들어
- *  .range(from, to)까지 적용해 반환할 것 (Supabase 빌더는 1회용). 정렬에 id 2차 정렬 필수. */
-async function fetchAllRows<T>(
-  label: string,
-  buildPage: (
-    from: number,
-    to: number
-  ) => PromiseLike<{ data: T[] | null; error: { message: string } | null }>
-): Promise<T[]> {
-  const all: T[] = [];
-  for (;;) {
-    const { data, error } = await buildPage(all.length, all.length + PAGE_SIZE - 1);
-    if (error) throw new Error(`${label}: ${error.message}`);
-    all.push(...(data ?? []));
-    if (!data || data.length < PAGE_SIZE) break; // 마지막 페이지
-  }
-  return all;
-}
 
 /** 활성 카드(초안·승인대기·발행) 전량 — 어드민 메인 목록용. 마감 카드는 selectExpiredPostsPage로 지연 로드 */
 export async function selectActivePostsAdmin(): Promise<Post[]> {
@@ -187,6 +165,19 @@ export interface AdminStats {
     source_clicks: number;
     ctr: number;
   }>;
+  /**
+   * 영역(zone)별 카드 진입 성과 — `card_open` 이벤트 기반 (2026-08-20 도입).
+   * 나중에 배너·프리미엄 카드를 "실제로 눌리는 자리"에 배치하고,
+   * B2B 상품화 시 자리별 단가 근거로 쓰기 위한 선행 집계.
+   */
+  byZone: Array<{
+    zone: string;
+    opens: number;
+    /** 그 영역에서 들어간 카드 중 원문까지 간 비율(추정) */
+    sourceClicks: number;
+    /** 자리별 클릭 분포 — index 0부터, 상위 8자리까지 */
+    byPosition: number[];
+  }>;
   /** 기간 (일) */
   periodDays: number;
 }
@@ -217,10 +208,11 @@ export async function selectAdminStats(periodDays: number = 7): Promise<AdminSta
     anon_id: string | null;
     user_id: string | null;
     created_at: string;
+    properties: Record<string, unknown> | null;
   }>("selectAdminStats.events", (from, to) =>
     supabaseServer
       .from("events")
-      .select("event_name, post_id, anon_id, user_id, created_at")
+      .select("event_name, post_id, anon_id, user_id, created_at, properties")
       .gte("created_at", since)
       .order("id", { ascending: true })
       .range(from, to)
@@ -273,12 +265,15 @@ export async function selectAdminStats(periodDays: number = 7): Promise<AdminSta
   const sourceClicks = new Map<string, number>();
   const uniqueIds = new Set<string>();
 
-  for (const ev of (events ?? []) as Array<{
-    event_name: string;
-    post_id: string | null;
-    anon_id: string | null;
-    user_id: string | null;
-  }>) {
+  // 영역·자리별 집계 (card_open) — 어느 자리가 실제로 눌리는지
+  const zoneOpens = new Map<string, number>();
+  const zonePositions = new Map<string, number[]>();
+  /** card_open으로 진입한 post_id → zone. 뒤이은 source_link_click을 영역에 귀속시킴 */
+  const lastZoneByPost = new Map<string, string>();
+  const zoneSourceClicks = new Map<string, number>();
+  const POSITION_BUCKETS = 8;
+
+  for (const ev of (events ?? [])) {
     if (ev.event_name in eventCounts) {
       eventCounts[ev.event_name as keyof typeof eventCounts]++;
     }
@@ -287,10 +282,35 @@ export async function selectAdminStats(periodDays: number = 7): Promise<AdminSta
     }
     if (ev.event_name === "source_link_click" && ev.post_id) {
       sourceClicks.set(ev.post_id, (sourceClicks.get(ev.post_id) ?? 0) + 1);
+      // 직전에 어느 영역에서 이 카드로 들어왔는지 알면 그 영역 실적으로 귀속
+      const zone = lastZoneByPost.get(ev.post_id);
+      if (zone) zoneSourceClicks.set(zone, (zoneSourceClicks.get(zone) ?? 0) + 1);
+    }
+    if (ev.event_name === "card_open") {
+      const props = ev.properties ?? {};
+      const zone = typeof props.zone === "string" ? props.zone : "unknown";
+      zoneOpens.set(zone, (zoneOpens.get(zone) ?? 0) + 1);
+
+      const pos = typeof props.position === "number" ? props.position : -1;
+      if (pos >= 0) {
+        const arr = zonePositions.get(zone) ?? new Array(POSITION_BUCKETS).fill(0);
+        arr[Math.min(pos, POSITION_BUCKETS - 1)]++;
+        zonePositions.set(zone, arr);
+      }
+      if (ev.post_id) lastZoneByPost.set(ev.post_id, zone);
     }
     const id = ev.user_id || ev.anon_id;
     if (id) uniqueIds.add(id);
   }
+
+  const byZone = [...zoneOpens.entries()]
+    .map(([zone, opens]) => ({
+      zone,
+      opens,
+      sourceClicks: zoneSourceClicks.get(zone) ?? 0,
+      byPosition: zonePositions.get(zone) ?? [],
+    }))
+    .sort((a, b) => b.opens - a.opens);
 
   const ctr =
     eventCounts.card_click > 0
@@ -328,6 +348,7 @@ export async function selectAdminStats(periodDays: number = 7): Promise<AdminSta
     ctr,
     uniqueUsers: uniqueIds.size,
     topCards: cardScores.slice(0, 10),
+    byZone,
     periodDays,
   };
 }

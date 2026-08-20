@@ -67,3 +67,13 @@ export function kstTodayStartIso(): string {
   // kstMidnightAsUtc는 "KST 자정을 UTC인 척" 표현한 값 → 실제 UTC 순간으로 환산
   return new Date(kstMidnightAsUtc - KST_OFFSET_MS).toISOString();
 }
+
+/**
+ * 해당 시각의 **KST 달력 날짜 키** (`YYYY-MM-DD`).
+ * 일별 고유 방문자·활동일수 집계용 — UTC로 자르면 KST 09:00 이전 활동이
+ * 전날로 밀려 DAU가 요일 경계에서 어긋난다.
+ */
+export function kstDayKey(iso: string | Date): string {
+  const t = typeof iso === "string" ? new Date(iso) : iso;
+  return new Date(t.getTime() + KST_OFFSET_MS).toISOString().slice(0, 10);
+}

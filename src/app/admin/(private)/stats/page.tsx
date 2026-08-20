@@ -20,6 +20,18 @@ interface PageProps {
 
 export const dynamic = "force-dynamic";
 
+/** CardSlot의 zone 값 → 사람이 읽는 이름 (analytics/ui/CardSlot.tsx의 CardZone과 짝) */
+const ZONE_LABELS: Record<string, string> = {
+  deadline_radar: "홈 · 마감 레이더",
+  keyword: "홈 · 요즘 키워드",
+  my_child_new: "홈 · 우리 아이 시기 신규",
+  guest_teaser: "홈 · 비로그인 티저",
+  editor_pick: "홈 · 엄빠레이더 추천 픽",
+  deadline_unknown: "홈 · 마감미정 혜택",
+  explore_grid: "탐색 · 전체 그리드",
+  my_radar: "내 레이더",
+};
+
 function parsePeriod(s?: string): number {
   if (s === "1") return 1;
   if (s === "30") return 30;
@@ -155,6 +167,71 @@ export default async function AdminStatsPage({ searchParams }: PageProps) {
           </div>
         </section>
       </div>
+
+      {/* 영역·자리별 성과 — 광고 인벤토리 단가의 근거가 될 데이터 */}
+      <section className="rounded-2xl bg-white p-5 shadow-sm">
+        <h2 className="text-sm font-bold text-slate-900">
+          영역·자리별 카드 진입 (최근 {periodDays}일)
+        </h2>
+        <p className="mt-0.5 mb-3 text-[11px] text-slate-400">
+          어느 영역·몇 번째 자리에서 카드로 들어가는지. 배너·프리미엄 카드를 실제로
+          눌리는 자리에 배치하고, 나중에 자리별 단가를 매기는 근거가 됩니다.
+        </p>
+        {stats.byZone.length === 0 ? (
+          <p className="rounded-lg bg-slate-50 py-6 text-center text-xs text-slate-400">
+            아직 데이터가 없어요. <br />
+            <span className="text-[11px]">
+              (card_open 계측은 2026-08-20 배포부터 쌓입니다 — 그 이전 클릭은
+              영역 정보가 없습니다)
+            </span>
+          </p>
+        ) : (
+          <div className="space-y-3">
+            {stats.byZone.map((z) => {
+              const maxPos = Math.max(...z.byPosition, 1);
+              return (
+                <div key={z.zone} className="rounded-xl bg-slate-50 p-3">
+                  <div className="flex items-baseline justify-between">
+                    <span className="text-xs font-bold text-slate-800">
+                      {ZONE_LABELS[z.zone] ?? z.zone}
+                    </span>
+                    <span className="text-[11px] text-slate-500">
+                      진입 <strong className="text-slate-800">{z.opens}</strong>
+                      {z.sourceClicks > 0 && (
+                        <>
+                          {" · 원문 "}
+                          <strong className="text-emerald-700">
+                            {z.sourceClicks}
+                          </strong>
+                          {` (${Math.round((z.sourceClicks / z.opens) * 100)}%)`}
+                        </>
+                      )}
+                    </span>
+                  </div>
+                  {z.byPosition.length > 0 && (
+                    <div className="mt-2 flex items-end gap-1">
+                      {z.byPosition.map((n, i) => (
+                        <div key={i} className="flex-1 text-center">
+                          <div
+                            className="mx-auto w-full rounded-t bg-rose-400"
+                            style={{
+                              height: `${Math.max((n / maxPos) * 32, 2)}px`,
+                            }}
+                            title={`${i + 1}번째 자리: ${n}회`}
+                          />
+                          <span className="text-[9px] text-slate-400">
+                            {i === z.byPosition.length - 1 ? `${i + 1}+` : i + 1}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </section>
 
       {/* 인기 카드 Top 10 */}
       <section className="rounded-2xl bg-white p-5 shadow-sm">

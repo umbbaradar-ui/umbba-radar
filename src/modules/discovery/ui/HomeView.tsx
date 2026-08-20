@@ -29,6 +29,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { Post, StageCategory } from "@/shared/types/post";
 import { STAGE_LABELS } from "@/shared/types/post";
 import { PostCard } from "@/modules/content/ui/PostCard";
+import { CardSlot } from "@/modules/analytics/ui/CardSlot";
 import { AdSlot } from "@/modules/advertising/ui/AdSlot";
 import { VISITED_LIST_KEY } from "@/modules/content/ui/BackToListLink";
 import { calcDDay } from "@/shared/utils/dday";
@@ -392,8 +393,17 @@ export function HomeView({
               </p>
             )}
             <div className="flex flex-col gap-2 md:grid md:grid-cols-3 md:gap-3">
-              {deadlineRadar.items.map((p) => (
-                <PostCardCompact key={p.id} post={p} />
+              {deadlineRadar.items.map((p, i) => (
+                <CardSlot
+                  key={p.id}
+                  postId={p.id}
+                  zone="deadline_radar"
+                  position={i}
+                  listLen={deadlineRadar.items.length}
+                  meta={{ source: deadlineRadar.source }}
+                >
+                  <PostCardCompact post={p} />
+                </CardSlot>
               ))}
             </div>
             {!loggedIn && (
@@ -434,9 +444,17 @@ export function HomeView({
             </div>
             {activeKwEntry && (
               <CardRail>
-                {activeKwEntry.matches.slice(0, 8).map((p) => (
+                {activeKwEntry.matches.slice(0, 8).map((p, i, arr) => (
                   <RailCard key={p.id}>
-                    <PostCard post={p} status={cardStatus(p.id)} />
+                    <CardSlot
+                      postId={p.id}
+                      zone="keyword"
+                      position={i}
+                      listLen={arr.length}
+                      meta={{ keyword: activeKwEntry.kw }}
+                    >
+                      <PostCard post={p} status={cardStatus(p.id)} />
+                    </CardSlot>
                   </RailCard>
                 ))}
               </CardRail>
@@ -466,9 +484,16 @@ export function HomeView({
               }
             />
             <CardRail>
-              {myChildNew.map((p) => (
+              {myChildNew.map((p, i) => (
                 <RailCard key={p.id}>
-                  <PostCard post={p} status={cardStatus(p.id)} />
+                  <CardSlot
+                    postId={p.id}
+                    zone="my_child_new"
+                    position={i}
+                    listLen={myChildNew.length}
+                  >
+                    <PostCard post={p} status={cardStatus(p.id)} />
+                  </CardSlot>
                 </RailCard>
               ))}
             </CardRail>
@@ -503,8 +528,17 @@ export function HomeView({
               title={`${STAGE_LABELS[guestStageTeaser.stage]} 시기, 새로 뜬 혜택`}
             />
             <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
-              {guestStageTeaser.cards.map((p) => (
-                <PostCard key={p.id} post={p} status={cardStatus(p.id)} />
+              {guestStageTeaser.cards.map((p, i, arr) => (
+                <CardSlot
+                  key={p.id}
+                  postId={p.id}
+                  zone="guest_teaser"
+                  position={i}
+                  listLen={arr.length}
+                  meta={{ stage: guestStageTeaser.stage }}
+                >
+                  <PostCard post={p} status={cardStatus(p.id)} />
+                </CardSlot>
               ))}
               <Link
                 href="/signup"
@@ -539,14 +573,22 @@ export function HomeView({
           <div className="mb-6">
             <SectionHeader title="엄빠레이더 추천 픽" />
             <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-              {radarPick.items.map((p) => (
+              {radarPick.items.map((p, i) => (
                 <div key={p.id} className="relative">
                   {radarPick.pinnedIds.has(p.id) && (
                     <span className="pointer-events-none absolute -top-2 left-2 z-10 rounded-full bg-slate-900 px-2.5 py-1 text-[10px] font-extrabold text-white shadow">
                       🐻 PICK
                     </span>
                   )}
-                  <PostCard post={p} status={cardStatus(p.id)} />
+                  <CardSlot
+                    postId={p.id}
+                    zone="editor_pick"
+                    position={i}
+                    listLen={radarPick.items.length}
+                    meta={{ pinned: radarPick.pinnedIds.has(p.id) }}
+                  >
+                    <PostCard post={p} status={cardStatus(p.id)} />
+                  </CardSlot>
                 </div>
               ))}
             </div>
@@ -565,8 +607,16 @@ export function HomeView({
               }
             />
             <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-              {alwaysOpen.map((p) => (
-                <PostCard key={p.id} post={p} status={cardStatus(p.id)} />
+              {alwaysOpen.map((p, i) => (
+                <CardSlot
+                  key={p.id}
+                  postId={p.id}
+                  zone="deadline_unknown"
+                  position={i}
+                  listLen={alwaysOpen.length}
+                >
+                  <PostCard post={p} status={cardStatus(p.id)} />
+                </CardSlot>
               ))}
             </div>
           </div>

@@ -24,6 +24,7 @@ import {
   ACTIVE_TOPIC_CATEGORIES,
 } from "@/shared/types/post";
 import { PostCard } from "@/modules/content/ui/PostCard";
+import { CardSlot } from "@/modules/analytics/ui/CardSlot";
 import { AdSlot } from "@/modules/advertising/ui/AdSlot";
 import { SignupSheet } from "@/modules/user/ui/SignupSheet";
 import { VISITED_LIST_KEY } from "@/modules/content/ui/BackToListLink";
@@ -485,12 +486,17 @@ export function ExploreView({
             className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4"
             onClickCapture={markLeavingToPost}
           >
-            {ordered.slice(0, visibleCount).map((post) => (
-              <PostCard
+            {ordered.slice(0, visibleCount).map((post, i) => (
+              <CardSlot
                 key={post.id}
-                post={post}
-                status={cardStatus(post.id)}
-              />
+                postId={post.id}
+                zone="explore_grid"
+                position={i}
+                listLen={Math.min(visibleCount, ordered.length)}
+                meta={{ sort, filter_count: activeFilterCount }}
+              >
+                <PostCard post={post} status={cardStatus(post.id)} />
+              </CardSlot>
             ))}
           </div>
           {visibleCount < ordered.length &&

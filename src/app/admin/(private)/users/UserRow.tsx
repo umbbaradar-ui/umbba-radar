@@ -30,6 +30,15 @@ function relativeDays(iso: string): string {
   return `${Math.floor(days / 365)}년 전`;
 }
 
+/** 최근 방문 기준 활성도 색상 — 7일 이내 초록 / 30일 이내 노랑 / 그 외 회색 */
+function seenTone(iso: string | null): string {
+  if (!iso) return "text-slate-300";
+  const days = Math.floor((Date.now() - new Date(iso).getTime()) / 86400000);
+  if (days <= 7) return "text-emerald-700 font-bold";
+  if (days <= 30) return "text-amber-700 font-medium";
+  return "text-slate-500";
+}
+
 function ageLabel(birthDate: string, gender: string): string {
   if (gender === "X") return "예정";
   const birth = new Date(birthDate);
@@ -127,15 +136,35 @@ export function UserRow({ user }: { user: AdminUserRow }) {
         {relativeDays(user.created_at)}
       </td>
 
+      {/* 최근 인증 — 마지막 로그인(OAuth/비번) 시점. 세션 갱신은 반영 안 됨 → 리텐션 지표 아님 */}
       <td
-        className="px-4 py-3 align-top text-xs text-slate-600"
+        className="px-4 py-3 align-top text-xs text-slate-400"
         title={
           user.last_sign_in_at
-            ? new Date(user.last_sign_in_at).toLocaleString("ko-KR")
+            ? `${new Date(user.last_sign_in_at).toLocaleString("ko-KR")}\n※ 마지막 로그인 시점. 세션이 유지되면 갱신되지 않으므로 방문 여부와 무관합니다.`
             : ""
         }
       >
         {user.last_sign_in_at ? relativeDays(user.last_sign_in_at) : "—"}
+      </td>
+
+      {/* 최근 방문 — events 기반. 휴면 판정은 반드시 이 값으로 */}
+      <td
+        className="px-4 py-3 align-top text-xs"
+        title={
+          user.last_seen_at
+            ? `${new Date(user.last_seen_at).toLocaleString("ko-KR")}\n최근 30일 활동 ${user.active_days_30d}일`
+            : "최근 90일간 활동 없음"
+        }
+      >
+        <span className={seenTone(user.last_seen_at)}>
+          {user.last_seen_at ? relativeDays(user.last_seen_at) : "90일+"}
+        </span>
+        {user.active_days_30d > 0 && (
+          <span className="ml-1 text-[10px] text-slate-400">
+            ({user.active_days_30d}일/30)
+          </span>
+        )}
       </td>
 
       <td className="px-4 py-3 align-top">
