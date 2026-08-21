@@ -5,7 +5,9 @@
 
 import Link from "next/link";
 import { listAdminUsers } from "@/modules/user/admin-service";
+import { getMemberStats } from "@/modules/user/member-stats-service";
 import { UserRow } from "./UserRow";
+import { MemberStatsPanel } from "./MemberStatsPanel";
 
 interface PageProps {
   searchParams: Promise<{ page?: string }>;
@@ -19,14 +21,13 @@ export default async function AdminUsersPage({ searchParams }: PageProps) {
   const sp = await searchParams;
   const page = Math.max(parseInt(sp.page ?? "1", 10) || 1, 1);
 
-  // active7/active30은 events(방문) 기준으로 서비스단에서 계산 — last_sign_in_at 아님
-  const { users, total, active7, active30 } = await listAdminUsers(page, PER_PAGE);
+  // 목록은 페이지 단위, 회원 통계는 전체 회원 기준이라 별도 조회
+  const [{ users, total }, memberStats] = await Promise.all([
+    listAdminUsers(page, PER_PAGE),
+    getMemberStats(),
+  ]);
 
   const totalPages = Math.max(Math.ceil(total / PER_PAGE), 1);
-
-  // 통계
-  const withChildren = users.filter((u) => u.children.length > 0).length;
-  const withPush = users.filter((u) => u.push_subscription_count > 0).length;
 
   return (
     <main className="mx-auto max-w-6xl px-5 py-6">
@@ -35,9 +36,11 @@ export default async function AdminUsersPage({ searchParams }: PageProps) {
           회원 관리
         </h1>
         <p className="mt-1 text-xs text-slate-500">
-          전체 {total}명 · 자녀 등록 {withChildren}명 · 푸시 구독 {withPush}명 ·{" "}
-          <strong className="text-emerald-700">7일 내 방문 {active7}명</strong> ·
-          30일 내 {active30}명
+          전체 {total}명 · 자녀 등록 {memberStats.withChildren}명 · 푸시 구독{" "}
+          {memberStats.withPush}명 ·{" "}
+          <strong className="text-emerald-700">
+            7일 내 방문 {memberStats.active7}명
+          </strong>
         </p>
         <p className="mt-2 rounded-lg bg-amber-50 px-3 py-2 text-[11px] leading-relaxed text-amber-900">
           <strong>&quot;최근 인증&quot;은 리텐션 지표가 아닙니다.</strong> 마지막{" "}
@@ -57,6 +60,9 @@ export default async function AdminUsersPage({ searchParams }: PageProps) {
           삭제됩니다 (복구 불가).
         </p>
       </header>
+
+      {/* 회원 활동 통계 — 카드/트래픽은 /admin/stats, 여기는 "사람" 지표만 */}
+      <MemberStatsPanel stats={memberStats} />
 
       <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
         <table className="w-full text-sm">

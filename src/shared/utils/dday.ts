@@ -77,3 +77,16 @@ export function kstDayKey(iso: string | Date): string {
   const t = typeof iso === "string" ? new Date(iso) : iso;
   return new Date(t.getTime() + KST_OFFSET_MS).toISOString().slice(0, 10);
 }
+
+/**
+ * 해당 시각이 속한 **KST 주(월요일 시작)의 시작 날짜 키** (`YYYY-MM-DD`).
+ * 코호트 리텐션 표에서 가입 주차를 묶는 용도.
+ */
+export function kstWeekKey(iso: string | Date): string {
+  const t = typeof iso === "string" ? new Date(iso) : iso;
+  const shifted = new Date(t.getTime() + KST_OFFSET_MS);
+  // getUTCDay(): 0=일 … 6=토 → 월요일 시작으로 보정
+  const backToMonday = (shifted.getUTCDay() + 6) % 7;
+  shifted.setUTCDate(shifted.getUTCDate() - backToMonday);
+  return shifted.toISOString().slice(0, 10);
+}

@@ -57,11 +57,11 @@ export interface AdminUserListResult {
   total: number;
   page: number;
   perPage: number;
-  /** 최근 7일 내 **방문**(events 기준)한 회원 수 — last_sign_in_at 아님 */
-  active7: number;
-  /** 최근 30일 내 방문한 회원 수 */
-  active30: number;
 }
+
+// ⚠️ 활성 회원 수(7일/30일 방문) 집계는 여기서 하지 않는다.
+//    이 함수는 **현재 페이지(50명)** 만 로드하므로 여기서 세면 페이지마다 다른 값이 나온다.
+//    전체 기준 집계는 `member-stats-service.ts`의 getMemberStats() 하나로 통일.
 
 /**
  * 회원 목록 조회 (관리자 전용)
@@ -81,7 +81,7 @@ export async function listAdminUsers(
   const total = (authData as { total?: number }).total ?? users.length;
 
   if (users.length === 0) {
-    return { users: [], total, page, perPage, active7: 0, active30: 0 };
+    return { users: [], total, page, perPage };
   }
 
   const userIds = users.map((u) => u.id);
@@ -194,19 +194,5 @@ export async function listAdminUsers(
     };
   });
 
-  // 활성 회원 수 — 반드시 last_seen_at(방문) 기준. last_sign_in_at으로 세면 실제
-  // 활동 중인 회원이 통째로 휴면으로 잡힌다 (AdminUserRow.last_sign_in_at 주석 참고).
-  const nowMs = Date.now();
-  const daysAgo = (iso: string | null) =>
-    iso === null ? null : Math.floor((nowMs - new Date(iso).getTime()) / 86400000);
-  const active7 = rows.filter((r) => {
-    const d = daysAgo(r.last_seen_at);
-    return d !== null && d <= 7;
-  }).length;
-  const active30 = rows.filter((r) => {
-    const d = daysAgo(r.last_seen_at);
-    return d !== null && d <= 30;
-  }).length;
-
-  return { users: rows, total, page, perPage, active7, active30 };
+  return { users: rows, total, page, perPage };
 }
