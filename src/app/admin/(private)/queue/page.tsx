@@ -264,7 +264,9 @@ function ReviewBadge({ post }: { post: Post }) {
       : status === "warn"
         ? "bg-amber-100 text-amber-800"
         : "bg-rose-100 text-rose-700";
-  const label = status === "pass" ? "통과" : status === "warn" ? "주의" : "부적합";
+  // 판정 용어 대신 "해야 할 일"로 표기 (2026-08-29 운영자 피드백)
+  const label =
+    status === "pass" ? "자동발행" : status === "warn" ? "확인 필요" : "반려 추천";
   return (
     <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${style}`}>
       🤖 {label} {score}점
