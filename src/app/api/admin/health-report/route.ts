@@ -84,9 +84,17 @@ async function handle(request: Request) {
     lines.push(
       `🟡 A스캔: 일부 실패 (수집 ${s.queued ?? 0}건 / 실패 ${s.failed ?? 0}계정)`
     );
+  } else if (
+    pipeline.last24h.collected > 0 &&
+    pipeline.last24h.pending === 0
+  ) {
+    // 수집은 됐지만 검수대기 큐에 아무것도 안 들어옴 = 대부분 노이즈/마감지남 (주말·비수기엔 정상)
+    lines.push(
+      `🟡 수집: ${pipeline.last24h.collected}건 수집했지만 검수대기 진입 0 (노이즈·마감지남 ${pipeline.last24h.expired}건 — 주말·비수기엔 정상)`
+    );
   } else {
     lines.push(
-      `🟢 수집: 정상 (최근24h +${pipeline.last24h.collected}건)`
+      `🟢 수집: 정상 (최근24h 수집 +${pipeline.last24h.collected} · 검수대기 진입 +${pipeline.last24h.pending})`
     );
   }
 
@@ -107,7 +115,7 @@ async function handle(request: Request) {
   } else {
     const heldStr = (b.held ?? 0) > 0 ? ` / 사진보류 ${b.held}건` : "";
     lines.push(
-      `🟢 분류: 정상 (분류 ${b.classified ?? 0} → 카드 +${pipeline.last24h.collected}건${heldStr})`
+      `🟢 분류: 정상 (분류 ${b.classified ?? 0} → 검수대기 +${pipeline.last24h.pending}건 / 마감보관 +${pipeline.last24h.expired}${heldStr})`
     );
   }
 

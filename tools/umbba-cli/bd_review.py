@@ -26,6 +26,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import time
 from pathlib import Path
 
 if hasattr(sys.stdout, "reconfigure"):
@@ -35,6 +36,7 @@ if hasattr(sys.stdout, "reconfigure"):
 import requests
 import ingest
 import bd_local  # 재사용: find_classifier, today_kst, _salvage_result_items, CLASSIFIER
+from bd_notify import alert  # 무인 실행 장애를 텔레그램으로 (분류와 동일한 침묵 방지 정책)
 
 DIR = Path(__file__).resolve().parent
 REVIEW_RULES = DIR / "REVIEW-RULES.md"
@@ -58,6 +60,12 @@ Steps:
 """
 
 FIX_KEYS = {"search_keywords", "item_categories", "stage_categories", "type_tags", "brand_name"}
+
+
+def _is_auth_error(err: str) -> bool:
+    """토큰 폐기·만료 = 재발급 전까지 100% 실패 → 즉시 알리고 중단 (bd_classify와 동일 기준)."""
+    e = (err or "").lower()
+    return "401" in e or "authentication" in e or "revoked" in e or "unauthorized" in e
 
 
 def fetch_review_queue(limit: int, scope: str) -> tuple[list[dict], str]:
@@ -178,6 +186,8 @@ def main() -> int:
     ap = argparse.ArgumentParser(description="2차 검수 루틴: pending → 로컬 Claude 검수 → 점수/판정/보정")
     ap.add_argument("--limit", type=int, default=150, help="한 회차 검수 대상 상한")
     ap.add_argument("--batch", type=int, default=8, help="Claude 배치 크기")
+    ap.add_argument("--retries", type=int, default=2, help="배치가 막히면(타임아웃) 기다렸다 재시도할 횟수")
+    ap.add_argument("--retry-wait", type=int, default=120, help="재시도 전 대기 초(다른 작업과 겹칠 때 양보)")
     ap.add_argument("--dry-run", action="store_true", help="검수만, 저장 안 함")
     ap.add_argument("--enrich-published", action="store_true",
                     help="발행 카드 백필 모드 — 품목 비어있는 published 카드의 품목/키워드 보정")
@@ -205,15 +215,44 @@ def main() -> int:
     totals = {"updated": 0, "failed": 0, "fixes": 0}
     counts = {"pass": 0, "warn": 0, "fail": 0}
     fail_notes: list[str] = []
+    fail_batches = 0
+    first_err: str | None = None
+    auth_failed = False
     n_batches = (len(cards) + args.batch - 1) // args.batch
 
     for bi in range(n_batches):
         batch = cards[bi * args.batch:(bi + 1) * args.batch]
         valid_ids = {c["id"] for c in batch if c.get("id")}
-        with tempfile.TemporaryDirectory(prefix="bd-review-") as td:
-            results, err = review_batch(bin_path, batch, tkst, calibration, Path(td))
+        # 막힌(타임아웃) 배치 = 다른 작업과 쿼터 경합일 때가 대부분 → 기다렸다 천천히 재요청.
+        results: list[dict] | None = None
+        err: str | None = None
+        for attempt in range(args.retries + 1):
+            if attempt:
+                print(f"   ⏳ 배치 {bi + 1} 막힘 — {args.retry_wait}s 대기 후 재시도 {attempt}/{args.retries}", flush=True)
+                time.sleep(args.retry_wait)
+            with tempfile.TemporaryDirectory(prefix="bd-review-") as td:
+                results, err = review_batch(bin_path, batch, tkst, calibration, Path(td))
+            if not (err and "timeout" in err.lower()):
+                break
         if err:
-            print(f"   배치 {bi + 1}/{n_batches}: ❌ {err}"); continue
+            print(f"   배치 {bi + 1}/{n_batches}: ❌ {err}")
+            fail_batches += 1
+            if first_err is None:
+                first_err = err
+            # 인증 실패는 재발급 전까지 전부 실패 → 남은 배치 돌릴 이유 없음. 즉시 알리고 중단.
+            if _is_auth_error(err):
+                alert(
+                    "엄빠레이더 2차 검수 중단 — 인증 실패",
+                    [f"배치 {bi + 1}/{n_batches}에서 토큰 인증 실패로 검수를 멈췄습니다.",
+                     "미검수 pending은 자동 발행되지 않고 수기 검수 큐에 남습니다.",
+                     "", f"<code>{err[:300]}</code>"],
+                    "맥에서 <code>claude setup-token</code> 후 .env의 "
+                    "CLAUDE_CODE_OAUTH_TOKEN 교체 필요",
+                )
+                print("   ⛔ 인증 실패 — 토큰 재발급 전까지 무의미하므로 중단")
+                auth_failed = True
+                break
+            continue
         mapped = [m for m in (to_result_item(r, valid_ids) for r in (results or [])) if m]
         for m in mapped:
             st = m.get("review_status") or ("pass" if m["score"] >= 85 else "warn" if m["score"] >= 60 else "fail")
@@ -237,7 +276,17 @@ def main() -> int:
             print(f"      - {n}")
     if scope == "pending" and counts["pass"] > 0 and not args.dry_run:
         print(f"   🤖 pass 고점수 카드는 다음 09:00 KST cron에서 자동 발행 예정")
-    return 0
+
+    # 인증 외 사유(쿼터·타임아웃 등)로 절반 이상 실패 = 사람이 봐야 함. 인증 실패는 위에서 이미 발송.
+    if not auth_failed and fail_batches and fail_batches * 2 >= n_batches:
+        alert(
+            "엄빠레이더 2차 검수 대량 실패",
+            [f"배치 {fail_batches}/{n_batches} 실패 — 미검수 pending이 쌓입니다(자동 발행 0건 위험).",
+             f"처리분: pass {counts['pass']} · warn {counts['warn']} · fail {counts['fail']}",
+             "", f"첫 오류: <code>{(first_err or '')[:300]}</code>"],
+            "쿼터 한도 또는 로컬 claude 상태 확인 필요",
+        )
+    return 1 if auth_failed else 0
 
 
 if __name__ == "__main__":

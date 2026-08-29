@@ -428,8 +428,8 @@ export interface PipelineStats {
   draftTotal: number; // 미분류(수집됨, 분류 대기) — BD 수집이 만든 draft 카드
   pendingTotal: number; // 분류완료, 검수 대기
   publishedTotal: number; // 발행
-  /** 최근 24시간 자동수집 카드 (생성 / 그중 발행) */
-  last24h: { collected: number; published: number };
+  /** 최근 24시간 자동수집 카드 (생성 / 그중 발행 / 검수대기 진입 / 마감보관) */
+  last24h: { collected: number; published: number; pending: number; expired: number };
   /** 최근 N일 KST 일별 (오늘 포함, 최신이 먼저) */
   daily: Array<{ date: string; collected: number; published: number }>;
 }
@@ -483,6 +483,8 @@ export async function selectPipelineStats(days = 7): Promise<PipelineStats> {
   // 자동수집(ingestion) 카드: 생성=collected(draft+pending+published 무관), 그중 published 집계
   let collected24 = 0;
   let published24 = 0;
+  let pending24 = 0;
+  let expired24 = 0;
   for (const p of (postRowsRes.data ?? []) as {
     created_at: string;
     status: string;
@@ -497,6 +499,8 @@ export async function selectPipelineStats(days = 7): Promise<PipelineStats> {
     if (p.created_at >= since24h) {
       collected24++;
       if (p.status === "published") published24++;
+      else if (p.status === "pending") pending24++;
+      else if (p.status === "expired") expired24++;
     }
   }
 
@@ -505,7 +509,7 @@ export async function selectPipelineStats(days = 7): Promise<PipelineStats> {
     draftTotal: draftRes.count ?? 0,
     pendingTotal: pendingRes.count ?? 0,
     publishedTotal: publishedRes.count ?? 0,
-    last24h: { collected: collected24, published: published24 },
+    last24h: { collected: collected24, published: published24, pending: pending24, expired: expired24 },
     daily: dayKeys.map((d) => ({ date: d, ...bucket.get(d)! })),
   };
 }

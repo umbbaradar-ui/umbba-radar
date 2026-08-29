@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  BD 스크레이퍼 장애 복구 감지기 (1시간 간격).
+  복구 감지 시 텔레그램 1회 알림 + 자기 자신 언로드(자동 종료).
+  설치:  cp com.umbba.bdcheck.plist ~/Library/LaunchAgents/
+         launchctl load ~/Library/LaunchAgents/com.umbba.bdcheck.plist
+  해제:  launchctl unload ~/Library/LaunchAgents/com.umbba.bdcheck.plist
+  즉시 1회: launchctl start com.umbba.bdcheck
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.umbba.bdcheck</string>
+
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key>
+    <string>/Users/eunjae/.npm-global/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+  </dict>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/bash</string>
+    <string>/Users/eunjae/umbba-radar/tools/umbba-cli/bd-check.sh</string>
+  </array>
+
+  <!-- 1시간(3600초)마다. RunAtLoad=로드 직후 1회(검증용). -->
+  <key>StartInterval</key>
+  <integer>3600</integer>
+  <key>RunAtLoad</key>
+  <true/>
+
+  <key>StandardOutPath</key>
+  <string>/Users/eunjae/umbba-radar/tools/umbba-cli/bd-check-launchd.log</string>
+  <key>StandardErrorPath</key>
+  <string>/Users/eunjae/umbba-radar/tools/umbba-cli/bd-check-launchd.err</string>
+</dict>
+</plist>
