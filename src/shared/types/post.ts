@@ -72,6 +72,16 @@ export interface Post {
   pinned_until: string | null
   status: PostStatus
   application_mode: 'external' | 'internal'
+  /** 2차 AI 검수 점수 0~100 (migration 023) — 미적용 DB에선 undefined */
+  ai_review_score?: number | null
+  /** pass(자동발행 후보) | warn(사람 판단) | fail(발행 부적합 의심) */
+  ai_review_status?: 'pass' | 'warn' | 'fail' | null
+  ai_review_note?: string | null
+  ai_reviewed_at?: string | null
+  /** 1차 분류 신뢰도 0~1 (RULES.md confidence — 023부터 저장) */
+  ai_confidence?: number | null
+  /** 발행 주체 — 'auto'(점수 기반 자동 발행) | 'admin'(수기 승인). 023 이전 발행분은 null */
+  published_by?: 'auto' | 'admin' | null
   source_type: SourceType
   submitter_handle: string | null
   submitter_user_id: string | null

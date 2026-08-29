@@ -13,6 +13,7 @@ import {
   STAGE_LABELS,
   TYPE_LABELS,
   SOURCE_TYPE_LABELS,
+  type Post,
   type SourceType,
 } from "@/shared/types/post";
 import { calcDDay, isPastDeadline } from "@/shared/utils/dday";
@@ -66,7 +67,8 @@ export default async function AdminQueuePage({ searchParams }: PageProps) {
           ③ 카드 승인 <span className="text-sm font-medium text-slate-400">(3단계: Claude 분석 후 검수)</span>
         </h1>
         <p className="mt-1 text-xs text-slate-500">
-          {posts.length}건 대기 중 · 오래된 것부터
+          {posts.length}건 대기 중 · 오래된 것부터 · 🤖 검수 pass 고점수는 매일
+          09:00 자동 발행
         </p>
       </header>
 
@@ -128,12 +130,13 @@ export default async function AdminQueuePage({ searchParams }: PageProps) {
                 </div>
                 {/* 본문 */}
                 <div className="flex-1 p-4">
-                  <div className="mb-2 flex items-center gap-2">
+                  <div className="mb-2 flex flex-wrap items-center gap-2">
                     <span
                       className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${SOURCE_BADGE_COLOR[p.source_type]}`}
                     >
                       {SOURCE_TYPE_LABELS[p.source_type]}
                     </span>
+                    <ReviewBadge post={p} />
                     {p.submitter_handle && (
                       <span className="text-[10px] text-violet-600">
                         @{p.submitter_handle}
@@ -147,6 +150,12 @@ export default async function AdminQueuePage({ searchParams }: PageProps) {
                   </div>
 
                   <h3 className="text-sm font-bold text-slate-900">{p.title}</h3>
+
+                  {p.ai_review_note && (
+                    <p className="mt-0.5 text-[11px] leading-snug text-slate-500">
+                      🤖 {p.ai_review_note}
+                    </p>
+                  )}
 
                   {p.deadline && (
                     <div className="mt-1.5">
@@ -234,6 +243,32 @@ export default async function AdminQueuePage({ searchParams }: PageProps) {
         </div>
       )}
     </main>
+  );
+}
+
+// 2차 AI 검수 배지 — pass(자동발행 후보) / warn(사람 판단) / fail(부적합 의심) / 미검수.
+// 점수·판정은 맥 bd_review.py(REVIEW-RULES.md)가 매일 새벽 기록 (migration 023).
+function ReviewBadge({ post }: { post: Post }) {
+  const score = post.ai_review_score;
+  const status = post.ai_review_status;
+  if (typeof score !== "number" || !status) {
+    return (
+      <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-400">
+        🤖 미검수
+      </span>
+    );
+  }
+  const style =
+    status === "pass"
+      ? "bg-emerald-50 text-emerald-700"
+      : status === "warn"
+        ? "bg-amber-100 text-amber-800"
+        : "bg-rose-100 text-rose-700";
+  const label = status === "pass" ? "통과" : status === "warn" ? "주의" : "부적합";
+  return (
+    <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${style}`}>
+      🤖 {label} {score}점
+    </span>
   );
 }
 

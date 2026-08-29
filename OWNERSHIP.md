@@ -77,12 +77,13 @@
 - 자동 수집 (cron) → INGEST (하지만 결과물은 CURATOR pending 큐로 들어옴)
 
 **주요 결정 기록**:
-- 모든 외부 입력(자동수집·제보)은 `status=pending`으로 진입 → 관리자 검수 후 `published`
+- 모든 외부 입력(자동수집·제보)은 `status=pending`으로 진입 (2026-08-29부터 2차 AI 검수 pass 고점수는 조건부 자동 발행 — 아래 결정 참조, 그 외는 관리자 검수 후 `published`)
 - AI 추출 결과도 `pending` 자동 설정 → 검수 강제
 - 이미지 업로드: Supabase Storage `card-images` 버킷
 - AI 추출은 Gemini 2.0 Flash multimodal (Vision)
 - 2026-08-13 어드민 메인 간소화: 초기 로드는 활성(초안·승인대기·발행) 카드만, 마감 카드(2,000건+)는 "마감" 탭 진입 시 100건씩 지연 로드(`loadExpiredPostsAction`). 헤더·탭 카운트는 `count=exact` 쿼리(Supabase 1,000행 상한에 걸려 "전체 1,000건 고정"으로 보이던 버그 수정). 마감 카드는 수기 검수 대상 아님 — 아카이브 열람용
 - 2026-08-13 품목 카테고리(item_categories, migration 022) 도입: "무엇을 주는가" axis 12종(clothing~etc, `ItemCategory`). 등록 시 AI 분류가 자동 부여(보통 1개·최대 2개) — 지금은 데이터 축적 선행, 공개 UI 노출(필터·묶음·추천)은 데이터 쌓인 뒤 후속. 분류체계 변경 시 RULES.md·bd_local.py·vision-extractor 프롬프트 동기화 필수. 값 검증은 `sanitizeItemCategories` 화이트리스트
+- 2026-08-29 **2차 AI 검수(리뷰어) + 점수 기반 자동 발행** 도입 (migration 023, docs/WORKLOG-2026-08-29-AI-REVIEW.md): 분류(pending) 후 맥 `bd_review.py`(REVIEW-RULES.md)가 점수(0~100)·pass/warn/fail·사유·택소노미 보정(fixes: 품목/키워드/시기/유형/브랜드)을 `ai_review_*` 컬럼에 기록. **pass & AUTO_PUBLISH_MIN_SCORE(기본 85)점+ & 썸네일 있음 & 마감 유효 카드는 매일 09:00 KST cron(notify-deadline)이 자동 발행(`published_by='auto'`)** — warn/fail/미검수만 `/admin/queue` 수기 검수. 사람 승인·반려·수정발행은 `review_feedback`에 자동 기록 → bd_review가 다음 실행 때 캘리브레이션 사례로 프롬프트에 주입(검수자 자기개선 루프). 1차 분류 skip은 삭제 전 `classify_skip_log`에 감사 기록. 구 "자동 발행 영구 금지" 정책은 이 조건부 자동 발행으로 개정(사용자 지시).
 
 ---
 
@@ -101,7 +102,7 @@
 
 **주요 결정 기록**:
 - Gemini RPM 15 한도 → 배치 5개씩 + 4.5초 sleep
-- 자동수집 cron 결과는 무조건 `pending` (자동 발행 영구 금지)
+- 자동수집 결과는 `pending` 진입 — 2026-08-29부터 2차 AI 검수 pass·고점수(기본 85+)만 09:00 KST 조건부 자동 발행(CURATOR 결정 참조), 그 외는 수기 검수 (구 "자동 발행 영구 금지" 정책 개정)
 - 인스타·틱톡 자동 크롤링 영구 금지 (BUSINESS_MODEL.md 정책)
 - Naver Search API만 사용 (블로그 검색 결과)
 - HEIC·JPG·PNG·WEBP 모두 Gemini Vision 직접 처리 (별도 변환 X)

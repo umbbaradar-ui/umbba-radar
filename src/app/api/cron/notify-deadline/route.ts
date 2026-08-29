@@ -21,6 +21,7 @@ import {
   type PushPayload,
 } from "@/modules/notification/push-service";
 import { runHealthWatchdog } from "@/modules/ingestion/health-watchdog";
+import { autoPublishReviewedPosts } from "@/modules/curation/repository";
 
 export const maxDuration = 60;
 export const dynamic = "force-dynamic";
@@ -38,15 +39,24 @@ export async function GET(request: Request) {
 
   // 워치독 수동 테스트: ?watchdog=test → 현재 상태를 강제로 텔레그램 발송 후 반환
   if (new URL(request.url).searchParams.get("watchdog") === "test") {
-    const w = await runHealthWatchdog({ force: true }).catch((e) => ({
-      error: e instanceof Error ? e.message : String(e),
-    }));
-    return NextResponse.json({ ok: true, watchdog: w });
+    // 테스트는 자동 발행을 실행하지 않고 미리보기(후보 수)만 포함
+    const preview = await autoPublishReviewedPosts(false).catch(() => undefined);
+    const w = await runHealthWatchdog({ force: true, autoPublish: preview }).catch(
+      (e) => ({ error: e instanceof Error ? e.message : String(e) })
+    );
+    return NextResponse.json({ ok: true, watchdog: w, autoPublishPreview: preview });
   }
 
+  // 점수 기반 자동 발행 — 2차 AI 검수 pass & 고점수(기본 85+) pending 카드 (2026-08-29).
+  // 워치독 보고보다 먼저 실행해 아침 텔레그램에 발행 결과가 포함되게 한다.
+  const autoPub = await autoPublishReviewedPosts().catch((e) => {
+    console.error("[cron/notify-deadline] auto-publish failed:", e);
+    return undefined;
+  });
+
   // 새벽 파이프라인 워치독 — 매 cron(09:00 KST) 실행. 외부 호출 0, best-effort.
-  // posts 기준 수집(24h)·미분류 backlog·검수 대기 요약을 텔레그램으로 보고.
-  await runHealthWatchdog().catch((e) =>
+  // posts 기준 수집(24h)·미분류 backlog·검수·자동발행 요약을 텔레그램으로 보고.
+  await runHealthWatchdog({ autoPublish: autoPub }).catch((e) =>
     console.error("[cron/notify-deadline] watchdog failed:", e)
   );
 

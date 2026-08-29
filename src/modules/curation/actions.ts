@@ -13,6 +13,7 @@ import {
   updatePost,
   deletePost,
   approvePost,
+  recordManualPublish,
   selectExpiredPostsPage,
   type PostInsertInput,
 } from "./repository";
@@ -282,6 +283,8 @@ export async function updateAndPublishPostAction(
     ? "expired"
     : "published";
   await updatePost(id, { ...input, status: nextStatus });
+  // 발행 주체 기록 + AI 검수 대조 로그(수정 후 발행 = AI가 놓친 수정 포인트 신호)
+  await recordManualPublish(id);
   revalidatePath("/");
   revalidatePath(`/post/${id}`);
   revalidatePath("/admin");

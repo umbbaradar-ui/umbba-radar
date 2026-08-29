@@ -71,6 +71,8 @@ def to_classify_item(r: dict) -> dict:
         "stage_categories": r.get("stage_categories"), "type_tags": r.get("type_tags"),
         "item_categories": r.get("item_categories"),
         "topic": r.get("topic"), "deadline": r.get("deadline"),
+        # 023: 신뢰도 저장(검수 우선순위용) + skip 사유 감사 로그(classify_skip_log)
+        "confidence": r.get("confidence"), "skip_reason": r.get("skip_reason"),
     }
 
 

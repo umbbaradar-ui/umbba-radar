@@ -2,9 +2,12 @@
 # bd-run.sh — 옵션 C 하루 1회 무인 러너 (macOS/Linux launchd).
 #   1) 수집: bd_ingest.py --raw  → BD 스캔 → draft(미분류) 카드 (유료 Vision API 0, 쿠키 0)
 #   2) 분류: bd_classify.py       → draft → 로컬 헤드리스 Claude(구독) → pending 확정 / 노이즈 삭제
+#   3) 검수: bd_review.py         → pending → 2차 검수(REVIEW-RULES.md) → 점수/판정/보정 기록
+#      (pass 고점수는 매일 09:00 KST 서버 cron 이 자동 발행 — warn/fail/미검수만 사람 검수)
 # 요구: python3, claude(Claude Code), .env 에:
 #   BRIGHTDATA_API_TOKEN, ADMIN_CLI_TOKEN, UMBBA_API_URL, CLAUDE_CODE_OAUTH_TOKEN(claude setup-token)
-# 사용: ./bd-run.sh [scan_days] [max_accounts] [classify_limit] [batch]   (기본 1 / 800 / 320 / 6)
+# 사용: ./bd-run.sh [scan_days] [max_accounts] [classify_limit] [batch] [review_limit] [review_batch]
+#       (기본 1 / 800 / 320 / 6 / 200 / 8)
 set -uo pipefail
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$DIR"
@@ -20,4 +23,6 @@ echo "===== $(date '+%Y-%m-%d %H:%M:%S') 수집(--raw) =====" >> "$LOG"
 "$PY" bd_ingest.py --raw --scan-days "${1:-1}" --max-accounts "${2:-800}" >> "$LOG" 2>&1
 echo "===== $(date '+%Y-%m-%d %H:%M:%S') 분류 =====" >> "$LOG"
 "$PY" bd_classify.py --limit "${3:-320}" --batch "${4:-6}" >> "$LOG" 2>&1
+echo "===== $(date '+%Y-%m-%d %H:%M:%S') 검수(2차) =====" >> "$LOG"
+"$PY" bd_review.py --limit "${5:-200}" --batch "${6:-8}" >> "$LOG" 2>&1
 echo "[$(date '+%Y-%m-%d %H:%M:%S')] bd-run done" >> "$LOG"

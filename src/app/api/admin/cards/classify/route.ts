@@ -31,6 +31,10 @@ interface ClassifyItem {
   item_categories?: string[];
   topic?: "parenting" | "living";
   deadline?: string | null;
+  /** 1차 분류 신뢰도 0~1 (RULES.md confidence — 023 ai_confidence로 저장) */
+  confidence?: number;
+  /** skip=true 일 때의 사유 — classify_skip_log(023)에 감사 기록 */
+  skip_reason?: string;
 }
 
 export async function POST(request: Request) {
@@ -63,8 +67,28 @@ export async function POST(request: Request) {
       continue;
     }
     try {
-      // 노이즈 → 삭제 (draft 인 것만)
+      // 노이즈 → 삭제 (draft 인 것만). 삭제 전 감사 로그(023 classify_skip_log, best-effort)
+      // — 기존엔 흔적 없는 DELETE라 오탐 skip(잘못 버린 혜택) 검증이 불가능했다.
       if (it.skip) {
+        try {
+          const { data: victim } = await supabaseServer
+            .from("posts")
+            .select("source_url, body")
+            .eq("id", it.id)
+            .eq("status", "draft")
+            .maybeSingle();
+          if (victim) {
+            const v = victim as { source_url?: string | null; body?: string | null };
+            await supabaseServer.from("classify_skip_log").insert({
+              post_id: it.id,
+              source_url: v.source_url ?? null,
+              reason: it.skip_reason ? String(it.skip_reason).slice(0, 200) : null,
+              caption_snippet: (v.body ?? "").slice(0, 200) || null,
+            });
+          }
+        } catch {
+          // 감사 로그 실패(023 미적용 등)는 무시 — skip 처리는 계속
+        }
         const { error } = await supabaseServer
           .from("posts")
           .delete()
@@ -139,6 +163,10 @@ export async function POST(request: Request) {
         item_categories: sanitizeItemCategories(it.item_categories),
         topic: it.topic === "living" ? "living" : "parenting",
       };
+      // 1차 분류 신뢰도 저장(023) — 검수 우선순위·품질 지표용 (기존엔 계산 후 폐기되던 값)
+      if (typeof it.confidence === "number" && Number.isFinite(it.confidence)) {
+        upd.ai_confidence = Math.min(Math.max(it.confidence, 0), 1);
+      }
       // body 는 제공된 경우만 갱신 — 미제공 시 draft 의 원문 캡션 보존(요약/누락 방지)
       if (it.body !== undefined) upd.body = it.body?.slice(0, 2000) ?? null;
       let { error } = await supabaseServer
@@ -149,6 +177,15 @@ export async function POST(request: Request) {
       // 마이그레이션 022 미적용 DB — 품목만 빼고 재시도 (021 source_post_date와 동일 패턴)
       if (error && error.message.includes("item_categories")) {
         delete upd.item_categories;
+        ({ error } = await supabaseServer
+          .from("posts")
+          .update(upd)
+          .eq("id", it.id)
+          .eq("status", "draft"));
+      }
+      // 마이그레이션 023 미적용 DB — 신뢰도만 빼고 재시도
+      if (error && error.message.includes("ai_confidence")) {
+        delete upd.ai_confidence;
         ({ error } = await supabaseServer
           .from("posts")
           .update(upd)

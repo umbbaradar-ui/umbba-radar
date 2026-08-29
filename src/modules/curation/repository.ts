@@ -96,24 +96,59 @@ export interface PostInsertInput {
  * (지난달 카드를 뒤늦게 승인해도 피드에 "마감" 상태로 노출되는 일 방지)
  * @returns 실제 적용된 상태 — "published"(정상 발행) | "expired"(마감 보관)
  */
+/** 사람 결정 vs AI 검수 대조 로그 (best-effort) — AI 검수 이력이 있는 카드만 기록.
+ *  검수자 캘리브레이션 데이터(review_feedback, migration 023). 실패해도 본 작업은 진행. */
+async function logReviewFeedbackRow(
+  row: Partial<Post> & { id: string },
+  action: "approve" | "approve_archived" | "approve_edited" | "reject"
+): Promise<void> {
+  if (row.ai_reviewed_at == null) return;
+  try {
+    await supabaseServer.from("review_feedback").insert({
+      post_id: row.id,
+      title: row.title ?? null,
+      brand_name: row.brand_name ?? null,
+      ai_review_score: row.ai_review_score ?? null,
+      ai_review_status: row.ai_review_status ?? null,
+      ai_review_note: row.ai_review_note ?? null,
+      human_action: action,
+    });
+  } catch {
+    // 023 미적용/일시 오류 — 피드백 로그는 best-effort
+  }
+}
+
 export async function approvePost(id: string): Promise<"published" | "expired"> {
   const { data: row, error: selErr } = await supabaseServer
     .from("posts")
-    .select("deadline")
+    .select("*")
     .eq("id", id)
     .maybeSingle();
   if (selErr) throw new Error(`approvePost(select): ${selErr.message}`);
 
-  const deadline = (row as { deadline: string | null } | null)?.deadline ?? null;
+  const post = row as Post | null;
+  const deadline = post?.deadline ?? null;
   const nextStatus: "published" | "expired" = isPastDeadline(deadline)
     ? "expired"
     : "published";
 
-  const { error } = await supabaseServer
-    .from("posts")
-    .update({ status: nextStatus })
-    .eq("id", id);
+  const upd: Record<string, unknown> = { status: nextStatus };
+  if (nextStatus === "published") upd.published_by = "admin";
+  let { error } = await supabaseServer.from("posts").update(upd).eq("id", id);
+  // 마이그레이션 023 미적용 DB — published_by 빼고 재시도
+  if (error && error.message.includes("published_by")) {
+    ({ error } = await supabaseServer
+      .from("posts")
+      .update({ status: nextStatus })
+      .eq("id", id));
+  }
   if (error) throw new Error(`approvePost: ${error.message}`);
+  if (post) {
+    await logReviewFeedbackRow(
+      post,
+      nextStatus === "published" ? "approve" : "approve_archived"
+    );
+  }
   return nextStatus;
 }
 
@@ -525,18 +560,21 @@ export async function updatePost(
 }
 
 export async function deletePost(id: string): Promise<void> {
-  // 삭제 전 thumbnail_url 조회 — 우리 Storage(card-images)에 올린 이미지면 함께 정리(orphan 방지)
+  // 삭제 전 조회 — Storage 정리(orphan 방지) + AI 검수 대조 로그(반려 피드백, 023)
   const { data: row } = await supabaseServer
     .from("posts")
-    .select("thumbnail_url")
+    .select("*")
     .eq("id", id)
     .maybeSingle();
+
+  const victim = row as Post | null;
+  if (victim) await logReviewFeedbackRow(victim, "reject");
 
   const { error } = await supabaseServer.from("posts").delete().eq("id", id);
   if (error) throw new Error(`deletePost: ${error.message}`);
 
   // 베스트에포트 Storage 정리 — 외부 URL(시드·og)은 건너뜀, 실패해도 삭제는 성공 처리
-  const url = (row as { thumbnail_url: string | null } | null)?.thumbnail_url;
+  const url = victim?.thumbnail_url ?? null;
   if (url && url.includes("/card-images/")) {
     try {
       const path = url.split("/card-images/")[1]?.split("?")[0];
@@ -548,5 +586,138 @@ export async function deletePost(id: string): Promise<void> {
     } catch {
       // Storage 정리 실패는 무시(DB 삭제는 이미 완료). 별도 orphan 정리로 회수 가능.
     }
+  }
+}
+
+// ============================================
+// 2차 AI 검수 — 점수 기반 자동 발행 (2026-08-29)
+// pending & ai_review_status='pass' & 점수 ≥ AUTO_PUBLISH_MIN_SCORE(기본 85)
+//   → published(published_by='auto'). 마감 지난 후보는 expired 보관.
+//   썸네일 없는 카드는 자동 발행 제외(사람 판단으로 남김).
+// 호출: 매일 09:00 KST cron(notify-deadline) + /api/admin/cards/auto-publish
+// ============================================
+export interface AutoPublishResult {
+  enabled: boolean;
+  minScore: number;
+  candidates: number;
+  published: number;
+  archived: number;
+  skippedNoThumb: number;
+  titles?: string[];
+  error?: string;
+}
+
+export async function autoPublishReviewedPosts(
+  execute = true
+): Promise<AutoPublishResult> {
+  const enabled = process.env.AUTO_PUBLISH_ENABLED !== "false";
+  const rawMin = Number(process.env.AUTO_PUBLISH_MIN_SCORE ?? 85);
+  const minScore = Number.isFinite(rawMin)
+    ? Math.min(Math.max(Math.round(rawMin), 50), 100)
+    : 85;
+  const result: AutoPublishResult = {
+    enabled,
+    minScore,
+    candidates: 0,
+    published: 0,
+    archived: 0,
+    skippedNoThumb: 0,
+  };
+  if (!enabled) return result;
+
+  const { data, error } = await supabaseServer
+    .from("posts")
+    .select("id, title, deadline, thumbnail_url")
+    .eq("status", "pending")
+    .eq("ai_review_status", "pass")
+    .gte("ai_review_score", minScore)
+    .limit(500);
+  if (error) {
+    result.error = error.message.includes("ai_review")
+      ? `migration 023 미적용 — ${error.message}`
+      : error.message;
+    return result;
+  }
+
+  const rows = (data ?? []) as Array<{
+    id: string;
+    title: string;
+    deadline: string | null;
+    thumbnail_url: string | null;
+  }>;
+  result.candidates = rows.length;
+  if (rows.length === 0) return result;
+
+  const toArchive = rows.filter((r) => isPastDeadline(r.deadline));
+  const toPublish = rows.filter(
+    (r) => r.thumbnail_url && !isPastDeadline(r.deadline)
+  );
+  result.skippedNoThumb = rows.length - toPublish.length - toArchive.length;
+  result.titles = toPublish.slice(0, 10).map((r) => r.title);
+
+  if (!execute) {
+    // 미리보기 — 발행 "예정" 수만 계산
+    result.published = toPublish.length;
+    result.archived = toArchive.length;
+    return result;
+  }
+
+  if (toPublish.length > 0) {
+    const ids = toPublish.map((r) => r.id);
+    let { data: pubData, error: pubErr } = await supabaseServer
+      .from("posts")
+      .update({ status: "published", published_by: "auto" })
+      .in("id", ids)
+      .eq("status", "pending")
+      .select("id");
+    // 마이그레이션 023 미적용 DB — published_by 빼고 재시도
+    if (pubErr && pubErr.message.includes("published_by")) {
+      ({ data: pubData, error: pubErr } = await supabaseServer
+        .from("posts")
+        .update({ status: "published" })
+        .in("id", ids)
+        .eq("status", "pending")
+        .select("id"));
+    }
+    if (pubErr) {
+      result.error = pubErr.message;
+      return result;
+    }
+    result.published = pubData?.length ?? 0;
+  }
+
+  if (toArchive.length > 0) {
+    const { data: archData } = await supabaseServer
+      .from("posts")
+      .update({ status: "expired" })
+      .in("id", toArchive.map((r) => r.id))
+      .eq("status", "pending")
+      .select("id");
+    result.archived = archData?.length ?? 0;
+  }
+
+  return result;
+}
+
+/** "수정 후 발행" 경로의 발행 주체 기록 + AI 검수 대조 로그 (best-effort, 023) */
+export async function recordManualPublish(id: string): Promise<void> {
+  try {
+    const { data } = await supabaseServer
+      .from("posts")
+      .select("*")
+      .eq("id", id)
+      .maybeSingle();
+    const post = data as Post | null;
+    if (!post) return;
+    if (post.status === "published") {
+      // 023 미적용이면 error 객체 반환(throw 아님) — 무시
+      await supabaseServer
+        .from("posts")
+        .update({ published_by: "admin" })
+        .eq("id", id);
+    }
+    await logReviewFeedbackRow(post, "approve_edited");
+  } catch {
+    // best-effort
   }
 }

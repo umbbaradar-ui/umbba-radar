@@ -9,6 +9,7 @@
 // ============================================
 
 import { supabaseServer } from "@/shared/db/supabase-server";
+import type { AutoPublishResult } from "@/modules/curation/repository";
 
 export interface WatchdogResult {
   collected24: number; // 최근 24h BrightData 수집 카드 수
@@ -16,6 +17,8 @@ export interface WatchdogResult {
   pending: number; // 분류완료, 검수 대기
   problem: boolean; // 수집 실패 or 분류 밀림
   sent: boolean;
+  /** pending의 2차 검수 상태 분해(023 적용 DB에서만) */
+  reviewSummary?: { pass: number; warn: number; fail: number; unreviewed: number };
 }
 
 // BrightData 수집은 새벽 1회 → 최근 24h 안에 신규 수집이 있어야 정상.
@@ -24,7 +27,7 @@ const COLLECT_WINDOW_HOURS = 24;
 const BACKLOG_WARN = 100;
 
 export async function runHealthWatchdog(
-  opts: { force?: boolean } = {}
+  opts: { force?: boolean; autoPublish?: AutoPublishResult } = {}
 ): Promise<WatchdogResult> {
   const since24h = new Date(
     Date.now() - COLLECT_WINDOW_HOURS * 3600 * 1000
@@ -52,6 +55,27 @@ export async function runHealthWatchdog(
   const collected24 = collectedRes.count ?? 0;
   const draftBacklog = draftRes.count ?? 0;
   const pending = pendingRes.count ?? 0;
+
+  // pending의 2차 검수 상태 분해(023) — 미적용 DB면 조용히 생략
+  let review:
+    | { pass: number; warn: number; fail: number; unreviewed: number }
+    | undefined;
+  {
+    const { data: revData, error: revErr } = await supabaseServer
+      .from("posts")
+      .select("ai_review_status")
+      .eq("status", "pending")
+      .limit(2000);
+    if (!revErr && revData) {
+      review = { pass: 0, warn: 0, fail: 0, unreviewed: 0 };
+      for (const r of revData as Array<{ ai_review_status: string | null }>) {
+        if (r.ai_review_status === "pass") review.pass++;
+        else if (r.ai_review_status === "warn") review.warn++;
+        else if (r.ai_review_status === "fail") review.fail++;
+        else review.unreviewed++;
+      }
+    }
+  }
 
   // 문제 = 수집 0건(BD/3시 작업 죽음) 또는 분류가 크게 밀림(분류 미실행/한도 초과).
   const collectFail = collected24 === 0;
@@ -84,15 +108,40 @@ export async function runHealthWatchdog(
         : `🟢 분류: 정상 (미분류 ${draftBacklog}건 · 신규 유입분)`
   );
 
-  // 3) 검수 대기
+  // 3) 자동 발행(2차 AI 검수 pass·고점수) 결과
+  const ap = opts.autoPublish;
+  if (ap) {
+    if (ap.error) {
+      lines.push(`🔴 <b>자동발행 오류</b> — ${ap.error.slice(0, 120)}`);
+    } else if (!ap.enabled) {
+      lines.push(`⚪ 자동발행 꺼짐 (AUTO_PUBLISH_ENABLED=false)`);
+    } else {
+      const extra: string[] = [];
+      if (ap.archived > 0) extra.push(`마감보관 ${ap.archived}`);
+      if (ap.skippedNoThumb > 0) extra.push(`사진없음 보류 ${ap.skippedNoThumb}`);
+      lines.push(
+        `🤖 자동발행 <b>+${ap.published}건</b> (${ap.minScore}점+ pass)` +
+          (extra.length ? ` · ${extra.join(" · ")}` : "")
+      );
+    }
+  }
+
+  // 4) 검수 대기 = 사람 판단 필요 건 (warn/fail/미검수)
   lines.push(``);
-  lines.push(pending > 0 ? `✅ 검수 대기 ${pending}건` : `✅ 검수 대기 없음`);
+  if (pending > 0) {
+    const breakdown = review
+      ? ` (⚠️ ${review.warn} · ⛔ ${review.fail} · ◻️ 미검수 ${review.unreviewed}${review.pass > 0 ? ` · ✅ pass ${review.pass}` : ""})`
+      : "";
+    lines.push(`🧐 <b>판단 필요 ${pending}건</b>${breakdown}`);
+  } else {
+    lines.push(`✅ 검수 대기 없음`);
+  }
   lines.push(``);
   lines.push(`👉 https://umbba-radar.com/admin/queue`);
 
   const sent = await sendTelegram(lines.join("\n"));
 
-  return { collected24, draftBacklog, pending, problem, sent };
+  return { collected24, draftBacklog, pending, problem, sent, reviewSummary: review };
 }
 
 async function sendTelegram(text: string): Promise<boolean> {
