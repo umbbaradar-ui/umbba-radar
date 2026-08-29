@@ -33,9 +33,11 @@ from bd_notify import alert  # 무인 실행 장애를 텔레그램으로 (6일 
 
 
 def _is_auth_error(err: str) -> bool:
-    """토큰 폐기·만료 = 재발급 전까지 100% 실패 → 1건만 나와도 즉시 알려야 함."""
+    """토큰 폐기·만료 = 재발급 전까지 100% 실패 → 1건만 나와도 즉시 알려야 함.
+    실측 문구: "Failed to authenticate: OAuth session expired and could not be refreshed" (2026-08-29)"""
     e = (err or "").lower()
-    return "401" in e or "authentication" in e or "revoked" in e or "unauthorized" in e
+    return ("401" in e or "authentication" in e or "authenticate" in e
+            or "oauth" in e or "revoked" in e or "unauthorized" in e)
 
 
 def fetch_drafts(limit: int) -> list[dict]:

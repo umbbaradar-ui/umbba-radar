@@ -33,8 +33,10 @@ done
 # claude 기본. batch 3(타임아웃↓) + 막히면 기다렸다 천천히 재시도(다른 새벽 작업과 양보).
 for pass in 1 2 3 4 5; do
   echo "===== $(date '+%Y-%m-%d %H:%M:%S') 분류 pass $pass =====" >> "$LOG"
-  OUT=$("$PY" bd_classify.py --limit "${3:-320}" --batch "${4:-3}" --retries 3 --retry-wait 180 2>&1)
+  OUT=$("$PY" bd_classify.py --limit "${3:-320}" --batch "${4:-3}" --retries 3 --retry-wait 180 2>&1); RC=$?
   echo "$OUT" >> "$LOG"
+  # 인증 실패(rc!=0) = 토큰 재발급 전까지 전부 실패 → 남은 패스 돌려봐야 알림 도배만 됨
+  [ "$RC" -ne 0 ] && { echo "  분류 비정상 종료(rc=$RC) — 패스 중단" >> "$LOG"; break; }
   echo "$OUT" | grep -q "할 일 없음" && { echo "  draft 0 — 분류 종료(pass $pass)" >> "$LOG"; break; }
 done
 # 검수(2차): 분류가 만든 pending 을 REVIEW-RULES.md 기준으로 재검증 — 점수/판정/택소노미 보정 기록.

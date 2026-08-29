@@ -63,9 +63,11 @@ FIX_KEYS = {"search_keywords", "item_categories", "stage_categories", "type_tags
 
 
 def _is_auth_error(err: str) -> bool:
-    """토큰 폐기·만료 = 재발급 전까지 100% 실패 → 즉시 알리고 중단 (bd_classify와 동일 기준)."""
+    """토큰 폐기·만료 = 재발급 전까지 100% 실패 → 즉시 알리고 중단 (bd_classify와 동일 기준).
+    실측 문구: "Failed to authenticate: OAuth session expired and could not be refreshed" (2026-08-29)"""
     e = (err or "").lower()
-    return "401" in e or "authentication" in e or "revoked" in e or "unauthorized" in e
+    return ("401" in e or "authentication" in e or "authenticate" in e
+            or "oauth" in e or "revoked" in e or "unauthorized" in e)
 
 
 def fetch_review_queue(limit: int, scope: str) -> tuple[list[dict], str]:
