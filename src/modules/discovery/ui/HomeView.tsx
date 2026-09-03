@@ -83,9 +83,10 @@ function matchKeyword(post: Post, kw: string): boolean {
     post.brand_name ?? "",
     post.search_keywords ?? "",
   ];
-  if (strong.some((f) => normKw(f).includes(k))) return true;
-  if (k.length >= 3 && post.body) return normKw(post.body).includes(k);
-  return false;
+  // body 폴백은 2026-08-29 제거 — 캡션 꼬리의 업체 상용구(예: "케이크 흡착식판" 카드
+  // 꼬리의 "토끼기저귀" 타제품 나열)가 '기저귀' 레일을 오염시킴. 매칭은 제목·브랜드·
+  // 검색키워드만 사용 (search_keywords 품질은 2차 AI 검수가 보정·보증).
+  return strong.some((f) => normKw(f).includes(k));
 }
 
 // ── 시기 허브 아이콘 ───────────────────────────

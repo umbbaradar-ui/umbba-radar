@@ -144,9 +144,13 @@ export function ExploreView({
     let out = list;
     const q = normText(f.q.trim());
     if (q) {
+      // body는 검색 대상에서 제외(2026-08-29) — 캡션 꼬리의 업체 상용구·타제품 나열이
+      // 무관 카드를 끌어올림(유모차 감사: 오염 노출의 41%가 body-only 매칭).
+      // 동의어 커버는 search_keywords 몫(2차 AI 검수가 보정).
       out = out.filter((p) =>
-        [p.title, p.brand_name ?? "", p.body ?? "", p.search_keywords ?? ""]
-          .some((field) => normText(field).includes(q))
+        [p.title, p.brand_name ?? "", p.search_keywords ?? ""].some((field) =>
+          normText(field).includes(q)
+        )
       );
     }
     if (f.stages.includes("my_child")) {

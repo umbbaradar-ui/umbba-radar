@@ -40,6 +40,15 @@ const STATUS_COLOR: Record<PostStatus, string> = {
 
 const ACTIVE_STATUSES: PostStatus[] = ["draft", "pending", "published"];
 
+/** 처음 보여줄 행 수 / "더 보기" 1회 증가분 */
+const DEFAULT_VISIBLE = 20;
+const VISIBLE_STEP = 50;
+
+/** 어드민 검색 정규화 — 운영자 도구라 유저 검색과 달리 본문(body)까지 뒤진다 */
+function normSearch(s: string): string {
+  return s.toLowerCase().normalize("NFKC");
+}
+
 function applyFilters(
   posts: Post[],
   tab: AdminTab,
@@ -132,6 +141,8 @@ export function AdminPostsView({
   const [type, setType] = useState(initialType);
   const [item, setItem] = useState(initialItem);
   const [sort, setSort] = useState(initialSort);
+  const [search, setSearch] = useState("");
+  const [visibleCount, setVisibleCount] = useState(DEFAULT_VISIBLE);
 
   // 마감 카드 지연 로드 상태
   const [expiredPosts, setExpiredPosts] = useState<Post[]>([]);
@@ -167,11 +178,28 @@ export function AdminPostsView({
 
   const visiblePosts = tab === "expired" ? expiredPosts : posts;
 
-  const filtered = useMemo(
-    () =>
-      applySort(applyFilters(visiblePosts, tab, status, stage, type, item), sort),
-    [visiblePosts, tab, status, stage, type, item, sort]
-  );
+  const filtered = useMemo(() => {
+    let arr = applySort(
+      applyFilters(visiblePosts, tab, status, stage, type, item),
+      sort
+    );
+    const q = normSearch(search.trim());
+    if (q) {
+      arr = arr.filter((p) =>
+        [p.title, p.brand_name ?? "", p.search_keywords ?? "", p.body ?? ""].some(
+          (f) => normSearch(f).includes(q)
+        )
+      );
+    }
+    return arr;
+  }, [visiblePosts, tab, status, stage, type, item, sort, search]);
+
+  // 필터·검색·탭이 바뀌면 표시 개수 리셋
+  useEffect(() => {
+    setVisibleCount(DEFAULT_VISIBLE);
+  }, [tab, status, stage, type, item, sort, search]);
+
+  const shown = filtered.slice(0, visibleCount);
 
   function handleChange(key: string, value: string | null) {
     if (key === "tab") setTab(value === "expired" ? "expired" : "active");
@@ -185,6 +213,13 @@ export function AdminPostsView({
   return (
     <>
       <div className="mb-5">
+        <input
+          type="search"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="🔍 카드 검색 — 제목·브랜드·키워드·본문"
+          className="mb-3 w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-slate-400"
+        />
         <AdminFilterBar
           tab={tab}
           status={status}
@@ -199,6 +234,12 @@ export function AdminPostsView({
 
       <p className="mb-2 text-xs text-slate-500">
         결과: <strong>{filtered.length}건</strong>
+        {filtered.length > shown.length && (
+          <span className="ml-1 text-slate-400">(우선 {shown.length}건 표시)</span>
+        )}
+        {tab === "expired" && !expiredDone && search.trim() !== "" && (
+          <span className="ml-1 text-amber-600">· 검색은 로드된 마감 카드 범위만</span>
+        )}
         {tab === "expired" && !expiredDone && (
           <span className="ml-1 text-slate-400">
             (마감 {expiredTotal.toLocaleString("ko-KR")}건 중{" "}
@@ -229,7 +270,7 @@ export function AdminPostsView({
                 </td>
               </tr>
             ) : (
-              filtered.map((p) => (
+              shown.map((p) => (
                 <tr key={p.id} className="hover:bg-slate-50">
                   <td className="px-4 py-3">
                     <span
@@ -303,6 +344,20 @@ export function AdminPostsView({
           </tbody>
         </table>
       </div>
+
+      {/* 목록은 20건부터 — 나머지는 더 보기 (렌더 부담·스크롤 피로 감소) */}
+      {filtered.length > visibleCount && (
+        <div className="mt-4 flex justify-center">
+          <button
+            type="button"
+            onClick={() => setVisibleCount((c) => c + VISIBLE_STEP)}
+            className="rounded-xl bg-slate-100 px-4 py-2 text-sm font-bold text-slate-700 transition hover:bg-slate-200"
+          >
+            더 보기 ({(filtered.length - visibleCount).toLocaleString("ko-KR")}건
+            남음)
+          </button>
+        </div>
+      )}
 
       {/* 마감 탭 — 필요할 때만 100건씩 추가 로드 */}
       {tab === "expired" && expiredPosts.length > 0 && (

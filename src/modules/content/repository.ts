@@ -43,14 +43,17 @@ export async function selectPublishedPosts(
     const todayStart = kstTodayStartIso();
     query = query.or(`deadline.gte.${todayStart},deadline.is.null`);
 
-    // 검색어 필터 — title/brand_name/body + search_keywords(동의어) 4개 컬럼 ILIKE OR
-    // search_keywords는 관리자 직접 입력 또는 AI 자동 생성한 동의어 (콤마 구분 텍스트)
+    // 검색어 필터 — title/brand_name/search_keywords(동의어) ILIKE OR
+    // body는 제외(2026-08-29): 캡션 꼬리의 업체 상용구·타제품 나열이 무관 카드를
+    // 끌어올림(유모차 감사: 오염 노출의 41%가 body-only 매칭). 클라이언트 매처
+    // (ExploreView 검색·HomeView 키워드 레일)와 동일 정책. 동의어 커버는
+    // search_keywords 몫이며 2차 AI 검수가 품질을 보정한다.
     if (q) {
       const safe = sanitizeSearchTerm(q);
       if (safe) {
         const pattern = `%${safe}%`;
         query = query.or(
-          `title.ilike.${pattern},brand_name.ilike.${pattern},body.ilike.${pattern},search_keywords.ilike.${pattern}`
+          `title.ilike.${pattern},brand_name.ilike.${pattern},search_keywords.ilike.${pattern}`
         );
       }
     }
