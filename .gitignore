@@ -61,3 +61,6 @@ deploy.log
 /tools/umbba-cli/*.log.*
 /tools/umbba-cli/exports/
 /tools/umbba-cli/gallery-dl/
+tools/umbba-cli/.env.storage
+tools/umbba-cli/storage_deleted_*.txt
+tools/umbba-cli/storage-sweep.*

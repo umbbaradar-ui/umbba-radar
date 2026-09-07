@@ -198,6 +198,28 @@ def download_post(url: str, work_dir: Path) -> Optional[DownloadedPost]:
     )
 
 
+
+# ============================================
+# 2026-09-08 용량 사고 재발 방지: 업로드 전 리사이즈·재압축 (긴 변 1080px, JPEG q82)
+# ============================================
+def compress_image_bytes(image_path: "Path", max_side: int = 1080, quality: int = 82) -> tuple[bytes, str]:
+    """원본 대신 축소·재압축한 JPEG 바이트를 돌려준다. 실패 시 원본 그대로."""
+    try:
+        from PIL import Image
+        import io as _io
+        im = Image.open(image_path)
+        if getattr(im, "is_animated", False):
+            return image_path.read_bytes(), "image/gif"
+        im = im.convert("RGB")
+        im.thumbnail((max_side, max_side))
+        buf = _io.BytesIO()
+        im.save(buf, "JPEG", quality=quality, optimize=True)
+        data = buf.getvalue()
+        orig = image_path.stat().st_size
+        return (data, "image/jpeg") if len(data) < orig else (image_path.read_bytes(), "image/jpeg")
+    except Exception:
+        return image_path.read_bytes(), "image/jpeg"
+
 # ============================================
 # Vercel API 호출
 # ============================================
@@ -206,7 +228,7 @@ def upload_to_api(url: str, post: DownloadedPost) -> dict:
     if not API_TOKEN:
         return {"ok": False, "error": ".env의 ADMIN_CLI_TOKEN 미설정"}
 
-    image_bytes = post["image_path"].read_bytes()
+    image_bytes, image_mime = compress_image_bytes(post["image_path"])
     image_b64 = base64.b64encode(image_bytes).decode("ascii")
 
     try:
@@ -220,7 +242,7 @@ def upload_to_api(url: str, post: DownloadedPost) -> dict:
                 "url": url,
                 "caption": post["caption"],
                 "image_base64": image_b64,
-                "image_mime": post["mime"],
+                "image_mime": image_mime,
             },
             timeout=REQUEST_TIMEOUT,
         )
@@ -697,14 +719,8 @@ def upload_image_to_storage(image_path: Path) -> str | None:
     if not API_TOKEN:
         return None
     try:
-        image_bytes = image_path.read_bytes()
+        image_bytes, mime = compress_image_bytes(image_path)
         image_b64 = base64.b64encode(image_bytes).decode("ascii")
-        ext = image_path.suffix.lower().lstrip(".")
-        mime = {
-            "jpg": "image/jpeg", "jpeg": "image/jpeg",
-            "png": "image/png", "webp": "image/webp",
-            "gif": "image/gif",
-        }.get(ext, "image/jpeg")
         r = requests.post(
             f"{API_URL}/api/admin/upload-image",
             headers={

@@ -91,6 +91,26 @@ export async function POST(request: Request) {
         } catch {
           // 감사 로그 실패(023 미적용 등)는 무시 — skip 처리는 계속
         }
+        // 2026-09-08 용량 사고 재발 방지: 카드 삭제 시 card-images 파일도 동반 삭제
+        // (기존엔 행만 지워 고아 이미지 21,266개·975MB가 쌓였음)
+        try {
+          const { data: thumbRow } = await supabaseServer
+            .from("posts")
+            .select("thumbnail_url")
+            .eq("id", it.id)
+            .eq("status", "draft")
+            .maybeSingle();
+          const tUrl = (thumbRow as { thumbnail_url?: string | null } | null)?.thumbnail_url ?? "";
+          const marker = "/card-images/";
+          if (tUrl.includes(marker)) {
+            const objectPath = decodeURIComponent(tUrl.split(marker)[1] ?? "");
+            if (objectPath) {
+              await supabaseServer.storage.from("card-images").remove([objectPath]);
+            }
+          }
+        } catch {
+          // 파일 삭제 실패는 카드 삭제를 막지 않음 — 일일 고아 스캔 잡이 회수
+        }
         const { error } = await supabaseServer
           .from("posts")
           .delete()
