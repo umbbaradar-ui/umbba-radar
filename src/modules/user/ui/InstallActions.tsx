@@ -1,12 +1,14 @@
 "use client";
 
 // ============================================
-// PWA 설치 진입점 — 더보기 시트 + GNB 두 곳에서 사용
+// 앱 설치 진입점 — 더보기 시트 + GNB 두 곳에서 사용
 //
 // 동작 원칙:
-// - 이미 설치(standalone)면 모든 진입점 숨김
+// - 이미 설치(standalone — PWA·플레이 TWA 모두)면 모든 진입점 숨김
 // - 아니면 항상 노출 (브라우저가 PWA 지원하든 안 하든, 사용자한테 결정권을 줌)
-// - 클릭 시 최선책 시도: 네이티브 prompt → iOS 가이드 → 일반 브라우저 메뉴 안내
+// - 클릭 시 최선책 시도:
+//   Android → 구글 플레이 스토어(2026-09 정식 출시, 인앱 웹뷰에서도 열림)
+//   → 네이티브 prompt(데스크탑) → iOS 가이드 → 일반 브라우저 메뉴 안내
 //
 // ⚠️ 모달은 createPortal로 document.body에 직접 마운트.
 //    모바일 헤더의 backdrop-blur·더보기 시트의 transform이
@@ -16,7 +18,13 @@
 
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { isPWAInstalled, markPWAInstalled } from "@/shared/utils/pwa";
+import { track } from "@/modules/analytics/service";
+import {
+  PLAY_STORE_URL,
+  isAndroid,
+  isPWAInstalled,
+  markPWAInstalled,
+} from "@/shared/utils/pwa";
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
@@ -43,6 +51,7 @@ function useMounted() {
 
 function useInstall() {
   const [state, setState] = useState<InstallState>("loading");
+  const [android, setAndroid] = useState(false);
   const promptRef = useRef<BeforeInstallPromptEvent | null>(null);
 
   useEffect(() => {
@@ -54,6 +63,7 @@ function useInstall() {
     }
 
     // 설치 안 됐으면 일단 노출 시작 (이벤트 기다림 X)
+    setAndroid(isAndroid());
     setState("visible");
 
     const onBefore = (e: Event) => {
@@ -75,7 +85,7 @@ function useInstall() {
     };
   }, []);
 
-  return { state, promptRef };
+  return { state, android, promptRef };
 }
 
 // ============================================
@@ -212,12 +222,18 @@ function ManualGuideModal({ onClose }: { onClose: () => void }) {
 // 공통 클릭 핸들러 hook
 // ============================================
 function useInstallHandler() {
-  const { state, promptRef } = useInstall();
+  const { state, android, promptRef } = useInstall();
   const [iosOpen, setIosOpen] = useState(false);
   const [manualOpen, setManualOpen] = useState(false);
 
   const handleClick = async () => {
-    // 1. 네이티브 prompt 가능하면 우선 시도 (Android Chrome 정상 케이스)
+    // 0. 안드로이드 → 구글 플레이 (인스타·카톡 인앱 웹뷰에서도 https 링크로 열림)
+    if (android) {
+      track("install_click", { platform: "android", target: "play" });
+      window.location.assign(PLAY_STORE_URL);
+      return;
+    }
+    // 1. 네이티브 prompt 가능하면 우선 시도 (데스크탑 Chrome 정상 케이스)
     if (promptRef.current) {
       try {
         await promptRef.current.prompt();
@@ -237,6 +253,7 @@ function useInstallHandler() {
 
   return {
     state,
+    android,
     handleClick,
     modal: (
       <>
@@ -255,7 +272,7 @@ interface SheetEntryProps {
 }
 
 export function InstallSheetEntry({ onClick }: SheetEntryProps) {
-  const { state, handleClick, modal } = useInstallHandler();
+  const { state, android, handleClick, modal } = useInstallHandler();
 
   if (state === "installed" || state === "loading") return null;
 
@@ -278,9 +295,9 @@ export function InstallSheetEntry({ onClick }: SheetEntryProps) {
           📲
         </span>
         <span className="flex-1">
-          홈 화면에 추가하기
+          {android ? "Google Play에서 앱 설치" : "홈 화면에 추가하기"}
           <span className="ml-1.5 rounded-full bg-rose-200 px-1.5 py-0.5 text-[9px] font-bold text-rose-800">
-            앱처럼
+            {android ? "정식앱" : "앱처럼"}
           </span>
         </span>
         <span aria-hidden="true" className="text-xs text-rose-600">

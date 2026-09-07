@@ -48,6 +48,16 @@ export default function manifest(): ExtendedManifest {
     lang: "ko",
     orientation: "portrait",
     categories: ["lifestyle", "shopping", "parenting"],
+    // 구글 플레이 정식 출시(TWA) 이후: 안드로이드 Chrome 자체 설치 배너가 PWA 대신
+    // 플레이 앱을 권하고, 플레이로 설치한 기기에선 브라우저 설치 배너를 안 띄움.
+    related_applications: [
+      {
+        platform: "play",
+        url: "https://play.google.com/store/apps/details?id=com.umbba_radar.twa",
+        id: "com.umbba_radar.twa",
+      },
+    ],
+    prefer_related_applications: true,
     // PWA shortcuts: Android 홈 아이콘 길게 누르면 뜨는 빠른 메뉴
     // (iOS Safari는 미지원 — Android·일부 데스크탑만 적용)
     // 운영 데이터 기반: 키즈모델 카드 비중 낮아서 홈화면으로 교체 (2026-05-26).

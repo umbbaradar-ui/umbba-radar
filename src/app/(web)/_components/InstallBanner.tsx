@@ -1,15 +1,23 @@
 "use client";
 
 // ============================================
-// PWA 설치 유도 배너
-// - Android Chrome 계열: beforeinstallprompt 이벤트 사용 → "설치하기" 버튼
+// 앱 설치 유도 배너
+// - Android(모든 브라우저·인앱 웹뷰): 구글 플레이 링크 → "Google Play에서 설치" (2026-09 정식 출시)
+//   PWA 프롬프트는 인스타·카톡 인앱 브라우저에서 안 뜨므로 안드로이드는 스토어로 일원화
+// - 데스크탑 Chrome 계열: beforeinstallprompt 이벤트 사용 → "설치하기" 버튼
 // - iOS Safari: 이벤트 없음 → "공유 → 홈 화면에 추가" 안내
-// - 이미 PWA로 실행 중이거나 최근 닫았으면(7일) 노출 X
+// - 이미 앱(PWA·TWA)으로 실행 중이거나 최근 닫았으면(7일) 노출 X
 // - 페이지 진입 4초 후 노출 (콘텐츠 먼저 보이게)
 // ============================================
 
 import { useEffect, useState } from "react";
-import { isPWAInstalled, markPWAInstalled } from "@/shared/utils/pwa";
+import { track } from "@/modules/analytics/service";
+import {
+  PLAY_STORE_URL,
+  isAndroid,
+  isPWAInstalled,
+  markPWAInstalled,
+} from "@/shared/utils/pwa";
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
@@ -34,7 +42,7 @@ function wasRecentlyDismissed(): boolean {
   return Date.now() - ts < COOLDOWN_DAYS * 24 * 60 * 60 * 1000;
 }
 
-type Variant = "chrome" | "ios" | null;
+type Variant = "android" | "chrome" | "ios" | null;
 
 export function InstallBanner() {
   const [show, setShow] = useState(false);
@@ -54,16 +62,24 @@ export function InstallBanner() {
       timer = setTimeout(() => setShow(true), SHOW_DELAY_MS);
     };
 
+    const android = isAndroid();
+
     const onBefore = (e: Event) => {
+      // 브라우저 기본 미니 인포바 억제 → 커스텀 배너 하나만 노출
       e.preventDefault();
+      if (android) return; // 안드로이드는 PWA 프롬프트 대신 플레이 스토어
       setInstallEvent(e as BeforeInstallPromptEvent);
       setVariant("chrome");
       scheduleShow();
     };
     window.addEventListener("beforeinstallprompt", onBefore);
 
-    // iOS Safari는 beforeinstallprompt 미지원 → 즉시 ios variant로 안내
-    if (isIOS()) {
+    // 안드로이드: 이벤트 유무와 무관하게 플레이 스토어 안내 (인앱 웹뷰 포함)
+    if (android) {
+      setVariant("android");
+      scheduleShow();
+    } else if (isIOS()) {
+      // iOS Safari는 beforeinstallprompt 미지원 → 즉시 ios variant로 안내
       setVariant("ios");
       scheduleShow();
     }
@@ -104,6 +120,14 @@ export function InstallBanner() {
     }
   };
 
+  const handlePlayClick = () => {
+    track("install_click", { platform: "android", target: "play" });
+    // 배너는 닫되 쿨다운 저장 — 스토어에서 설치하면 appinstalled가 안 오므로
+    // 다음 방문(브라우저)에서 7일간 재노출 안 함
+    localStorage.setItem(STORAGE_KEY, Date.now().toString());
+    setShow(false);
+  };
+
   if (!show || !variant) return null;
 
   return (
@@ -129,7 +153,11 @@ export function InstallBanner() {
             <p className="text-sm font-bold tracking-tight text-slate-900">
               엄빠레이더 앱으로 설치하기
             </p>
-            {variant === "chrome" ? (
+            {variant === "android" ? (
+              <p className="mt-0.5 text-xs leading-relaxed text-slate-600">
+                Google Play 정식 앱으로 매일 새 혜택을 빠르게 확인하세요
+              </p>
+            ) : variant === "chrome" ? (
               <p className="mt-0.5 text-xs leading-relaxed text-slate-600">
                 홈 화면에 추가하면 매번 빠르게 확인할 수 있어요
               </p>
@@ -144,6 +172,15 @@ export function InstallBanner() {
               </p>
             )}
             <div className="mt-3 flex gap-2">
+              {variant === "android" && (
+                <a
+                  href={PLAY_STORE_URL}
+                  onClick={handlePlayClick}
+                  className="rounded-full bg-rose-500 px-4 py-1.5 text-xs font-bold text-white shadow-sm transition hover:bg-rose-600"
+                >
+                  Google Play에서 설치
+                </a>
+              )}
               {variant === "chrome" && (
                 <button
                   type="button"

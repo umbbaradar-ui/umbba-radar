@@ -55,3 +55,19 @@ export function markPWAInstalled(): void {
     // 무시 (private mode 등)
   }
 }
+
+// ============================================
+// 구글 플레이 (TWA) — 2026-09 정식 출시 이후
+// 안드로이드는 PWA 프롬프트 대신 스토어로 보냄.
+// 이유: 인스타·카톡·네이버 인앱 브라우저에선 beforeinstallprompt가 안 떠서
+//       PWA 안내가 막다른 길 → 플레이 https 링크는 어느 웹뷰에서든 열림.
+// ============================================
+
+export const PLAY_PACKAGE_ID = "com.umbba_radar.twa";
+export const PLAY_STORE_URL = `https://play.google.com/store/apps/details?id=${PLAY_PACKAGE_ID}&hl=ko`;
+
+/** 안드로이드 기기 여부 (인앱 브라우저 포함 — UA에 Android 항상 포함) */
+export function isAndroid(): boolean {
+  if (typeof window === "undefined") return false;
+  return /Android/i.test(navigator.userAgent);
+}

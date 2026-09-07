@@ -287,6 +287,7 @@
 - iOS Safari → 공유 → 홈 화면 추가 가이드 모달
 - Android Chrome `beforeinstallprompt` 이벤트 캐시 + fallback 안내
 - 진입점 4곳: 자동 배너 + GNB 데스크탑 + 모바일 헤더 + 더보기 시트
+- 2026-09-07 **안드로이드는 4곳 모두 구글 플레이(TWA `com.umbba_radar.twa`)로 일원화**: 인스타·카톡·네이버 인앱 웹뷰에선 `beforeinstallprompt`가 안 떠 PWA 안내가 막다른 길이었음 → https 플레이 링크는 어느 웹뷰에서든 열림. iOS 가이드·데스크탑 PWA 프롬프트는 유지. 매니페스트 `related_applications`+`prefer_related_applications`로 Chrome 자체 배너도 플레이로 유도·플레이 설치 기기엔 미노출. 클릭은 `install_click` 이벤트(platform/target). 인스타 프로필 링크는 스토어 URL이 아니라 홈페이지 유지(아이폰 유입·무료 열람 퍼널 보존)
 
 ---
 
