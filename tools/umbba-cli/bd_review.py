@@ -53,13 +53,16 @@ Steps:
    Each result item MUST have: id (copy from input), score (integer 0..100),
    review_status ("pass" | "warn" | "fail"), note (short Korean string),
    fixes (object with ONLY the keys you correct, among: search_keywords, item_categories,
-   stage_categories, type_tags, brand_name; empty object if nothing to fix).
+   stage_categories, type_tags, brand_name, deadline; empty object if nothing to fix).
+   deadline is allowed ONLY when the caption literally states the date (see REVIEW-RULES.md);
+   the server re-checks it against the caption and drops unfounded values.
    Use input.json today_kst for expiry checks. results count MUST equal input count;
    preserve every id.
 4. After results.json is written, reply with exactly: DONE
 """
 
-FIX_KEYS = {"search_keywords", "item_categories", "stage_categories", "type_tags", "brand_name"}
+FIX_KEYS = {"search_keywords", "item_categories", "stage_categories", "type_tags",
+            "brand_name", "deadline"}
 
 
 def _is_auth_error(err: str) -> bool:
@@ -166,7 +169,7 @@ def to_result_item(r: dict, valid_ids: set[str]) -> dict | None:
 
 
 def post_results(items: list[dict]) -> dict:
-    updated = failed = fixes = 0
+    updated = failed = fixes = dl = dl_rej = 0
     for off in range(0, len(items), 200):
         chunk = items[off:off + 200]
         try:
@@ -181,7 +184,9 @@ def post_results(items: list[dict]) -> dict:
         if not d.get("ok"):
             print(f"   ❌ review-results 실패 HTTP {r.status_code}: {str(d)[:200]}"); failed += len(chunk); continue
         updated += d.get("updated", 0); failed += d.get("failed", 0); fixes += d.get("fixes_applied", 0)
-    return {"updated": updated, "failed": failed, "fixes": fixes}
+        dl += d.get("deadline_fixes", 0); dl_rej += d.get("deadline_rejected", 0)
+    return {"updated": updated, "failed": failed, "fixes": fixes,
+            "deadline": dl, "deadline_rejected": dl_rej}
 
 
 def main() -> int:
@@ -214,7 +219,7 @@ def main() -> int:
     if calibration:
         print(f"   캘리브레이션 사례 {len(calibration)}건 주입")
 
-    totals = {"updated": 0, "failed": 0, "fixes": 0}
+    totals = {"updated": 0, "failed": 0, "fixes": 0, "deadline": 0, "deadline_rejected": 0}
     counts = {"pass": 0, "warn": 0, "fail": 0}
     fail_notes: list[str] = []
     fail_batches = 0
@@ -268,10 +273,13 @@ def main() -> int:
             continue
         r = post_results(mapped)
         totals = {k: totals[k] + r[k] for k in totals}
-        print(f"   배치 {bi + 1}/{n_batches}: 저장 {r['updated']} / 실패 {r['failed']} / 보정 {r['fixes']}")
+        print(f"   배치 {bi + 1}/{n_batches}: 저장 {r['updated']} / 실패 {r['failed']} / 보정 {r['fixes']}"
+              + (f" / 마감일 {r['deadline']}" if r.get("deadline") else "")
+              + (f" (근거없어 거절 {r['deadline_rejected']})" if r.get("deadline_rejected") else ""))
 
     print(f"✅ 검수 완료 — pass {counts['pass']} · warn {counts['warn']} · fail {counts['fail']}"
-          f" | 저장 {totals['updated']} · 보정 {totals['fixes']} · 실패 {totals['failed']}")
+          f" | 저장 {totals['updated']} · 보정 {totals['fixes']}"
+          f" · 마감일 {totals['deadline']} · 실패 {totals['failed']}")
     if fail_notes:
         print("   ⛔ fail 사유 상위:")
         for n in fail_notes[:8]:
