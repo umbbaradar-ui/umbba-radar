@@ -119,6 +119,8 @@ export async function runHealthWatchdog(
       const extra: string[] = [];
       if (ap.archived > 0) extra.push(`마감보관 ${ap.archived}`);
       if (ap.skippedNoThumb > 0) extra.push(`사진없음 보류 ${ap.skippedNoThumb}`);
+      if (ap.skippedUnknownDeadline > 0)
+        extra.push(`마감미정 사람검수 ${ap.skippedUnknownDeadline}`);
       lines.push(
         `🤖 자동발행 <b>+${ap.published}건</b> (${ap.minScore}점+ pass)` +
           (extra.length ? ` · ${extra.join(" · ")}` : "")

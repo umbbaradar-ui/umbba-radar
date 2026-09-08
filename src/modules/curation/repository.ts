@@ -598,6 +598,9 @@ export async function deletePost(id: string): Promise<void> {
 // pending & ai_review_status='pass' & 점수 ≥ AUTO_PUBLISH_MIN_SCORE(기본 85)
 //   → published(published_by='auto'). 마감 지난 후보는 expired 보관.
 //   썸네일 없는 카드는 자동 발행 제외(사람 판단으로 남김).
+//   마감미정(deadline_unknown) 카드도 점수와 무관하게 제외 — 2026-09-08 전수조사에서
+//   마감미정 761건 중 162건(21%)이 캡션에 실제 마감 근거가 있는데도 놓친 것으로 확인.
+//   추정 마감(게시일+7일)으로 발행하면 끝난 이벤트가 계속 노출되므로 사람이 한 번 본다.
 // 호출: 매일 09:00 KST cron(notify-deadline) + /api/admin/cards/auto-publish
 // ============================================
 export interface AutoPublishResult {
@@ -607,6 +610,8 @@ export interface AutoPublishResult {
   published: number;
   archived: number;
   skippedNoThumb: number;
+  /** 마감미정이라 사람 검수로 넘긴 건수 (점수 무관) */
+  skippedUnknownDeadline: number;
   titles?: string[];
   error?: string;
 }
@@ -626,12 +631,13 @@ export async function autoPublishReviewedPosts(
     published: 0,
     archived: 0,
     skippedNoThumb: 0,
+    skippedUnknownDeadline: 0,
   };
   if (!enabled) return result;
 
   const { data, error } = await supabaseServer
     .from("posts")
-    .select("id, title, deadline, thumbnail_url")
+    .select("id, title, deadline, deadline_unknown, thumbnail_url")
     .eq("status", "pending")
     .eq("ai_review_status", "pass")
     .gte("ai_review_score", minScore)
@@ -647,16 +653,19 @@ export async function autoPublishReviewedPosts(
     id: string;
     title: string;
     deadline: string | null;
+    deadline_unknown: boolean | null;
     thumbnail_url: string | null;
   }>;
   result.candidates = rows.length;
   if (rows.length === 0) return result;
 
   const toArchive = rows.filter((r) => isPastDeadline(r.deadline));
-  const toPublish = rows.filter(
-    (r) => r.thumbnail_url && !isPastDeadline(r.deadline)
-  );
-  result.skippedNoThumb = rows.length - toPublish.length - toArchive.length;
+  const alive = rows.filter((r) => !isPastDeadline(r.deadline));
+  // 마감미정은 deadline이 추정값(게시일+7일)이라 점수가 높아도 자동 발행하지 않는다.
+  const unknownDeadline = alive.filter((r) => r.deadline_unknown);
+  const toPublish = alive.filter((r) => !r.deadline_unknown && r.thumbnail_url);
+  result.skippedUnknownDeadline = unknownDeadline.length;
+  result.skippedNoThumb = alive.length - unknownDeadline.length - toPublish.length;
   result.titles = toPublish.slice(0, 10).map((r) => r.title);
 
   if (!execute) {
