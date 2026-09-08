@@ -98,12 +98,15 @@ def main():
     if a.sweep:
         remain = sum(size(o) for o in live) / 1e6
         msg = f"🗄 card-images 일일 정리: 삭제 {len(orphan)+len(expired)}개 {sum(size(o) for o in orphan+expired)/1e6:.0f}MB · 잔여 {remain:.0f}MB"
-        if remain > a.alert_mb: msg = "🚨 " + msg + f" — {a.alert_mb}MB 초과! 무료 한도(1,100MB) 대비 {remain/1100*100:.0f}%"
+        FREE_MB = 1100
+        pct = remain / FREE_MB * 100
+        if pct >= 90: msg = "🚨🚨 " + msg + f" — 무료 한도의 {pct:.0f}%! 즉시 정리 필요 (은재 요청: 90% 도달 시 알림)"
+        elif remain > a.alert_mb: msg = "🚨 " + msg + f" — {a.alert_mb}MB 초과! 무료 한도({FREE_MB}MB) 대비 {pct:.0f}%"
         try:
             env = {}
             for ln in open(os.path.join(os.path.dirname(__file__), ".env")):
                 if "=" in ln and not ln.startswith("#"): k, v = ln.strip().split("=", 1); env[k] = v.strip().strip('"')
-            if remain > a.alert_mb or (len(orphan) + len(expired)) > 0:
+            if pct >= 90 or remain > a.alert_mb or (len(orphan) + len(expired)) > 0:
                 requests.post(f"https://api.telegram.org/bot{env['TELEGRAM_BOT_TOKEN']}/sendMessage", data={"chat_id": env["TELEGRAM_CHAT_ID"], "text": msg}, timeout=30)
         except Exception as e:
             print("telegram fail", e)
