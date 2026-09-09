@@ -15,6 +15,7 @@
 //   존 B 🐻 엄빠레이더 추천 (전 상태 동일)
 //     5. 추천 픽 — pinned_until 우선 + 신규 채움
 //     6. 마감미정 혜택 — deadline NULL 전용 선반 (0건이면 숨김)
+//     6-2. 리빙 — topic=living 선반 (2026-09-10 은재: UI 개편 때 리빙 탭이 빠져 복구. 0건이면 숨김)
 //     7. 시기별로 둘러보기 — 허브 칩 그리드
 //   [전체 탐색 CTA]
 //
@@ -324,6 +325,16 @@ export function HomeView({
     [posts, usedIds3]
   );
 
+  // 6-2. 리빙 선반 — 어른·살림 제품(topic=living)만. 마감 임박 순 → 최신 순. 카테고리 선반이라 다른 섹션과 중복 허용.
+  const livingShelf = useMemo(() => {
+    const dl = (p: Post) => (p.deadline ? new Date(p.deadline).getTime() : Number.MAX_SAFE_INTEGER);
+    return posts
+      .filter((p) => p.topic === "living")
+      .sort((a, b) => dl(a) - dl(b) || b.created_at.localeCompare(a.created_at))
+      .slice(0, 4);
+  }, [posts]);
+  const livingCount = useMemo(() => posts.filter((p) => p.topic === "living").length, [posts]);
+
   // 7. 시기 허브 건수
   const stageCounts = useMemo(() => {
     const m = new Map<StageCategory, number>();
@@ -615,6 +626,36 @@ export function HomeView({
                   zone="deadline_unknown"
                   position={i}
                   listLen={alwaysOpen.length}
+                >
+                  <PostCard post={p} status={cardStatus(p.id)} />
+                </CardSlot>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* 6-2. 리빙 선반 */}
+        {livingShelf.length > 0 && (
+          <div className="mb-6">
+            <SectionHeader
+              title="🏠 리빙 · 살림 혜택"
+              right={
+                <Link
+                  href="/explore?topic=living"
+                  className="text-[11px] font-semibold text-rose-500"
+                >
+                  전체 보기 {livingCount}건 →
+                </Link>
+              }
+            />
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+              {livingShelf.map((p, i) => (
+                <CardSlot
+                  key={p.id}
+                  postId={p.id}
+                  zone="living_shelf"
+                  position={i}
+                  listLen={livingShelf.length}
                 >
                   <PostCard post={p} status={cardStatus(p.id)} />
                 </CardSlot>

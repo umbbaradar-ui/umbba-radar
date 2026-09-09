@@ -27,6 +27,7 @@ export type CardZone =
   | "guest_teaser" // 홈 4-변형. 비로그인 티저
   | "editor_pick" // 홈 5. 엄빠레이더 추천 픽
   | "deadline_unknown" // 홈 6. 마감미정 혜택
+  | "living_shelf" // 홈 6-2. 리빙 선반 (topic=living)
   | "explore_grid" // /explore 전체 그리드
   | "my_radar"; // /my 내 레이더
 

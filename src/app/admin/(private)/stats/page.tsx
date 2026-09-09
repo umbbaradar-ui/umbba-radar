@@ -28,6 +28,7 @@ const ZONE_LABELS: Record<string, string> = {
   guest_teaser: "홈 · 비로그인 티저",
   editor_pick: "홈 · 엄빠레이더 추천 픽",
   deadline_unknown: "홈 · 마감미정 혜택",
+  living_shelf: "홈 · 리빙 선반",
   explore_grid: "탐색 · 전체 그리드",
   my_radar: "내 레이더",
 };
