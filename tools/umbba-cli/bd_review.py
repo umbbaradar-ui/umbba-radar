@@ -52,7 +52,7 @@ Steps:
 3. Write results.json in the current folder as UTF-8 JSON: an object {"items": [ ... ]}.
    Each result item MUST have: id (copy from input), score (integer 0..100),
    review_status ("pass" | "warn" | "fail"), note (short Korean string),
-   fixes (object with ONLY the keys you correct, among: search_keywords, item_categories,
+   fixes (object with ONLY the keys you correct, among: search_keywords, item_categories, topic ("parenting"|"living"),
    stage_categories, type_tags, brand_name, deadline; empty object if nothing to fix).
    deadline is allowed ONLY when the caption literally states the date (see REVIEW-RULES.md);
    the server re-checks it against the caption and drops unfounded values.
@@ -61,7 +61,7 @@ Steps:
 4. After results.json is written, reply with exactly: DONE
 """
 
-FIX_KEYS = {"search_keywords", "item_categories", "stage_categories", "type_tags",
+FIX_KEYS = {"search_keywords", "item_categories", "stage_categories", "type_tags", "topic",
             "brand_name", "deadline"}
 
 

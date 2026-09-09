@@ -32,6 +32,8 @@ interface ReviewFixes {
   type_tags?: string[];
   brand_name?: string | null;
   deadline?: string | null;
+  /** 탭 보정 (2026-09-10): 어른 제품이 parenting으로 분류된 경우 living으로 */
+  topic?: "parenting" | "living";
 }
 
 const DAY_MS = 86_400_000;
@@ -182,6 +184,10 @@ export async function POST(request: Request) {
         // null = 오염 키워드 제거(유효한 보정), string = 교체
         upd.search_keywords =
           typeof f.search_keywords === "string" ? normalizeKeywords(f.search_keywords) : null;
+        touched = true;
+      }
+      if (f.topic === "parenting" || f.topic === "living") {
+        upd.topic = f.topic;
         touched = true;
       }
       if (Array.isArray(f.item_categories)) {
