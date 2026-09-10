@@ -28,7 +28,7 @@ if hasattr(sys.stdout, "reconfigure"):
 
 import requests
 import ingest
-from bd_local import classify_batch, find_classifier, today_kst  # 분류 호출부 재사용(claude/codex)
+from bd_local import classify_batch, find_classifier, today_kst, wait_for_classifier, is_binary_missing  # 분류 호출부 재사용(claude/codex)
 from bd_notify import alert  # 무인 실행 장애를 텔레그램으로 (6일 침묵 재발 방지)
 
 
@@ -106,9 +106,13 @@ def main() -> int:
               "caption_preview": d.get("body")} for d in drafts if d.get("id")]
     print(f"📋 미분류(draft) {len(items)}건 분류 (배치 {args.batch}, 배치마다 즉시 저장)")
 
-    claude_bin, backend = find_classifier()
+    claude_bin, backend = wait_for_classifier()
     if not claude_bin:
-        print(f"❌ {backend} 실행파일 못 찾음 — 설치 + PATH 또는 UMBBA_{backend.upper()} 환경변수"); return 1
+        print(f"❌ {backend} 실행파일 못 찾음 — 설치 + PATH 또는 UMBBA_{backend.upper()} 환경변수")
+        alert("엄빠레이더 분류 중단 — 실행파일 없음",
+              [f"{backend} 실행파일을 30분 기다려도 못 찾았습니다.", f"미분류(draft) {len(items)}건이 그대로 쌓입니다."],
+              "맥에서 <code>which claude</code> 확인 후 <code>npm i -g @anthropic-ai/claude-code</code> 재설치")
+        return 1
     print(f"   {backend}: {claude_bin}")
 
     tkst = today_kst()
@@ -124,10 +128,16 @@ def main() -> int:
             res, err = classify_batch(claude_bin, chunk, tkst, Path(tmp) / f"b{b}")
             # 막힌(타임아웃) 배치 = 다른 작업과 쿼터 경합일 때가 대부분 → 기다렸다 천천히 재요청.
             attempt = 0
-            while err and "timeout" in err.lower() and attempt < args.retries:
+            while err and ("timeout" in err.lower() or is_binary_missing(err)) and attempt < args.retries:
                 attempt += 1
-                print(f"   ⏳ 배치 {b+1} 막힘 — {args.retry_wait}s 대기 후 재시도 {attempt}/{args.retries}", flush=True)
-                time.sleep(args.retry_wait)
+                if is_binary_missing(err):
+                    # 자동 업데이트로 바이너리가 교체되는 중 → 다시 나타날 때까지 기다렸다 경로 재확인
+                    print(f"   ⏳ 배치 {b+1} 실행파일 사라짐 — 최대 30분 대기 후 재시도 {attempt}/{args.retries}", flush=True)
+                    nb_bin, _ = wait_for_classifier()
+                    if nb_bin: claude_bin = nb_bin
+                else:
+                    print(f"   ⏳ 배치 {b+1} 막힘 — {args.retry_wait}s 대기 후 재시도 {attempt}/{args.retries}", flush=True)
+                    time.sleep(args.retry_wait)
                 res, err = classify_batch(claude_bin, chunk, tkst, Path(tmp) / f"b{b}r{attempt}")
             if err:
                 print(f"   ⚠ 배치 {b+1} 실패: {err} — 건너뜀(다음 실행때 재시도)")

@@ -75,6 +75,27 @@ def find_claude() -> str | None:
 CLASSIFIER = os.getenv("UMBBA_CLASSIFIER", "claude").strip().lower()
 
 
+def is_binary_missing(err: str | None) -> bool:
+    """실행 도중 claude/codex 바이너리가 사라진 경우(자동 업데이트 중 심볼릭 링크 교체 등).
+    2026-09-11 실측: Claude Code 자동 업데이트로 ~/.npm-global/bin/claude 가 약 1시간 사라져 분류 15배치·검수 전체 실패."""
+    e = (err or "")
+    return "No such file or directory" in e or "Errno 2" in e
+
+
+def wait_for_classifier(max_wait_s: int = 1800, every_s: int = 60, log=print) -> tuple[str | None, str]:
+    """실행파일이 없으면 최대 max_wait_s 동안 every_s 간격으로 다시 찾는다 (자동 업데이트 창 대기)."""
+    import time as _t
+    waited = 0
+    while True:
+        b, backend = find_classifier()
+        if b:
+            return b, backend
+        if waited >= max_wait_s:
+            return None, backend
+        log(f"   ⏳ {backend} 실행파일 없음 — 자동 업데이트 중일 수 있어 {every_s}s 후 재확인 ({waited//60}/{max_wait_s//60}분)")
+        _t.sleep(every_s); waited += every_s
+
+
 def find_classifier() -> tuple[str | None, str]:
     """(실행파일 경로, 백엔드명) 반환. codex 면 UMBBA_CODEX → which codex."""
     if CLASSIFIER == "codex":

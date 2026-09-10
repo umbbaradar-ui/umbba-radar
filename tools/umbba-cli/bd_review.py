@@ -210,9 +210,13 @@ def main() -> int:
     if not cards:
         print(f"검수 대상({scope}) 0건 — 할 일 없음"); return 0
 
-    bin_path, backend = bd_local.find_classifier()
+    bin_path, backend = bd_local.wait_for_classifier()
     if not bin_path:
-        print(f"❌ {backend} 실행파일 못 찾음 — 설치 + PATH 또는 UMBBA_{backend.upper()} 환경변수"); return 1
+        print(f"❌ {backend} 실행파일 못 찾음 — 설치 + PATH 또는 UMBBA_{backend.upper()} 환경변수")
+        alert("엄빠레이더 2차 검수 중단 — 실행파일 없음",
+              [f"{backend} 실행파일을 30분 기다려도 못 찾았습니다.", "미검수 pending은 자동 발행되지 않고 수기 검수 큐에 남습니다."],
+              "맥에서 <code>which claude</code> 확인 후 <code>npm i -g @anthropic-ai/claude-code</code> 재설치")
+        return 1
     print(f"🧐 검수({scope}) {len(cards)}건 (배치 {args.batch}, {backend}, 배치마다 즉시 저장)")
 
     calibration = fetch_calibration()
@@ -235,11 +239,16 @@ def main() -> int:
         err: str | None = None
         for attempt in range(args.retries + 1):
             if attempt:
-                print(f"   ⏳ 배치 {bi + 1} 막힘 — {args.retry_wait}s 대기 후 재시도 {attempt}/{args.retries}", flush=True)
-                time.sleep(args.retry_wait)
+                if bd_local.is_binary_missing(err):
+                    print(f"   ⏳ 배치 {bi + 1} 실행파일 사라짐 — 최대 30분 대기 후 재시도 {attempt}/{args.retries}", flush=True)
+                    nb_bin, _ = bd_local.wait_for_classifier()
+                    if nb_bin: bin_path = nb_bin
+                else:
+                    print(f"   ⏳ 배치 {bi + 1} 막힘 — {args.retry_wait}s 대기 후 재시도 {attempt}/{args.retries}", flush=True)
+                    time.sleep(args.retry_wait)
             with tempfile.TemporaryDirectory(prefix="bd-review-") as td:
                 results, err = review_batch(bin_path, batch, tkst, calibration, Path(td))
-            if not (err and "timeout" in err.lower()):
+            if not (err and ("timeout" in err.lower() or bd_local.is_binary_missing(err))):
                 break
         if err:
             print(f"   배치 {bi + 1}/{n_batches}: ❌ {err}")
