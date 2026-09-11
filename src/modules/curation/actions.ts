@@ -23,6 +23,9 @@ import {
   sanitizeItemCategories,
   type Post,
   type PostStatus,
+  UNKNOWN_DEADLINE_DAYS,
+  UNKNOWN_DEADLINE_DAY_OPTIONS,
+  type UnknownDeadlineDays,
 } from "@/shared/types/post";
 import { isPastDeadline } from "@/shared/utils/dday";
 import {
@@ -51,11 +54,10 @@ export async function loadExpiredPostsAction(
   return selectExpiredPostsPage(safeOffset, safeSize);
 }
 
-/** 마감일 미정 카드의 자동 종료 기간 — 관리자 폼에서 1/3/7일 중 선택.
- *  잘못된 값(또는 미입력)이면 DEFAULT로 fallback.
- *  변경 시 PostForm UNKNOWN_DAYS_OPTIONS·ingestion service 상수와 동기화. */
-const UNKNOWN_DAYS_OPTIONS = [1, 3, 7] as const;
-const DEFAULT_UNKNOWN_DAYS = 7;
+/** 마감일 미정 카드의 자동 종료 기간 — 관리자 폼에서 3/5/7일 중 선택.
+ *  잘못된 값(또는 미입력)이면 기본값(UNKNOWN_DEADLINE_DAYS)으로 fallback. */
+const UNKNOWN_DAYS_OPTIONS = UNKNOWN_DEADLINE_DAY_OPTIONS;
+const DEFAULT_UNKNOWN_DAYS = UNKNOWN_DEADLINE_DAYS;
 
 function parseFormToPost(formData: FormData): PostInsertInput {
   const get = (k: string) => formData.get(k)?.toString().trim() ?? "";
@@ -70,7 +72,7 @@ function parseFormToPost(formData: FormData): PostInsertInput {
 
   let deadline: string | null;
   if (deadlineUnknown) {
-    // 노출 기간 1/3/7일 중 선택. 잘못된 값이면 DEFAULT
+    // 노출 기간 3/5/7일 중 선택. 잘못된 값이면 DEFAULT
     const rawDays = Number(formData.get("unknown_days") ?? DEFAULT_UNKNOWN_DAYS);
     const days = (UNKNOWN_DAYS_OPTIONS as readonly number[]).includes(rawDays)
       ? rawDays
@@ -179,9 +181,19 @@ export async function createPostAction(formData: FormData): Promise<void> {
 // ============================================
 // 승인 (pending → published)
 // ============================================
-export async function approvePostAction(id: string): Promise<void> {
+export async function approvePostAction(
+  id: string,
+  unknownDays?: number
+): Promise<void> {
   await ensureAdmin();
-  const result = await approvePost(id); // "published" | "expired"
+  // 마감미정 카드: 승인 큐에서 고른 노출 기간(3/5/7일, 오늘부터)으로 마감을 다시 걸고 발행.
+  // 허용값 외(또는 미지정)면 마감을 건드리지 않고 그대로 발행.
+  const days = (UNKNOWN_DEADLINE_DAY_OPTIONS as readonly number[]).includes(
+    unknownDays ?? -1
+  )
+    ? (unknownDays as UnknownDeadlineDays)
+    : undefined;
+  const result = await approvePost(id, days); // "published" | "expired"
   revalidatePath("/");
   revalidatePath("/admin");
   revalidatePath("/admin/queue");

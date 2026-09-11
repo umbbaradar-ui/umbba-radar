@@ -8,6 +8,8 @@
 //   전수조사에서 마감미정의 21%가 캡션에 근거가 있는데도 놓친 것으로 확인돼,
 //   기계적으로 확인 가능한 이 보정만 AI에게 열었다. 근거 대조는 서버가 다시 한다
 //   (verifyDeadline) — 모델 말만 믿고 쓰지 않는다. 통과 시 deadline_unknown=false.
+//   2026-09-11: 마감미정이었던 카드는 AI가 마감을 채웠어도 자동 발행하지 않는다 —
+//   판정을 warn(≤84)으로 캡해 승인 큐에 남긴다. 사람은 채워진 날짜만 확인하고 발행.
 // status · title · body 는 여기서 절대 건드리지 않는다
 //   (발행은 자동발행 cron·사람 승인만, 내용 수정은 사람만).
 // 인증: Bearer ADMIN_CLI_TOKEN 또는 어드민 쿠키.
@@ -134,21 +136,26 @@ export async function POST(request: Request) {
   const wantDeadline = items
     .filter((it) => it?.id && typeof it.fixes?.deadline === "string")
     .map((it) => it.id);
-  const captions = new Map<string, { body: string; postedAt: string | null }>();
+  const captions = new Map<
+    string,
+    { body: string; postedAt: string | null; wasUnknown: boolean }
+  >();
   if (wantDeadline.length > 0) {
     const { data: capRows } = await supabaseServer
       .from("posts")
-      .select("id, body, source_post_date, created_at")
+      .select("id, body, source_post_date, created_at, deadline_unknown")
       .in("id", wantDeadline.slice(0, 200));
     for (const r of (capRows ?? []) as Array<{
       id: string;
       body: string | null;
       source_post_date: string | null;
       created_at: string | null;
+      deadline_unknown: boolean | null;
     }>) {
       captions.set(r.id, {
         body: r.body ?? "",
         postedAt: r.source_post_date ?? r.created_at,
+        wasUnknown: Boolean(r.deadline_unknown),
       });
     }
   }
@@ -233,6 +240,11 @@ export async function POST(request: Request) {
           upd.deadline_unknown = false;
           deadlineFixes++;
           touched = true;
+          if (cap?.wasUnknown && status === "pass") {
+            // 마감미정이었던 카드는 사람이 한 번 본다 — pass 를 warn 으로 내려 자동 발행 차단
+            upd.ai_review_status = "warn";
+            upd.ai_review_score = Math.min(score, 84);
+          }
         } else {
           // 근거 없는 제안은 버린다 — 마감미정을 유지해 사람 검수로 남긴다.
           deadlineRejected++;

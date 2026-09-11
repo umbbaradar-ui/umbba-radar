@@ -4,6 +4,7 @@
 // ============================================
 
 import "server-only";
+import { UNKNOWN_DEADLINE_DAYS } from "@/shared/types/post";
 import { supabaseServer } from "@/shared/db/supabase-server";
 import { searchBlog, type NaverBlogItem } from "./sources/naver-search";
 import { normalizeBatch, type NormalizerInput } from "./normalizer";
@@ -124,9 +125,8 @@ export async function runIngestion(): Promise<IngestionStats> {
       }
       stats.normalized++;
 
-      // AI가 마감일 추출 못 했으면 deadline_unknown=true + 등록일 +7일 자동 채움
-      // (수동 admin 카드와 동일한 정책, UNKNOWN_DEADLINE_DAYS와 동기화)
-      const UNKNOWN_DEADLINE_DAYS = 7;
+      // AI가 마감일 추출 못 했으면 deadline_unknown=true + 등록일 + UNKNOWN_DEADLINE_DAYS 자동 채움
+      // (수동 admin 카드·BD 분류와 같은 정책 — 상수는 shared/types/post.ts 한 곳)
       const deadlineUnknown = !norm.deadline;
       const effectiveDeadline = deadlineUnknown
         ? new Date(

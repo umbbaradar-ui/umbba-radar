@@ -7,8 +7,13 @@
 import "server-only";
 import { supabaseServer } from "@/shared/db/supabase-server";
 import { fetchAllRows } from "@/shared/db/fetch-all-rows";
-import type { Post, PostStatus, SourceType } from "@/shared/types/post";
-import { isPastDeadline, kstTodayStartIso } from "@/shared/utils/dday";
+import type {
+  Post,
+  PostStatus,
+  SourceType,
+  UnknownDeadlineDays,
+} from "@/shared/types/post";
+import { isPastDeadline, kstTodayStartIso, kstEndOfDayIso } from "@/shared/utils/dday";
 
 /** 활성 카드(초안·승인대기·발행) 전량 — 어드민 메인 목록용. 마감 카드는 selectExpiredPostsPage로 지연 로드 */
 export async function selectActivePostsAdmin(): Promise<Post[]> {
@@ -118,7 +123,10 @@ async function logReviewFeedbackRow(
   }
 }
 
-export async function approvePost(id: string): Promise<"published" | "expired"> {
+export async function approvePost(
+  id: string,
+  unknownDays?: UnknownDeadlineDays
+): Promise<"published" | "expired"> {
   const { data: row, error: selErr } = await supabaseServer
     .from("posts")
     .select("*")
@@ -127,12 +135,18 @@ export async function approvePost(id: string): Promise<"published" | "expired"> 
   if (selErr) throw new Error(`approvePost(select): ${selErr.message}`);
 
   const post = row as Post | null;
-  const deadline = post?.deadline ?? null;
+  let deadline = post?.deadline ?? null;
+  // 마감미정 카드에 승인자가 노출 기간을 골랐으면 "오늘(KST)부터 N일 23:59"로 다시 건다.
+  // 분류 시 자동값(게시일+3일)은 큐에 며칠 머무는 동안 거의 소진되므로 승인 시점 기준이 자연스럽다.
+  // deadline_unknown 은 그대로 true — 여전히 추정값이라 배지·알림 제외 정책을 유지한다.
+  const rebased = post?.deadline_unknown && unknownDays ? kstEndOfDayIso(unknownDays) : null;
+  if (rebased) deadline = rebased;
   const nextStatus: "published" | "expired" = isPastDeadline(deadline)
     ? "expired"
     : "published";
 
   const upd: Record<string, unknown> = { status: nextStatus };
+  if (rebased) upd.deadline = rebased;
   if (nextStatus === "published") upd.published_by = "admin";
   let { error } = await supabaseServer.from("posts").update(upd).eq("id", id);
   // 마이그레이션 023 미적용 DB — published_by 빼고 재시도

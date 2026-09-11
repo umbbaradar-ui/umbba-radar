@@ -9,6 +9,14 @@ export type PostStatus = 'draft' | 'pending' | 'published' | 'expired'
 
 export type SourceType = 'admin' | 'ingestion' | 'submission'
 
+/** 마감미정 카드의 자동 마감 기본값(일) — 원문 게시일(없으면 등록일) 기준.
+ *  2026-09-11: 7 → 3. 짧게 걸고, 더 보여줄지는 승인 큐에서 사람이 5·7일로 늘린다.
+ *  (마감미정은 점수와 무관하게 자동 발행되지 않는다 — 반드시 사람이 확인 후 발행) */
+export const UNKNOWN_DEADLINE_DAYS = 3
+/** 승인 큐·관리자 폼에서 고를 수 있는 마감미정 노출 기간 */
+export const UNKNOWN_DEADLINE_DAY_OPTIONS = [3, 5, 7] as const
+export type UnknownDeadlineDays = (typeof UNKNOWN_DEADLINE_DAY_OPTIONS)[number]
+
 export const SOURCE_TYPE_LABELS: Record<SourceType, string> = {
   admin: '관리자',
   ingestion: '자동수집',
@@ -60,7 +68,8 @@ export interface Post {
   /** 검색 매칭용 동의어·유사어 (콤마 구분, UI 노출 X). 예: "기저귀,팬티,기저귀팬티" */
   search_keywords: string | null
   deadline: string | null
-  /** true = 실제 마감일 모름, deadline은 등록일+7일 자동 계산값 (UI에 "추정" 표시) */
+  /** true = 실제 마감일 모름, deadline은 게시일+UNKNOWN_DEADLINE_DAYS 자동 계산값
+   *  (UI에 "추정"/"마감미정" 표시, 자동 발행·마감 알림 제외) */
   deadline_unknown: boolean
   reviewer_handle: string | null
   stage_categories: StageCategory[]

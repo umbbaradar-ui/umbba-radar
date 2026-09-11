@@ -9,13 +9,14 @@ import { NextResponse } from "next/server";
 import { supabaseServer } from "@/shared/db/supabase-server";
 import { isAdminRequest } from "@/shared/utils/admin-session";
 import { isPastDeadline } from "@/shared/utils/dday";
-import { sanitizeItemCategories } from "@/shared/types/post";
+import { sanitizeItemCategories,
+  UNKNOWN_DEADLINE_DAYS,
+} from "@/shared/types/post";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
-const UNKNOWN_DEADLINE_DAYS = 7;
 
 interface ClassifyItem {
   id: string;
@@ -130,7 +131,8 @@ export async function POST(request: Request) {
       if (it.deadline) {
         effectiveDeadline = it.deadline;
       } else {
-        // 상시(마감 미정) → 원문 게시일 + 7 (없으면 등록일 + 7).
+        // 상시(마감 미정) → 원문 게시일 + UNKNOWN_DEADLINE_DAYS (없으면 등록일 기준).
+        // 짧게 걸어두고 승인 큐에서 사람이 3/5/7일 중 골라 발행한다.
         // 인스타 BD = source_post_date. 컬럼(021) 미생성 시 created_at 폴백(안 깨짐).
         const { data: row, error: selErr } = await supabaseServer
           .from("posts")

@@ -13,6 +13,8 @@ import {
   STAGE_LABELS,
   TYPE_LABELS,
   SOURCE_TYPE_LABELS,
+  UNKNOWN_DEADLINE_DAYS,
+  UNKNOWN_DEADLINE_DAY_OPTIONS,
   type Post,
   type SourceType,
 } from "@/shared/types/post";
@@ -208,19 +210,43 @@ export default async function AdminQueuePage({ searchParams }: PageProps) {
                   </div>
 
                   {/* 액션 버튼 */}
-                  <div className="mt-3 flex gap-2">
-                    <form action={approvePostAction.bind(null, p.id)}>
-                      <button
-                        type="submit"
-                        className={`rounded-lg px-3 py-1.5 text-xs font-bold text-white ${
-                          isPastDeadline(p.deadline)
-                            ? "bg-amber-500 hover:bg-amber-600"
-                            : "bg-emerald-600 hover:bg-emerald-700"
-                        }`}
-                      >
-                        {isPastDeadline(p.deadline) ? "마감 처리" : "✓ 발행"}
-                      </button>
-                    </form>
+                  <div className="mt-3 flex flex-wrap items-center gap-2">
+                    {p.deadline_unknown && !isPastDeadline(p.deadline) ? (
+                      // 마감미정: 자동 발행되지 않는 카드. 승인자가 노출 기간을 골라 발행한다
+                      // (오늘부터 N일, 기본 3일). 마감이 지났으면 아래 일반 버튼(마감 처리)로.
+                      <div className="flex items-center gap-1 rounded-lg border border-emerald-200 bg-emerald-50 px-1.5 py-1">
+                        <span className="px-1 text-[11px] font-semibold text-emerald-800">
+                          ✓ 발행 · 오늘부터
+                        </span>
+                        {UNKNOWN_DEADLINE_DAY_OPTIONS.map((d) => (
+                          <form key={d} action={approvePostAction.bind(null, p.id, d)}>
+                            <button
+                              type="submit"
+                              className={`rounded-md px-2.5 py-1 text-xs font-bold ${
+                                d === UNKNOWN_DEADLINE_DAYS
+                                  ? "bg-emerald-600 text-white hover:bg-emerald-700"
+                                  : "bg-white text-emerald-700 ring-1 ring-emerald-300 hover:bg-emerald-100"
+                              }`}
+                            >
+                              {d}일
+                            </button>
+                          </form>
+                        ))}
+                      </div>
+                    ) : (
+                      <form action={approvePostAction.bind(null, p.id, undefined)}>
+                        <button
+                          type="submit"
+                          className={`rounded-lg px-3 py-1.5 text-xs font-bold text-white ${
+                            isPastDeadline(p.deadline)
+                              ? "bg-amber-500 hover:bg-amber-600"
+                              : "bg-emerald-600 hover:bg-emerald-700"
+                          }`}
+                        >
+                          {isPastDeadline(p.deadline) ? "마감 처리" : "✓ 발행"}
+                        </button>
+                      </form>
+                    )}
                     <Link
                       href={`/admin/${p.id}/edit`}
                       className="rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-200"
@@ -275,7 +301,7 @@ function ReviewBadge({ post }: { post: Post }) {
 }
 
 // (예상) 마감기한 배지 — 근접(D-3 이내)이면 빨강, 지나면 회색, 그 외 주황.
-// deadline_unknown이면 "(예상)" 표시 (등록일+N일 자동값이라 정확치 않음).
+// deadline_unknown이면 "(예상)" 표시 (게시일+3일 자동값이라 정확치 않음 — 발행 시 3/5/7일로 다시 건다).
 function DeadlineBadge({
   deadline,
   unknown,

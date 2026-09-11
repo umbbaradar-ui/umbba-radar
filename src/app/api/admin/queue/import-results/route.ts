@@ -33,6 +33,7 @@
 // ============================================
 
 import { NextResponse } from "next/server";
+import { UNKNOWN_DEADLINE_DAYS } from "@/shared/types/post";
 import { supabaseServer } from "@/shared/db/supabase-server";
 import { markDone, markFailed } from "@/modules/ingestion/queue/repository";
 import { isAdminRequest } from "@/shared/utils/admin-session";
@@ -65,7 +66,6 @@ interface RequestBody {
   items: ImportItem[];
 }
 
-const UNKNOWN_DEADLINE_DAYS = 7;
 
 export async function POST(request: Request) {
   if (!(await isAuthorized(request))) {

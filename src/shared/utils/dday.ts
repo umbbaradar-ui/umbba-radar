@@ -69,6 +69,24 @@ export function kstTodayStartIso(): string {
 }
 
 /**
+ * 오늘(KST)로부터 `days`일 뒤 23:59:00 KST 에 해당하는 UTC 순간의 ISO 문자열.
+ * 승인 큐에서 마감미정 카드의 노출 기간(3/5/7일)을 다시 걸 때 사용 — 캘린더 날짜 기준이라
+ * calcDDay 와 정확히 맞물린다(3일 → D-3 으로 표시).
+ */
+export function kstEndOfDayIso(days: number): string {
+  const nowKstShifted = new Date(Date.now() + KST_OFFSET_MS);
+  const targetKstAsUtc = Date.UTC(
+    nowKstShifted.getUTCFullYear(),
+    nowKstShifted.getUTCMonth(),
+    nowKstShifted.getUTCDate() + days,
+    23,
+    59,
+    0
+  );
+  return new Date(targetKstAsUtc - KST_OFFSET_MS).toISOString();
+}
+
+/**
  * 해당 시각의 **KST 달력 날짜 키** (`YYYY-MM-DD`).
  * 일별 고유 방문자·활동일수 집계용 — UTC로 자르면 KST 09:00 이전 활동이
  * 전날로 밀려 DAU가 요일 경계에서 어긋난다.

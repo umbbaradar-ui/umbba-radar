@@ -17,12 +17,14 @@ import {
   ACTIVE_ITEM_CATEGORIES,
   TOPIC_LABELS,
   ACTIVE_TOPIC_CATEGORIES,
+  UNKNOWN_DEADLINE_DAYS,
+  UNKNOWN_DEADLINE_DAY_OPTIONS,
 } from "@/shared/types/post";
 import { ImageUploadField } from "./ImageUploadField";
 
-/** 마감 미정 카드의 자동 종료 기간 선택지 (actions.ts와 동기화) */
-const UNKNOWN_DAYS_OPTIONS = [1, 3, 7] as const;
-const DEFAULT_UNKNOWN_DAYS = 7;
+/** 마감 미정 카드의 자동 종료 기간 선택지 — shared/types/post.ts 상수 (actions.ts와 동일) */
+const UNKNOWN_DAYS_OPTIONS = UNKNOWN_DEADLINE_DAY_OPTIONS;
+const DEFAULT_UNKNOWN_DAYS = UNKNOWN_DEADLINE_DAYS;
 
 export interface PostFormDefaults {
   kind?: string;
