@@ -9,7 +9,7 @@
 //   [검색바(→/explore)] [AdSlot top_banner]
 //   존 A 📡 마이레이더 (rose 그라데이션, 로그인 상태별 분기)
 //     1. 오늘의 레이더 브리핑 — 히어로 + 스탯 칩(앵커 스크롤)
-//     2. 마감 레이더 — 관심→내 아이→전체 3단 폴백, 컴팩트 리스트
+//     2. 마감 레이더 — 관심→내 아이→전체 3단 폴백, 컴팩트 리스트 3장 + "더보기"로 3일 내 전체 펼침
 //     3. 요즘 키워드 모아보기 — 프리셋 키워드 실시간 매칭 레일
 //     4. 우리 아이 시기, 새로 뜬 혜택 — 캐러셀 (미등록자는 유도/티저)
 //   존 B 🐻 엄빠레이더 추천 (전 상태 동일)
@@ -165,6 +165,11 @@ export function HomeView({
   }, [posts, hasChildren, myChildStages, todayStartIso]);
 
   // 2. 마감 레이더 — ① 내 관심 D-3 → ② 내 아이 시기 D-3 → ③ 전체 D-3
+  //    접힌 상태엔 3장(개인화 픽). "더보기"를 누르면 브리핑 칩 "오늘 마감 N건"과 같은
+  //    모집단(내 아이 시기 매칭 = scan.matching)의 **오늘 마감(D-0)** 전부를 펼친다.
+  //    (2026-09-11: 칩엔 8건인데 섹션엔 3장만 보여 나머지를 못 찾는다는 피드백.
+  //     3일 내 전체는 100건이 넘는 날이 있어 홈에 다 펼치지 않고 탐색(마감 임박순)으로 보낸다)
+  const [deadlineExpanded, setDeadlineExpanded] = useState(false);
   const deadlineRadar = useMemo(() => {
     const withinD3 = (p: Post, allowUnknown: boolean) => {
       if (p.deadline_unknown && !allowUnknown) return false;
@@ -174,6 +179,19 @@ export function HomeView({
     const byDeadline = (a: Post, b: Post) =>
       (calcDDay(a.deadline)?.days ?? 99) - (calcDDay(b.deadline)?.days ?? 99);
 
+    // 더보기용 목록 — 칩 "오늘 마감 N건"(scan.closingToday)과 정확히 같은 기준(D-0, 추정 제외)
+    // 으로 세야 펼쳤을 때 칩의 N장이 그대로 보인다.
+    const matchingBase = hasChildren
+      ? posts.filter(
+          (p) =>
+            myChildStages.some((s) => p.stage_categories.includes(s)) ||
+            p.stage_categories.includes("all_ages")
+        )
+      : posts;
+    const all = matchingBase
+      .filter((p) => !p.deadline_unknown && calcDDay(p.deadline)?.days === 0)
+      .sort(byDeadline);
+
     const interested = statusHydrated
       ? posts
           .filter(
@@ -182,7 +200,7 @@ export function HomeView({
           .sort(byDeadline)
       : [];
     if (interested.length > 0)
-      return { items: interested.slice(0, 3), source: "interested" as const };
+      return { items: interested.slice(0, 3), source: "interested" as const, all };
 
     if (myChildStages.length > 0) {
       const mine = posts
@@ -193,12 +211,25 @@ export function HomeView({
         )
         .sort(byDeadline);
       if (mine.length > 0)
-        return { items: mine.slice(0, 3), source: "my_child" as const };
+        return { items: mine.slice(0, 3), source: "my_child" as const, all };
     }
 
-    const all = posts.filter((p) => withinD3(p, false)).sort(byDeadline);
-    return { items: all.slice(0, 3), source: "all" as const };
-  }, [posts, statusMap, statusHydrated, myChildStages]);
+    return { items: all.slice(0, 3), source: "all" as const, all };
+  }, [posts, statusMap, statusHydrated, myChildStages, hasChildren]);
+
+  // 펼친 목록 = 접힌 3장(개인화 픽, 관심이면 추정 마감도 포함) + 나머지 오늘 마감 전부
+  const deadlineVisible = useMemo(() => {
+    if (!deadlineExpanded) return deadlineRadar.items;
+    const seen = new Set(deadlineRadar.items.map((p) => p.id));
+    return [
+      ...deadlineRadar.items,
+      ...deadlineRadar.all.filter((p) => !seen.has(p.id)),
+    ];
+  }, [deadlineExpanded, deadlineRadar]);
+  const deadlineHidden = useMemo(() => {
+    const seen = new Set(deadlineRadar.items.map((p) => p.id));
+    return deadlineRadar.all.filter((p) => !seen.has(p.id)).length;
+  }, [deadlineRadar]);
 
   const interestedCount = useMemo(
     () =>
@@ -405,18 +436,38 @@ export function HomeView({
               </p>
             )}
             <div className="flex flex-col gap-2 md:grid md:grid-cols-3 md:gap-3">
-              {deadlineRadar.items.map((p, i) => (
+              {deadlineVisible.map((p, i) => (
                 <CardSlot
                   key={p.id}
                   postId={p.id}
                   zone="deadline_radar"
                   position={i}
-                  listLen={deadlineRadar.items.length}
-                  meta={{ source: deadlineRadar.source }}
+                  listLen={deadlineVisible.length}
+                  meta={{ source: deadlineRadar.source, expanded: deadlineExpanded }}
                 >
                   <PostCardCompact post={p} />
                 </CardSlot>
               ))}
+            </div>
+            {/* 더보기 — 브리핑 칩 "오늘 마감 N건"으로 내려온 사람이 나머지를 찾을 수 있게 */}
+            <div className="mt-2 flex items-center gap-2">
+              {deadlineHidden > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setDeadlineExpanded((v) => !v)}
+                  className="flex-1 rounded-xl bg-white py-2 text-xs font-bold text-rose-600 ring-1 ring-rose-200 transition hover:bg-rose-50"
+                >
+                  {deadlineExpanded
+                    ? "접기 ↑"
+                    : `오늘 마감 ${deadlineHidden}건 더보기 ↓`}
+                </button>
+              )}
+              <Link
+                href="/explore"
+                className="shrink-0 rounded-xl px-3 py-2 text-[11px] font-semibold text-slate-500 ring-1 ring-slate-200 transition hover:bg-white"
+              >
+                마감 임박순 전체 →
+              </Link>
             </div>
             {!loggedIn && (
               <p className="mt-2 text-[11px] text-slate-500">
@@ -582,8 +633,8 @@ export function HomeView({
 
         {/* 5. 추천 픽 */}
         {radarPick.items.length > 0 && (
-          <div className="mb-6">
-            <SectionHeader title="엄빠레이더 추천 픽" />
+          <Shelf tone="pick">
+            <SectionHeader title="⭐ 엄빠레이더 추천 픽" tone="pick" />
             <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
               {radarPick.items.map((p, i) => (
                 <div key={p.id} className="relative">
@@ -604,14 +655,15 @@ export function HomeView({
                 </div>
               ))}
             </div>
-          </div>
+          </Shelf>
         )}
 
         {/* 6. 마감미정 혜택 */}
         {alwaysOpen.length > 0 && (
-          <div className="mb-6">
+          <Shelf tone="open">
             <SectionHeader
-              title="마감미정 혜택"
+              title="🕰️ 마감미정 혜택"
+              tone="open"
               right={
                 <span className="text-[11px] font-semibold text-slate-400">
                   천천히 봐도 돼요
@@ -631,18 +683,19 @@ export function HomeView({
                 </CardSlot>
               ))}
             </div>
-          </div>
+          </Shelf>
         )}
 
         {/* 6-2. 리빙 선반 */}
         {livingShelf.length > 0 && (
-          <div className="mb-6">
+          <Shelf tone="living">
             <SectionHeader
               title="🏠 리빙 · 살림 혜택"
+              tone="living"
               right={
                 <Link
                   href="/explore?topic=living"
-                  className="text-[11px] font-semibold text-rose-500"
+                  className="rounded-full bg-white px-2.5 py-1 text-[11px] font-bold text-emerald-700 ring-1 ring-emerald-200"
                 >
                   전체 보기 {livingCount}건 →
                 </Link>
@@ -661,12 +714,12 @@ export function HomeView({
                 </CardSlot>
               ))}
             </div>
-          </div>
+          </Shelf>
         )}
 
         {/* 7. 시기별로 둘러보기 */}
         <div className="mb-6">
-          <SectionHeader title="시기별로 둘러보기" />
+          <SectionHeader title="🧭 시기별로 둘러보기" />
           <div
             data-tutorial="filter-pills"
             className="grid grid-cols-3 gap-2 md:grid-cols-6"
@@ -763,16 +816,43 @@ function ZoneHeader({
   );
 }
 
+type ShelfTone = "pick" | "open" | "living";
+
+/** 존 B 선반 패널 — 선반끼리 경계가 안 보여 리빙이 묻힌다는 피드백(2026-09-11)으로
+ *  선반마다 옅은 색 패널로 감싼다. 카드(흰색)와 페이지(크림)와 구분되는 톤만 쓴다. */
+const SHELF_PANEL: Record<ShelfTone, string> = {
+  pick: "bg-amber-100/60 ring-amber-200/70",
+  open: "bg-slate-100/80 ring-slate-200/70",
+  living: "bg-emerald-50 ring-emerald-200/80",
+};
+const SHELF_TITLE: Record<ShelfTone, string> = {
+  pick: "text-amber-900",
+  open: "text-slate-700",
+  living: "text-emerald-900",
+};
+
+function Shelf({ tone, children }: { tone: ShelfTone; children: React.ReactNode }) {
+  return (
+    <div className={`mb-5 rounded-3xl p-3 ring-1 ${SHELF_PANEL[tone]}`}>{children}</div>
+  );
+}
+
 function SectionHeader({
   title,
   right,
+  tone,
 }: {
   title: string;
   right?: React.ReactNode;
+  tone?: ShelfTone;
 }) {
   return (
     <div className="mb-2 flex items-center justify-between gap-2">
-      <h3 className="text-sm font-extrabold tracking-tight text-slate-800">
+      <h3
+        className={`text-[15px] font-extrabold tracking-tight ${
+          tone ? SHELF_TITLE[tone] : "text-slate-800"
+        }`}
+      >
         {title}
       </h3>
       {right}
