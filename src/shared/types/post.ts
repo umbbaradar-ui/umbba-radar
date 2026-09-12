@@ -207,6 +207,8 @@ export function sanitizeItemCategories(raw: unknown): ItemCategory[] {
 //      (living, skincare_bath) = 어른 스킨·목욕 / (parenting, skincare_bath) = 아기 스킨·목욕.
 //      리빙에 없는 품목(의류·수유·외출 등)이 리빙 카드에 붙으면 아래 귀속표로 보정한다.
 // 육아(parenting)는 12종 전부 사용, 시기는 캡션 근거대로 (제약 없음).
+// 예외: 산모·예비맘 용품(산모 영양제·수유브라·젠더리빌…)은 어른 제품이지만 parenting + ['pregnancy'] 로 분류한다
+// — 리빙은 전연령 단독이라 "임신중" 필터에서 사라지기 때문(2026-09-12). 이건 분류(topic) 단계의 룰이라 여기선 강제하지 않는다.
 // 모든 쓰기 경로(어드민 폼·분류·검수·수집)는 enforceTopicTaxonomy 를 거쳐 저장한다.
 // 변경 시 부수 작업: RULES.md·REVIEW-RULES.md·vision-extractor 프롬프트 동기화
 // ============================================

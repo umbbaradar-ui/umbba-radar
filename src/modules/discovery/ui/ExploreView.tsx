@@ -13,7 +13,7 @@
 // ============================================
 
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import type { Post, StageCategory } from "@/shared/types/post";
 import {
   STAGE_LABELS,
@@ -200,6 +200,29 @@ export function ExploreView({
     }
     return rest.concat(applied);
   }, [shown, statusMap, statusHydrated]);
+
+  // "내 아이" 필터는 2섹션 (2026-09-12 은재): 내 아이 시기에 정확히 맞는 카드를 위에, 전연령(리빙·가족 단위)
+  // 카드는 "전연령 신청 가능 상품도 확인하세요" 섹션으로 아래에. 건수(N건)는 둘을 합친 그대로.
+  // 정렬·신청함 맨뒤 규칙은 ordered 에서 이미 적용됐고, 여기선 순서를 보존한 채 둘로 가른다.
+  const myChildSplit = useMemo(() => {
+    if (!filters.stages.includes("my_child")) return null;
+    const mine: Post[] = [];
+    const allAges: Post[] = [];
+    for (const p of ordered) {
+      const exact = p.stage_categories.some(
+        (s) => s !== "all_ages" && myChildStages.includes(s)
+      );
+      (exact ? mine : allAges).push(p);
+    }
+    return { mine, allAges };
+  }, [ordered, filters.stages, myChildStages]);
+  const display = useMemo(
+    () => (myChildSplit ? [...myChildSplit.mine, ...myChildSplit.allAges] : ordered),
+    [myChildSplit, ordered]
+  );
+  // 섹션 헤더를 끼울 자리 — 전연령 섹션이 비어 있으면 헤더 없음
+  const allAgesStart =
+    myChildSplit && myChildSplit.allAges.length > 0 ? myChildSplit.mine.length : -1;
 
   // 필터 변경 시 청크 리셋
   useEffect(() => {
@@ -491,17 +514,39 @@ export function ExploreView({
             className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4"
             onClickCapture={markLeavingToPost}
           >
-            {ordered.slice(0, visibleCount).map((post, i) => (
-              <CardSlot
-                key={post.id}
-                postId={post.id}
-                zone="explore_grid"
-                position={i}
-                listLen={Math.min(visibleCount, ordered.length)}
-                meta={{ sort, filter_count: activeFilterCount }}
-              >
-                <PostCard post={post} status={cardStatus(post.id)} />
-              </CardSlot>
+            {display.slice(0, visibleCount).map((post, i) => (
+              <Fragment key={post.id}>
+                {/* "내 아이" 2섹션 헤더 — 그리드 한 줄을 통째로 차지(col-span-full) */}
+                {myChildSplit && i === 0 && myChildSplit.mine.length > 0 && (
+                  <SectionDivider
+                    tone="mine"
+                    title="💛 우리 아이 시기 맞춤"
+                    count={myChildSplit.mine.length}
+                    sub={myChildStages.map((s) => STAGE_LABELS[s]).join(" · ")}
+                  />
+                )}
+                {i === allAgesStart && (
+                  <SectionDivider
+                    tone="all"
+                    title="👨‍👩‍👧 전연령 신청 가능 상품도 확인하세요"
+                    count={myChildSplit?.allAges.length ?? 0}
+                    sub="리빙·가족 단위 혜택 — 시기와 상관없이 신청할 수 있어요"
+                  />
+                )}
+                <CardSlot
+                  postId={post.id}
+                  zone="explore_grid"
+                  position={i}
+                  listLen={Math.min(visibleCount, display.length)}
+                  meta={{
+                    sort,
+                    filter_count: activeFilterCount,
+                    ...(myChildSplit ? { section: i < myChildSplit.mine.length ? "mine" : "all_ages" } : {}),
+                  }}
+                >
+                  <PostCard post={post} status={cardStatus(post.id)} />
+                </CardSlot>
+              </Fragment>
             ))}
           </div>
           {visibleCount < ordered.length &&
@@ -604,6 +649,37 @@ function FilterChip({
     >
       {label} <span aria-hidden className="text-rose-400">✕</span>
     </button>
+  );
+}
+
+/** "내 아이" 필터 2섹션 구분선 — 그리드 안에서 한 줄 전체(col-span-full) */
+function SectionDivider({
+  tone,
+  title,
+  count,
+  sub,
+}: {
+  tone: "mine" | "all";
+  title: string;
+  count: number;
+  sub?: string;
+}) {
+  const box =
+    tone === "mine"
+      ? "border-rose-200 bg-rose-50/70 text-rose-800"
+      : "border-emerald-200 bg-emerald-50/70 text-emerald-800";
+  return (
+    <div className={`col-span-full ${tone === "all" ? "mt-2" : ""}`}>
+      <div className={`flex items-center justify-between gap-2 rounded-xl border px-3 py-2 ${box}`}>
+        <div className="min-w-0">
+          <p className="text-xs font-bold">{title}</p>
+          {sub && <p className="mt-0.5 text-[11px] leading-snug opacity-80">{sub}</p>}
+        </div>
+        <span className="shrink-0 rounded-full bg-white/80 px-2 py-0.5 text-[11px] font-bold">
+          {count}건
+        </span>
+      </div>
+    </div>
   );
 }
 

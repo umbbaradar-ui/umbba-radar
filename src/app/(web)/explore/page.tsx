@@ -35,6 +35,8 @@ interface PageProps {
     sort?: string;
     today?: string;
     focus?: string;
+    /** dev 전용: "parent" = 로그인+자녀(영아·유아) 상태 강제 (내 아이 필터 검수용) */
+    preview?: string;
   }>;
 }
 
@@ -55,13 +57,22 @@ export default async function ExplorePage({ searchParams }: PageProps) {
     listPosts({}),
   ]);
 
-  const hasChildren = childrenBirths.length > 0;
-  const myChildStages = hasChildren ? getStagesForChildren(childrenBirths) : [];
+  let hasChildren = childrenBirths.length > 0;
+  let myChildStages = hasChildren ? getStagesForChildren(childrenBirths) : [];
+  let loggedIn = Boolean(user);
+
+  // 개발 모드 전용 미리보기 — `?preview=parent` 면 로그인+자녀(영아·유아) 상태를 강제해
+  // "내 아이" 필터(2섹션)를 계정 없이 검수한다. /test 페이지의 view 스위처와 같은 취지. 프로덕션에선 무시.
+  if (process.env.NODE_ENV === "development" && sp.preview === "parent") {
+    loggedIn = true;
+    hasChildren = true;
+    myChildStages = ["infant", "toddler"];
+  }
 
   return (
     <ExploreView
       posts={posts}
-      loggedIn={Boolean(user)}
+      loggedIn={loggedIn}
       hasChildren={hasChildren}
       myChildStages={myChildStages}
       statusMap={statusMap}

@@ -163,12 +163,15 @@
 - 사용 주체가 **어른·가족**(가전·가구·주방·청소·침구·성인 화장품·성인 의류·건강식품·산모용품·엄마아빠용 기기·반려동물)인데 `topic`이 `parenting`이면 → **`living`으로 고친다**. 캡션에 "육아맘", "아기 있는 집"이 있어도 예외 없음.
 - 아이가 **직접** 쓰는 물건(입는·먹는·가지고 노는·타는)만 `parenting` 유지. 공용(가족 식기세트, 온 가족 선크림)은 `living`.
 - `parenting` 인데 `stage_categories` 가 `["all_ages"]` 단독이면 십중팔구 어른 제품이다 — topic 을 의심해라.
-- 고쳤으면 note 끝에 ` · 보정: 탭(리빙)` 을 붙인다.
+- 브랜드가 아니라 **받는 물건** 기준: 아기 브랜드가 스타벅스·치킨 기프티콘·범용 상품권·에어팟을 주면 `living`(품목 food_health/etc/home_living). 자사몰 적립금·쿠폰은 `parenting` 유지.
+- ★ **산모·예비맘 용품 예외 (2026-09-12 은재)**: 사용 주체가 임신·출산·수유 중인 엄마인 제품(산모 영양제·산모차·수유브라·수유패드·튼살크림·산후조리·젠더리빌·임신선물박스·산모교실)은 living 이 아니라 **`parenting` + `stage_categories: ["pregnancy"]`**(수유·산후면 `["pregnancy","newborn"]`). living 으로 와 있으면 `fixes.topic: "parenting"` + `fixes.stage_categories` 로 고친다. 이 예외가 "어른 제품=living"보다 우선.
+- 고쳤으면 note 끝에 ` · 보정: 탭(리빙)` 또는 ` · 보정: 탭(육아·임신중)` 을 붙인다.
 
 ### 리빙 카드의 시기·품목 (2026-09-12 은재) — 어긴 것은 고쳐라, 감점은 없다
 `topic` 이 `living` 인(또는 네가 living 으로 고친) 카드는 두 가지가 정해져 있다:
-1. **`stage_categories` 는 `["all_ages"]` 단독.** `["all_ages","infant"]`·`["pregnancy"]` 같은 값이 있으면
-   `fixes.stage_categories: ["all_ages"]` 로 고친다. 산모티·수유브라도 어른 제품이라 예외 없음.
+1. **`stage_categories` 는 `["all_ages"]` 단독.** `["all_ages","infant"]` 같은 값이 있으면
+   `fixes.stage_categories: ["all_ages"]` 로 고친다. 단 `["pregnancy"]` 가 붙은 living 카드는 먼저 산모·예비맘 용품인지 봐라 —
+   맞으면 시기를 고칠 게 아니라 topic 을 `parenting` 으로 되돌린다(위 예외).
 2. **`item_categories` 는 리빙 5종 안에서만**: `skincare_bath`(어른 화장품·헤어·바디) · `bedding_furniture`
    (침구·가구) · `home_living`(리빙·가전·주방·세제·생활용품·전자기기) · `food_health`(식품·건강·기프티콘) ·
    `etc`(성인 의류·잡화·여행용품·반려동물·상품권). `clothing`·`gear_outing`·`service_class`·`feeding` 등이

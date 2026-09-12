@@ -275,7 +275,7 @@ export function PostForm({ post, defaults, action, publishAction, submitLabel, e
           ))}
         </div>
         <p className="text-[11px] text-slate-500">
-          어른·가족이 쓰는 제품은 무조건 리빙. 리빙은 시기 없이 <b>전연령</b>으로 저장돼요.
+          어른·가족이 쓰는 제품은 무조건 리빙(시기 없이 <b>전연령</b>). 예외: 산모·예비맘 용품은 육아 + <b>임신중</b>.
         </p>
       </Section>
 
