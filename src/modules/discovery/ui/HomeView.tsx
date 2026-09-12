@@ -121,13 +121,14 @@ const STAGE_ICONS: Record<StageCategory, string> = {
   all_ages: "👨‍👩‍👧",
 };
 
+// 허브 6칸 = 시기 5 + 리빙 1 (2026-09-12 은재). 전연령 칸을 리빙으로 교체 —
+// 리빙은 전부 전연령 단독이고 육아엔 전연령 단독 카드가 없어서 두 집합이 같다(잃는 카드 0).
 const HUB_STAGES: StageCategory[] = [
   "pregnancy",
   "newborn",
   "infant",
   "toddler",
   "elementary",
-  "all_ages",
 ];
 
 export function HomeView({
@@ -448,6 +449,7 @@ export function HomeView({
       <div className="mb-4">
         <StageHub
           counts={stageCounts}
+          livingCount={livingCount}
           myChildStages={myChildStages}
           hasChildren={hasChildren}
           tutorialAnchor="filter-pills"
@@ -782,6 +784,7 @@ export function HomeView({
           <SectionHeader title="🧭 시기별로 둘러보기" />
           <StageHub
             counts={stageCounts}
+          livingCount={livingCount}
             myChildStages={myChildStages}
             hasChildren={hasChildren}
           />
@@ -894,55 +897,80 @@ function SectionHeader({
  *  md 이상은 기존처럼 건수까지. "💛 내 아이"는 모바일에선 하트만. */
 function StageHub({
   counts,
+  livingCount,
   myChildStages,
   hasChildren,
   tutorialAnchor,
 }: {
   counts: Map<StageCategory, number>;
+  /** 6번째 칸 = 🏠 리빙 (topic=living 건수) — 전연령 칸을 대체 */
+  livingCount: number;
   myChildStages: StageCategory[];
   hasChildren: boolean;
   /** 온보딩 튜토리얼 앵커(data-tutorial) — 한 곳에만 지정 */
   tutorialAnchor?: string;
 }) {
+  // 시기 5칸 + 리빙 1칸을 같은 타일로 그린다
+  const tiles = [
+    ...HUB_STAGES.map((s) => ({
+      key: s as string,
+      href: `/explore?stage=${s}`,
+      icon: STAGE_ICONS[s],
+      label: STAGE_LABELS[s],
+      n: counts.get(s) ?? 0,
+      mine: hasChildren && myChildStages.includes(s),
+      living: false,
+    })),
+    {
+      key: "living",
+      href: "/explore?topic=living",
+      icon: "🏠",
+      label: "리빙",
+      n: livingCount,
+      mine: false,
+      living: true,
+    },
+  ];
   return (
     <div
       data-tutorial={tutorialAnchor}
       className="grid grid-cols-6 gap-1.5 md:gap-2"
     >
-      {HUB_STAGES.map((s) => {
-        const n = counts.get(s) ?? 0;
-        const mine =
-          hasChildren && s !== "all_ages" && myChildStages.includes(s);
-        return (
-          <Link
-            key={s}
-            href={`/explore?stage=${s}`}
-            className={`relative flex flex-col items-center justify-center gap-0.5 rounded-xl border px-1 py-2 transition md:min-h-16 md:rounded-2xl md:px-2 md:py-3 ${
-              n === 0
-                ? "border-slate-100 bg-slate-50 opacity-50"
-                : mine
-                  ? "border-rose-300 bg-rose-50"
+      {tiles.map((t) => (
+        <Link
+          key={t.key}
+          href={t.href}
+          className={`relative flex flex-col items-center justify-center gap-0.5 rounded-xl border px-1 py-2 transition md:min-h-16 md:rounded-2xl md:px-2 md:py-3 ${
+            t.n === 0
+              ? "border-slate-100 bg-slate-50 opacity-50"
+              : t.mine
+                ? "border-rose-300 bg-rose-50"
+                : t.living
+                  ? "border-emerald-200 bg-emerald-50/60 hover:bg-emerald-50"
                   : "border-slate-200 bg-white hover:bg-slate-50"
+          }`}
+        >
+          {t.mine && (
+            <span className="absolute right-1 top-1 text-[8px] font-bold text-rose-500 md:right-1.5 md:top-1.5 md:text-[9px]">
+              <span className="md:hidden">💛</span>
+              <span className="hidden md:inline">💛 내 아이</span>
+            </span>
+          )}
+          <span aria-hidden className="text-base leading-none md:text-xl">
+            {t.icon}
+          </span>
+          <span
+            className={`text-[10px] font-bold leading-tight md:text-xs ${
+              t.living ? "text-emerald-800" : "text-slate-800"
             }`}
           >
-            {mine && (
-              <span className="absolute right-1 top-1 text-[8px] font-bold text-rose-500 md:right-1.5 md:top-1.5 md:text-[9px]">
-                <span className="md:hidden">💛</span>
-                <span className="hidden md:inline">💛 내 아이</span>
-              </span>
-            )}
-            <span aria-hidden className="text-base leading-none md:text-xl">
-              {STAGE_ICONS[s]}
-            </span>
-            <span className="text-[10px] font-bold leading-tight text-slate-800 md:text-xs">
-              {STAGE_LABELS[s]}
-            </span>
-            <span className="hidden text-[10px] text-slate-400 md:block">
-              {n}건
-            </span>
-          </Link>
-        );
-      })}
+            {t.label}
+          </span>
+          <span className="hidden text-[10px] text-slate-400 md:block">
+            {t.n}건
+          </span>
+        </Link>
+      ))}
     </div>
   );
 }
