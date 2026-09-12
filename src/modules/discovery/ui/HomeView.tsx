@@ -13,7 +13,8 @@
 //     3. 요즘 키워드 모아보기 — 프리셋 키워드 실시간 매칭 레일
 //     4. 우리 아이 시기, 새로 뜬 혜택 — 캐러셀 (미등록자는 유도/티저)
 //   존 B 🐻 엄빠레이더 추천 (전 상태 동일)
-//     5. 추천 픽 — pinned_until 우선 + 신규 채움
+//     5. 추천 픽 — 앞 2장 육아(기저귀·유모차·분유·젖병·장난감 품목 우선, 최신순)
+//                 + 뒤 2장 리빙(침구·가구/리빙·가전 우선, 최신 아니어도 됨). pinned_until 은 버킷 안 최우선
 //     6. 마감미정 혜택 — deadline NULL 전용 선반 (0건이면 숨김)
 //     6-2. 리빙 — topic=living 선반 (2026-09-10 은재: UI 개편 때 리빙 탭이 빠져 복구. 0건이면 숨김)
 //     7. 시기별로 둘러보기 — 허브 칩 그리드
@@ -27,7 +28,12 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import type { Post, StageCategory } from "@/shared/types/post";
+import type {
+  ItemCategory,
+  Post,
+  StageCategory,
+  TopicCategory,
+} from "@/shared/types/post";
 import { STAGE_LABELS } from "@/shared/types/post";
 import { PostCard } from "@/modules/content/ui/PostCard";
 import { CardSlot } from "@/modules/analytics/ui/CardSlot";
@@ -89,6 +95,20 @@ function matchKeyword(post: Post, kw: string): boolean {
   // 검색키워드만 사용 (search_keywords 품질은 2차 AI 검수가 보정·보증).
   return strong.some((f) => normKw(f).includes(k));
 }
+
+// ── 추천 픽 우선 품목 ──────────────────────────
+// 육아 2장: 기저귀·유모차·분유·젖병·유아 장난감 (품목 축 기준, 2026-09-12 은재)
+const PICK_PARENTING_ITEMS: readonly ItemCategory[] = [
+  "diaper_hygiene",
+  "gear_outing",
+  "feeding",
+  "toys_edu",
+];
+// 리빙 2장: 침대·테이블·협탁·세탁세제·밀폐용기 같은 큰 가구·가전 느낌 선행
+const PICK_LIVING_ITEMS: readonly ItemCategory[] = [
+  "bedding_furniture",
+  "home_living",
+];
 
 // ── 시기 허브 아이콘 ───────────────────────────
 
@@ -321,22 +341,48 @@ export function HomeView({
     return s;
   }, [usedIds, myChildNew, guestStageTeaser]);
 
-  // 5. 추천 픽 — pinned_until 우선 + 부족분은 최근 신규 중 마감 여유 카드
+  // 5. 추천 픽 — 앞 2장 육아 + 뒤 2장 리빙 (2026-09-12 은재)
+  //    육아: 기저귀·유모차·분유·젖병·장난감 품목(PICK_PARENTING_ITEMS) 우선, 등록일 최신순.
+  //    리빙: 침구·가구 / 리빙·가전 같은 큰 물건(PICK_LIVING_ITEMS) 우선 — 최신이 아니어도 됨.
+  //    각 버킷 안에서 pinned_until(🐻 PICK) → 우선 품목 → 마감 여유(D-4+) → 최신 순.
+  //    한쪽이 2장을 못 채우면 다른 쪽이 채워 항상 4장.
   const radarPick = useMemo(() => {
     const nowIso = new Date(now).toISOString();
-    const pinned = posts.filter(
-      (p) => p.pinned_until && p.pinned_until >= nowIso && !usedIds2.has(p.id)
-    );
-    const fill = posts
-      .filter((p) => {
-        if (usedIds2.has(p.id) || pinned.includes(p)) return false;
-        const d = calcDDay(p.deadline);
-        return d === null || d.days >= 4;
-      })
-      .sort((a, b) => b.created_at.localeCompare(a.created_at));
+    const isPinned = (p: Post) => Boolean(p.pinned_until && p.pinned_until >= nowIso);
+    const rank = (p: Post, prefer: readonly ItemCategory[]) => {
+      const cats = p.item_categories ?? [];
+      const d = calcDDay(p.deadline);
+      return [
+        isPinned(p) ? 0 : 1,
+        cats.some((c) => prefer.includes(c)) ? 0 : 1,
+        d === null || d.days >= 4 ? 0 : 1,
+      ] as const;
+    };
+    const bucket = (topic: TopicCategory, prefer: readonly ItemCategory[]) =>
+      posts
+        .filter((p) => p.topic === topic && !usedIds2.has(p.id))
+        .map((p) => ({ p, r: rank(p, prefer) }))
+        .sort(
+          (a, b) =>
+            a.r[0] - b.r[0] ||
+            a.r[1] - b.r[1] ||
+            a.r[2] - b.r[2] ||
+            b.p.created_at.localeCompare(a.p.created_at)
+        )
+        .map((x) => x.p);
+
+    const parenting = bucket("parenting", PICK_PARENTING_ITEMS);
+    const living = bucket("living", PICK_LIVING_ITEMS);
+    const front = parenting.slice(0, 2);
+    const back = living.slice(0, 2);
+    // 부족분 보충 — 육아가 모자라면 리빙 3번째부터, 리빙이 모자라면 육아 3번째부터
+    const need = 4 - front.length - back.length;
+    const extra =
+      front.length < 2 ? living.slice(2, 2 + need) : parenting.slice(2, 2 + need);
+    const items = [...front, ...back, ...extra].slice(0, 4);
     return {
-      items: [...pinned, ...fill].slice(0, 4),
-      pinnedIds: new Set(pinned.map((p) => p.id)),
+      items,
+      pinnedIds: new Set(items.filter(isPinned).map((p) => p.id)),
     };
   }, [posts, usedIds2, now]);
 
@@ -356,14 +402,17 @@ export function HomeView({
     [posts, usedIds3]
   );
 
-  // 6-2. 리빙 선반 — 어른·살림 제품(topic=living)만. 마감 임박 순 → 최신 순. 카테고리 선반이라 다른 섹션과 중복 허용.
+  // 6-2. 리빙 선반 — 어른·살림 제품(topic=living)만. 마감 임박 순 → 최신 순.
+  //      카테고리 선반이라 존 A(키워드 레일 등)와는 중복 허용하되, 바로 위 추천 픽의 리빙 2장은 뺀다
+  //      (같은 존 안에서 같은 카드가 두 번 보이면 안 됨).
   const livingShelf = useMemo(() => {
     const dl = (p: Post) => (p.deadline ? new Date(p.deadline).getTime() : Number.MAX_SAFE_INTEGER);
+    const picked = new Set(radarPick.items.map((p) => p.id));
     return posts
-      .filter((p) => p.topic === "living")
+      .filter((p) => p.topic === "living" && !picked.has(p.id))
       .sort((a, b) => dl(a) - dl(b) || b.created_at.localeCompare(a.created_at))
       .slice(0, 4);
-  }, [posts]);
+  }, [posts, radarPick]);
   const livingCount = useMemo(() => posts.filter((p) => p.topic === "living").length, [posts]);
 
   // 7. 시기 허브 건수
@@ -648,7 +697,7 @@ export function HomeView({
                     zone="editor_pick"
                     position={i}
                     listLen={radarPick.items.length}
-                    meta={{ pinned: radarPick.pinnedIds.has(p.id) }}
+                    meta={{ pinned: radarPick.pinnedIds.has(p.id), topic: p.topic }}
                   >
                     <PostCard post={p} status={cardStatus(p.id)} />
                   </CardSlot>

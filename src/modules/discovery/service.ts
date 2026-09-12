@@ -52,14 +52,11 @@ export function filterPosts(posts: Post[], filters: PostFilters): Post[] {
         const hasAnyChildStage = myChildStages.some((s) => tags.includes(s));
         const hasAllAges = tags.includes("all_ages" as StageCategory);
         if (!hasAnyChildStage && !hasAllAges) return false;
-      } else if (stage === "all_ages") {
-        // 전연령 필터를 명시적으로 선택 → all_ages 태그만
-        if (!tags.includes("all_ages" as StageCategory)) return false;
       } else {
-        // 일반 특정 시기 → 해당 시기 OR 전연령
-        const hasStage = tags.includes(stage as StageCategory);
-        const hasAllAges = tags.includes("all_ages" as StageCategory);
-        if (!hasStage && !hasAllAges) return false;
+        // 특정 시기(전연령 포함) → 그 태그가 붙은 카드만 (정확 매칭).
+        // 2026-09-12: 전연령 자동 포함 제거 — 리빙이 전부 전연령이라 시기 필터를 덮어썼다.
+        // ExploreView.applyFilters·홈 허브 칩(stageCounts)과 같은 기준.
+        if (!tags.includes(stage as StageCategory)) return false;
       }
     }
     if (type && type !== "all") {

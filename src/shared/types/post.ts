@@ -196,3 +196,76 @@ export function sanitizeItemCategories(raw: unknown): ItemCategory[] {
     )
   ).slice(0, 2)
 }
+
+// ============================================
+// 주제(topic)별 택소노미 불변식 (2026-09-12)
+//
+// 리빙(living) = 어른·가족이 쓰는 살림 제품 전부. 두 가지를 강제한다:
+//   1) 시기(stage)는 항상 ['all_ages'] 단독 — 리빙은 전연령이 대상이고, "전연령+영아" 같은
+//      섞임은 시기 필터를 오염시킨다.
+//   2) 품목(item)은 12종 중 리빙 5종만 — 같은 키를 육아와 공유하되 topic 으로 갈라 읽는다:
+//      (living, skincare_bath) = 어른 스킨·목욕 / (parenting, skincare_bath) = 아기 스킨·목욕.
+//      리빙에 없는 품목(의류·수유·외출 등)이 리빙 카드에 붙으면 아래 귀속표로 보정한다.
+// 육아(parenting)는 12종 전부 사용, 시기는 캡션 근거대로 (제약 없음).
+// 모든 쓰기 경로(어드민 폼·분류·검수·수집)는 enforceTopicTaxonomy 를 거쳐 저장한다.
+// 변경 시 부수 작업: RULES.md·REVIEW-RULES.md·vision-extractor 프롬프트 동기화
+// ============================================
+export const LIVING_ITEM_CATEGORIES: readonly ItemCategory[] = [
+  'skincare_bath',     // 스킨·목욕 (어른 화장품·헤어·바디)
+  'bedding_furniture', // 침구·가구
+  'home_living',       // 리빙·가전
+  'food_health',       // 식품·건강
+  'etc',               // 기타 (성인 의류·잡화·여행용품·반려동물·상품권 등)
+] as const
+
+export const LIVING_STAGE_CATEGORIES: readonly StageCategory[] = ['all_ages'] as const
+
+/** 리빙 카드에 붙은 비(非)리빙 품목의 귀속처 */
+const LIVING_ITEM_FALLBACK: Record<ItemCategory, ItemCategory> = {
+  clothing: 'etc',
+  feeding: 'home_living',
+  diaper_hygiene: 'home_living',
+  skincare_bath: 'skincare_bath',
+  toys_edu: 'etc',
+  books_content: 'etc',
+  gear_outing: 'etc',
+  bedding_furniture: 'bedding_furniture',
+  home_living: 'home_living',
+  food_health: 'food_health',
+  service_class: 'etc',
+  etc: 'etc',
+}
+
+/** 주제에서 고를 수 있는 품목 목록 (어드민 폼 체크박스·검증용) */
+export function itemCategoriesForTopic(topic: TopicCategory): readonly ItemCategory[] {
+  return topic === 'living' ? LIVING_ITEM_CATEGORIES : ACTIVE_ITEM_CATEGORIES
+}
+
+export function isValidStageCategory(v: unknown): v is StageCategory {
+  return (ACTIVE_STAGE_CATEGORIES as readonly string[]).includes(v as string)
+}
+
+/**
+ * topic 기준으로 stage·item 을 정규화한 값을 돌려준다 (입력은 건드리지 않음).
+ * - living  → stage ['all_ages'], item 은 리빙 5종으로 귀속(중복 제거·최대 2개)
+ * - parenting → stage 는 유효값 화이트리스트만, item 은 sanitizeItemCategories 그대로
+ */
+export function enforceTopicTaxonomy(input: {
+  topic: TopicCategory
+  stage_categories?: readonly unknown[] | null
+  item_categories?: readonly unknown[] | null
+}): { stage_categories: StageCategory[]; item_categories: ItemCategory[] } {
+  const items = sanitizeItemCategories(input.item_categories ?? [])
+  if (input.topic === 'living') {
+    return {
+      stage_categories: [...LIVING_STAGE_CATEGORIES],
+      item_categories: Array.from(new Set(items.map((c) => LIVING_ITEM_FALLBACK[c]))).slice(0, 2),
+    }
+  }
+  return {
+    stage_categories: Array.from(
+      new Set((input.stage_categories ?? []).filter(isValidStageCategory))
+    ),
+    item_categories: items,
+  }
+}

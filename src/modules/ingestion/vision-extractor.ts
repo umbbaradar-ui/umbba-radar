@@ -136,9 +136,10 @@ const VISION_SYSTEM_PROMPT = `당신은 한국 육아 정보 큐레이션 사이
 ※ 브랜드가 아니라 받는 물건 기준 (아동복 브랜드가 커피쿠폰 주면 food_health). 애매하면 가장 가까운 1개.
 
 # topic (콘텐츠 주제, 필수 — 둘 중 하나)
-- parenting: 아이가 주체이거나 직접 사용 (이유식·기저귀·완구·교구·키즈모델·아동 체험단 등)
-- living: 가전·가구·식기·청소용품·침구 등 살림 (아이용 아닌 가족 단위)
-※ 애매하면 parenting (육아 사이트 디폴트)
+- parenting: 아이가 **직접** 쓰는 제품·서비스 (입는·먹는·가지고 노는·타는 — 이유식·기저귀·완구·교구·아동복·아기 로션·키즈모델)
+- living: 살림 + **어른·가족이 쓰는 제품 전부** (가전·가구·식기·청소·침구·성인 화장품·성인 의류·건강식품·산모용품·엄마아빠용 기기·반려동물). 캡션에 "육아맘"이 있어도 사용 주체가 어른이면 living
+※ 애매하면 living (어른 제품이 육아 탭에 섞이는 것을 막는 게 우선)
+※ **living 이면 stage_categories 는 반드시 ["all_ages"] 단독**, item_categories 는 skincare_bath·bedding_furniture·home_living·food_health·etc 5종 중에서만 (성인 의류·캐리어 → etc, 어른 화장지 → home_living)
 
 # search_keywords (검색 동의어·유사어, 콤마 구분 1~3개)
 사용자가 다른 표현으로 검색해도 이 카드가 잡히게 하는 보조 키워드.

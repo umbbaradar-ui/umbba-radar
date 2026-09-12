@@ -7,18 +7,18 @@
 // ============================================
 
 import { useState } from "react";
-import type { Post } from "@/shared/types/post";
+import type { Post, TopicCategory } from "@/shared/types/post";
 import {
   STAGE_LABELS,
   ACTIVE_STAGE_CATEGORIES,
   TYPE_LABELS,
   ACTIVE_TYPE_TAGS,
   ITEM_CATEGORY_LABELS,
-  ACTIVE_ITEM_CATEGORIES,
   TOPIC_LABELS,
   ACTIVE_TOPIC_CATEGORIES,
   UNKNOWN_DEADLINE_DAYS,
   UNKNOWN_DEADLINE_DAY_OPTIONS,
+  itemCategoriesForTopic,
 } from "@/shared/types/post";
 import { ImageUploadField } from "./ImageUploadField";
 
@@ -92,6 +92,11 @@ export function PostForm({ post, defaults, action, publishAction, submitLabel, e
   // 마감 미정 토글 — 체크 시 datetime input 비활성화 + 노출 기간 라디오 노출
   const [deadlineUnknown, setDeadlineUnknown] = useState(v.deadline_unknown);
   const [unknownDays, setUnknownDays] = useState<number>(DEFAULT_UNKNOWN_DAYS);
+  // 주제 — 리빙이면 시기는 전연령 고정, 품목은 리빙 5종만 (서버 enforceTopicTaxonomy 와 동일 규칙)
+  const [topic, setTopic] = useState<TopicCategory>(
+    v.topic === "living" ? "living" : "parenting"
+  );
+  const itemOptions = itemCategoriesForTopic(topic);
 
   return (
     <form action={action} className="space-y-6">
@@ -261,27 +266,38 @@ export function PostForm({ post, defaults, action, publishAction, submitLabel, e
                 type="radio"
                 name="topic"
                 value={k}
-                defaultChecked={v.topic === k}
+                checked={topic === k}
+                onChange={() => setTopic(k)}
                 className="h-4 w-4"
               />
               {TOPIC_LABELS[k]}
             </label>
           ))}
         </div>
+        <p className="text-[11px] text-slate-500">
+          어른·가족이 쓰는 제품은 무조건 리빙. 리빙은 시기 없이 <b>전연령</b>으로 저장돼요.
+        </p>
       </Section>
 
       <Section title="시기 카테고리">
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-          {ACTIVE_STAGE_CATEGORIES.map((k) => (
-            <Checkbox
-              key={k}
-              name="stage_categories"
-              value={k}
-              label={STAGE_LABELS[k]}
-              defaultChecked={v.stage_categories.includes(k)}
-            />
-          ))}
-        </div>
+        {topic === "living" ? (
+          <div className="rounded-lg border border-dashed border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-500">
+            🏠 리빙 카드는 <b>전연령</b> 고정이에요 (다른 시기와 섞지 않음)
+            <input type="hidden" name="stage_categories" value="all_ages" />
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+            {ACTIVE_STAGE_CATEGORIES.map((k) => (
+              <Checkbox
+                key={k}
+                name="stage_categories"
+                value={k}
+                label={STAGE_LABELS[k]}
+                defaultChecked={v.stage_categories.includes(k)}
+              />
+            ))}
+          </div>
+        )}
       </Section>
 
       <Section title="유형 태그">
@@ -298,18 +314,34 @@ export function PostForm({ post, defaults, action, publishAction, submitLabel, e
         </div>
       </Section>
 
-      <Section title="품목 카테고리 (보통 1개, 최대 2개)">
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-          {ACTIVE_ITEM_CATEGORIES.map((k) => (
+      <Section
+        title={
+          topic === "living"
+            ? "품목 카테고리 — 리빙 5종 (보통 1개, 최대 2개)"
+            : "품목 카테고리 (보통 1개, 최대 2개)"
+        }
+      >
+        {/* key=topic — 주제를 바꾸면 체크박스를 다시 마운트해 다른 주제의 체크 상태를 버린다 */}
+        <div key={topic} className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+          {itemOptions.map((k) => (
             <Checkbox
               key={k}
               name="item_categories"
               value={k}
-              label={ITEM_CATEGORY_LABELS[k]}
+              label={
+                topic === "living" && k === "skincare_bath"
+                  ? `${ITEM_CATEGORY_LABELS[k]} (어른)`
+                  : ITEM_CATEGORY_LABELS[k]
+              }
               defaultChecked={v.item_categories.includes(k)}
             />
           ))}
         </div>
+        {topic === "living" && (
+          <p className="text-[11px] text-slate-500">
+            성인 의류·잡화·여행용품·반려동물·상품권은 <b>기타</b>로.
+          </p>
+        )}
       </Section>
 
       <Section title="발행">

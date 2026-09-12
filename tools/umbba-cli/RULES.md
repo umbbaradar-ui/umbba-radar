@@ -246,6 +246,11 @@
 - **이유식·젖꼭지·치발기·기저귀 키워드는 절대 all_ages 단독 X** → 해당 시기 명시
 - 캡션에 "0~3개월", "백일 아기", "신생아용" 직접 표현 있으면 그대로
 - 어른·가족 단위(공기청정기, 식기세트)일 때만 all_ages
+- **`topic: "living"` 이면 stage_categories 는 반드시 `["all_ages"]` 단독** (2026-09-12 은재).
+  리빙은 전연령이 대상이다. `["all_ages","infant"]` 처럼 다른 시기와 섞지 말 것 — 산모용품·
+  수유브라처럼 "임신중" 느낌이 나도 어른 제품이면 living + all_ages 다. (서버가 강제하지만 룰대로 써라)
+- 반대로 `parenting` 인데 all_ages 단독이 나오면 topic 을 다시 생각해라 — 아이가 직접 쓰는
+  물건이 아니라서 시기가 안 잡히는 것이면 그건 living 이다.
 
 ### 안전 마진 룰 (애매하면 더 넓게)
 사용자가 검색·필터 시 카드가 누락되지 않게, 적용 가능한 시기는 모두 포함:
@@ -298,6 +303,19 @@
 - 랜덤박스·구성 불명 세트 → `etc`
 - 애매하면 가장 가까운 1개 + confidence 소폭 하향 (비워두지 말 것)
 
+### 주제(topic)별로 쓸 수 있는 품목이 다르다 (2026-09-12 은재)
+같은 키를 육아·리빙이 공유하되 **topic 으로 갈라 읽는다** — (living, skincare_bath)=어른 화장품,
+(parenting, skincare_bath)=아기 로션. 그래서 리빙 카드는 아래 5종만 쓴다:
+
+| topic | 쓸 수 있는 item_categories |
+|---|---|
+| `parenting` (육아) | 12종 전부 |
+| `living` (리빙) | `skincare_bath`(어른 스킨·헤어·바디·메이크업) · `bedding_furniture`(침구·가구) · `home_living`(리빙·가전·주방·세제·생활용품·전자기기) · `food_health`(식품·건강·기프티콘) · `etc`(성인 의류·잡화·여행용품·반려동물·상품권·공모전 상금) |
+
+- 리빙에서 `clothing`·`feeding`·`diaper_hygiene`·`toys_edu`·`books_content`·`gear_outing`·`service_class` 는 **쓰지 않는다**.
+  성인 의류·가방·캐리어 → `etc`, 어른 물티슈·화장지 → `home_living`, 숙박권·클래스 → `etc`.
+- 리빙 예: 세탁세제·밀폐용기·텀블러·휴지통·김치냉장고·이어폰 → `home_living` / 침대·소파·식탁·화장대·서랍장·이불·전기매트 → `bedding_furniture` / 립밤·클렌징·샴푸·바디워시·핸드크림 → `skincare_bath` / 산모티·유산균·약과·치킨 기프티콘 → `food_health`
+
 ---
 
 ## topic (필수, 둘 중 하나)
@@ -309,6 +327,8 @@
   - parenting 예: 아기 매트·범퍼침대·아기 식기·아기 세제(아기 옷 전용)·유모차·카시트·아기 로션·아기 영양제
   - 아이·어른 공용(가족 식기세트, 온 가족 선크림)은 `living`
 - 애매하면: 아이가 **직접** 쓰는지로 판정. 그래도 모르겠으면 `living` (어른 제품이 육아 탭에 섞이는 것을 막는 게 우선)
+- **living 이면 따라오는 것 (2026-09-12)**: `stage_categories: ["all_ages"]` 단독 + `item_categories` 는 리빙 5종
+  (`skincare_bath`·`bedding_furniture`·`home_living`·`food_health`·`etc`) 중에서만. 위 두 섹션 참고.
 
 ---
 
@@ -482,5 +502,6 @@ results.json 만든 후:
 4. stage_categories 가 배열 (string 아님) ?
 5. deadline 이 ISO 8601 +09:00 형식 ?
 6. item_categories 가 배열이고 위 12개 키 중에서만 골랐나 (skip 외 전 항목 1~2개) ?
+7. `topic: "living"` 항목은 stage_categories 가 `["all_ages"]` 단독이고 item_categories 가 리빙 5종 안에만 있나 ?
 
 이상 OK 면 사용자에게 결과 요약 보고 후 import 진행 안내.

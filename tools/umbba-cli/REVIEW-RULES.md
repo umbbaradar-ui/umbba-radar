@@ -62,7 +62,7 @@
 }
 ```
 - `fixes`에는 **고친 키만** 넣는다 (없으면 `"fixes": {}` 또는 생략).
-- 허용 fixes 키: `search_keywords` `item_categories` `stage_categories` `type_tags` `brand_name` `deadline` — 이외 키는 서버가 버린다.
+- 허용 fixes 키: `search_keywords` `item_categories` `stage_categories` `type_tags` `brand_name` `deadline` `topic` — 이외 키는 서버가 버린다.
 
 ---
 
@@ -162,7 +162,18 @@
 ### topic (육아/리빙 탭) — 어른 제품은 무조건 `living` (2026-09-10 은재)
 - 사용 주체가 **어른·가족**(가전·가구·주방·청소·침구·성인 화장품·성인 의류·건강식품·산모용품·엄마아빠용 기기·반려동물)인데 `topic`이 `parenting`이면 → **`living`으로 고친다**. 캡션에 "육아맘", "아기 있는 집"이 있어도 예외 없음.
 - 아이가 **직접** 쓰는 물건(입는·먹는·가지고 노는·타는)만 `parenting` 유지. 공용(가족 식기세트, 온 가족 선크림)은 `living`.
+- `parenting` 인데 `stage_categories` 가 `["all_ages"]` 단독이면 십중팔구 어른 제품이다 — topic 을 의심해라.
 - 고쳤으면 note 끝에 ` · 보정: 탭(리빙)` 을 붙인다.
+
+### 리빙 카드의 시기·품목 (2026-09-12 은재) — 어긴 것은 고쳐라, 감점은 없다
+`topic` 이 `living` 인(또는 네가 living 으로 고친) 카드는 두 가지가 정해져 있다:
+1. **`stage_categories` 는 `["all_ages"]` 단독.** `["all_ages","infant"]`·`["pregnancy"]` 같은 값이 있으면
+   `fixes.stage_categories: ["all_ages"]` 로 고친다. 산모티·수유브라도 어른 제품이라 예외 없음.
+2. **`item_categories` 는 리빙 5종 안에서만**: `skincare_bath`(어른 화장품·헤어·바디) · `bedding_furniture`
+   (침구·가구) · `home_living`(리빙·가전·주방·세제·생활용품·전자기기) · `food_health`(식품·건강·기프티콘) ·
+   `etc`(성인 의류·잡화·여행용품·반려동물·상품권). `clothing`·`gear_outing`·`service_class`·`feeding` 등이
+   붙어 있으면 위 5종으로 옮겨 `fixes.item_categories` 에 넣는다 (성인 의류·캐리어 → etc, 어른 화장지 → home_living).
+서버도 저장 시 같은 규칙으로 한 번 더 맞추지만, 네가 먼저 고쳐야 note 에 근거가 남는다.
 
 ### stage_categories / type_tags
 - 캡션 근거로만 교정. 유효값 외 금지:
@@ -211,6 +222,7 @@ input.json의 `calibration`은 **최근 사람 판단과 네(AI) 판단이 어�
    - 찾았으면 `fixes.deadline` 에 채우고 note에 근거를 적었나?
    - 못 찾았으면 점수를 84점 이하로 두었나? (pass면 사람이 못 본다)
 7. `fixes.deadline` 을 넣었다면, 그 날짜가 **캡션에 실제로 적힌 문자열**인가? (계산·추측이면 지워라)
+8. 최종 topic 이 `living` 인 카드는 시기가 `["all_ages"]` 단독이고 품목이 리빙 5종 안에 있나? (아니면 fixes 로 고쳤나?)
 
 ---
 

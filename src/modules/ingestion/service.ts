@@ -4,7 +4,7 @@
 // ============================================
 
 import "server-only";
-import { UNKNOWN_DEADLINE_DAYS } from "@/shared/types/post";
+import { UNKNOWN_DEADLINE_DAYS, enforceTopicTaxonomy } from "@/shared/types/post";
 import { supabaseServer } from "@/shared/db/supabase-server";
 import { searchBlog, type NaverBlogItem } from "./sources/naver-search";
 import { normalizeBatch, type NormalizerInput } from "./normalizer";
@@ -149,6 +149,12 @@ export async function runIngestion(): Promise<IngestionStats> {
             .slice(0, 200)
         : null;
 
+      // 리빙이면 시기=전연령 단독 (정규화 출력이 룰을 어겨도 서버가 최종 보정)
+      const topic = norm.topic === "living" ? "living" : "parenting";
+      const taxonomy = enforceTopicTaxonomy({
+        topic,
+        stage_categories: norm.stage_categories,
+      });
       const { error: insertError } = await supabaseServer.from("posts").insert({
         title: norm.title.slice(0, 120),
         brand_name: norm.brand_name,
@@ -157,9 +163,9 @@ export async function runIngestion(): Promise<IngestionStats> {
         source_url: item.link,
         // 자동수집은 운영 정책상 무조건 'recruiting' (Vision이 group_buy 반환해도 강제)
         kind: "recruiting" as const,
-        stage_categories: norm.stage_categories ?? [],
+        stage_categories: taxonomy.stage_categories,
         type_tags: norm.type_tags ?? [],
-        topic: norm.topic === "living" ? "living" : "parenting",
+        topic,
         deadline: effectiveDeadline,
         deadline_unknown: deadlineUnknown,
         status: "pending",

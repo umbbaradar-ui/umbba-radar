@@ -160,11 +160,12 @@ export function ExploreView({
           p.stage_categories.includes("all_ages")
       );
     } else if (f.stages.length > 0) {
-      // 특정 시기 선택 시 전연령 카드 포함 (기존 단일선택 규칙 유지)
-      out = out.filter(
-        (p) =>
-          p.stage_categories.some((s) => f.stages.includes(s)) ||
-          p.stage_categories.includes("all_ages")
+      // 특정 시기 = 그 시기 태그가 붙은 카드만 (정확 매칭).
+      // 2026-09-12: 예전엔 전연령 카드를 같이 넣었는데, 리빙(어른·살림)이 전부 전연령이라
+      // "임신중 21건" 허브 칩을 눌렀더니 107건이 나오는 불일치가 생겼다. 전연령은 "전연령" 칩·
+      // 리빙 탭으로 따로 본다. (홈 허브 칩 stageCounts 와 같은 기준이어야 건수가 맞는다)
+      out = out.filter((p) =>
+        p.stage_categories.some((s) => f.stages.includes(s))
       );
     }
     if (f.types.length > 0) {

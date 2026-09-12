@@ -20,6 +20,7 @@
 import { NextResponse } from "next/server";
 import { supabaseServer } from "@/shared/db/supabase-server";
 import { extractFromImageBytes } from "@/modules/ingestion/vision-extractor";
+import { enforceTopicTaxonomy } from "@/shared/types/post";
 
 export const runtime = "nodejs";
 export const maxDuration = 60; // Vision 5~20초 + Storage 업로드 안전 범위
@@ -270,6 +271,13 @@ export async function POST(
   // 캡션이 명시적으로 들어왔으면 그것 우선 (사용자 직접 복사한 본문), 없으면 Vision body 사용
   const body_text = caption?.trim() || vis.body || null;
   const deadlineUnknown = !vis.deadline;
+  // 리빙이면 시기=전연령 단독·품목=리빙 5종 (Vision 출력이 룰을 어겨도 서버가 최종 보정)
+  const topic = vis.topic === "living" ? "living" : "parenting";
+  const taxonomy = enforceTopicTaxonomy({
+    topic,
+    stage_categories: vis.stage_categories,
+    item_categories: vis.item_categories,
+  });
 
   const { data: inserted, error: insertError } = await supabaseServer
     .from("posts")
@@ -284,9 +292,10 @@ export async function POST(
       body: body_text?.slice(0, 2000) ?? null,
       deadline: vis.deadline,
       deadline_unknown: deadlineUnknown,
-      stage_categories: vis.stage_categories ?? [],
+      stage_categories: taxonomy.stage_categories,
       type_tags: vis.type_tags ?? [],
-      topic: vis.topic === "living" ? "living" : "parenting",
+      item_categories: taxonomy.item_categories,
+      topic,
       is_sponsored: false,
       // CLI 자동 생성은 운영자가 곧바로 검수할 수 있게 pending 으로
       status: "pending" as const,

@@ -20,7 +20,7 @@ import {
 import { getServerSupabase } from "@/shared/db/supabase-ssr";
 import { supabaseServer } from "@/shared/db/supabase-server";
 import {
-  sanitizeItemCategories,
+  enforceTopicTaxonomy,
   type Post,
   type PostStatus,
   UNKNOWN_DEADLINE_DAYS,
@@ -89,7 +89,13 @@ function parseFormToPost(formData: FormData): PostInsertInput {
       : null;
   }
 
-  const topic = get("topic") || "parenting";
+  const topic = get("topic") === "living" ? "living" : "parenting";
+  // 리빙이면 시기=전연령 단독·품목=리빙 5종으로 강제 (폼에서 뭘 체크했든 서버가 최종 보정)
+  const taxonomy = enforceTopicTaxonomy({
+    topic,
+    stage_categories: getAll("stage_categories"),
+    item_categories: getAll("item_categories"),
+  });
 
   // 검색 키워드 — 공백·중복 정리 후 콤마 구분 형식으로 저장
   // 예: "기저귀, 팬티 , 기저귀팬티" → "기저귀,팬티,기저귀팬티"
@@ -116,10 +122,10 @@ function parseFormToPost(formData: FormData): PostInsertInput {
     deadline,
     deadline_unknown: deadlineUnknown,
     reviewer_handle: getOrNull("reviewer_handle"),
-    stage_categories: getAll("stage_categories"),
+    stage_categories: taxonomy.stage_categories,
     type_tags: getAll("type_tags"),
-    item_categories: sanitizeItemCategories(getAll("item_categories")),
-    topic: topic === "living" ? "living" : "parenting",
+    item_categories: taxonomy.item_categories,
+    topic,
     is_sponsored: formData.get("is_sponsored") === "on",
     status: (get("status") || "draft") as PostStatus,
   };
@@ -460,6 +466,12 @@ export async function bulkIngestUrlsAction(
           imageBytes,
           imageMime || "image/jpeg"
         );
+        const visTopic = vis.topic === "living" ? "living" : "parenting";
+        const visTax = enforceTopicTaxonomy({
+          topic: visTopic,
+          stage_categories: vis.stage_categories,
+          item_categories: vis.item_categories,
+        });
         const { error } = await supabaseServer.from("posts").insert({
           title: vis.title.slice(0, 120),
           brand_name: vis.brand_name,
@@ -469,9 +481,10 @@ export async function bulkIngestUrlsAction(
           deadline: vis.deadline,
           deadline_unknown: !vis.deadline,
           reviewer_handle: null,
-          stage_categories: vis.stage_categories ?? [],
+          stage_categories: visTax.stage_categories,
           type_tags: vis.type_tags ?? [],
-          topic: vis.topic === "living" ? "living" : "parenting",
+          item_categories: visTax.item_categories,
+          topic: visTopic,
           is_sponsored: false,
           status: "draft" as const,
           source_type: "admin" as const,

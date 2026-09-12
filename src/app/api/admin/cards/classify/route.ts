@@ -9,9 +9,7 @@ import { NextResponse } from "next/server";
 import { supabaseServer } from "@/shared/db/supabase-server";
 import { isAdminRequest } from "@/shared/utils/admin-session";
 import { isPastDeadline } from "@/shared/utils/dday";
-import { sanitizeItemCategories,
-  UNKNOWN_DEADLINE_DAYS,
-} from "@/shared/types/post";
+import { enforceTopicTaxonomy, UNKNOWN_DEADLINE_DAYS } from "@/shared/types/post";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -174,6 +172,13 @@ export async function POST(request: Request) {
             .slice(0, 200)
         : null;
 
+      // 리빙이면 시기=전연령 단독·품목=리빙 5종 (모델 출력이 룰을 어겨도 서버가 최종 보정)
+      const topic = it.topic === "living" ? "living" : "parenting";
+      const taxonomy = enforceTopicTaxonomy({
+        topic,
+        stage_categories: it.stage_categories,
+        item_categories: it.item_categories,
+      });
       const upd: Record<string, unknown> = {
         status: computedStatus,
         kind: it.kind === "group_buy" ? "group_buy" : "recruiting",
@@ -182,10 +187,10 @@ export async function POST(request: Request) {
         search_keywords: searchKeywords,
         deadline: effectiveDeadline,
         deadline_unknown: deadlineUnknown,
-        stage_categories: it.stage_categories ?? [],
+        stage_categories: taxonomy.stage_categories,
         type_tags: it.type_tags ?? [],
-        item_categories: sanitizeItemCategories(it.item_categories),
-        topic: it.topic === "living" ? "living" : "parenting",
+        item_categories: taxonomy.item_categories,
+        topic,
       };
       // 1차 분류 신뢰도 저장(023) — 검수 우선순위·품질 지표용 (기존엔 계산 후 폐기되던 값)
       if (typeof it.confidence === "number" && Number.isFinite(it.confidence)) {

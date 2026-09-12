@@ -10,6 +10,8 @@
 //   (verifyDeadline) — 모델 말만 믿고 쓰지 않는다. 통과 시 deadline_unknown=false.
 //   2026-09-11: 마감미정이었던 카드는 AI가 마감을 채웠어도 자동 발행하지 않는다 —
 //   판정을 warn(≤84)으로 캡해 승인 큐에 남긴다. 사람은 채워진 날짜만 확인하고 발행.
+// topic (2026-09-10) — 어른 제품이 parenting 이면 living 으로. 2026-09-12부터 최종 topic 이
+//   living 이면 서버가 시기=['all_ages']·품목=리빙 5종으로 함께 맞춘다(enforceTopicTaxonomy).
 // status · title · body 는 여기서 절대 건드리지 않는다
 //   (발행은 자동발행 cron·사람 승인만, 내용 수정은 사람만).
 // 인증: Bearer ADMIN_CLI_TOKEN 또는 어드민 쿠키.
@@ -19,8 +21,12 @@ import { supabaseServer } from "@/shared/db/supabase-server";
 import { isAdminRequest } from "@/shared/utils/admin-session";
 import {
   sanitizeItemCategories,
+  enforceTopicTaxonomy,
   ACTIVE_STAGE_CATEGORIES,
   ACTIVE_TYPE_TAGS,
+  type ItemCategory,
+  type StageCategory,
+  type TopicCategory,
 } from "@/shared/types/post";
 
 export const runtime = "nodejs";
@@ -131,6 +137,32 @@ export async function POST(request: Request) {
   let deadlineFixes = 0;
   let deadlineRejected = 0;
   const errors: Array<{ id: string; message: string }> = [];
+
+  // 리빙 불변식(시기=전연령 단독·품목=리빙 5종)을 지키려면 카드의 현재 topic·시기·품목이 필요하다
+  // — 검수가 topic 만 living 으로 고치고 시기는 안 건드리는 경우가 흔해서, 배치 전체를 한 번에 읽는다.
+  const current = new Map<
+    string,
+    { topic: TopicCategory; stage: StageCategory[]; items: ItemCategory[] }
+  >();
+  {
+    const ids = items.filter((it) => it?.id).map((it) => it.id).slice(0, 200);
+    const { data: curRows } = await supabaseServer
+      .from("posts")
+      .select("id, topic, stage_categories, item_categories")
+      .in("id", ids);
+    for (const r of (curRows ?? []) as Array<{
+      id: string;
+      topic: string | null;
+      stage_categories: string[] | null;
+      item_categories: string[] | null;
+    }>) {
+      current.set(r.id, {
+        topic: r.topic === "living" ? "living" : "parenting",
+        stage: (r.stage_categories ?? []) as StageCategory[],
+        items: (r.item_categories ?? []) as ItemCategory[],
+      });
+    }
+  }
 
   // 마감일 보정을 제안한 카드만 원문 캡션을 한 번에 읽어 근거 대조에 쓴다.
   const wantDeadline = items
@@ -252,6 +284,23 @@ export async function POST(request: Request) {
         }
       }
       if (touched) fixesApplied++;
+    }
+
+    // 최종 topic 이 living 이면(보정으로 바뀌었든 원래 그랬든) 시기·품목을 리빙 불변식으로 맞춘다.
+    // 검수가 living 으로 고치면서 시기를 안 건드려 "living + 영아"가 남는 구멍을 여기서 막는다.
+    {
+      const cur = current.get(it.id);
+      const effTopic: TopicCategory =
+        (upd.topic as TopicCategory | undefined) ?? cur?.topic ?? "parenting";
+      if (effTopic === "living") {
+        const tax = enforceTopicTaxonomy({
+          topic: "living",
+          stage_categories: (upd.stage_categories as string[] | undefined) ?? cur?.stage ?? [],
+          item_categories: (upd.item_categories as string[] | undefined) ?? cur?.items ?? [],
+        });
+        upd.stage_categories = tax.stage_categories;
+        upd.item_categories = tax.item_categories;
+      }
     }
 
     try {

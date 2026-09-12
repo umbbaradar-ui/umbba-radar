@@ -16,6 +16,7 @@
 //         kind?: "recruiting" | "group_buy",
 //         stage_categories?: string[],
 //         type_tags?: string[],
+//         item_categories?: string[],   // 품목(022) — 화이트리스트 통과분만, 최대 2개
 //         topic?: "parenting" | "living",
 //         deadline?: string | null,    // ISO 8601 +09:00
 //         thumbnail_url?: string | null, // C 모드: Storage URL
@@ -33,7 +34,7 @@
 // ============================================
 
 import { NextResponse } from "next/server";
-import { UNKNOWN_DEADLINE_DAYS } from "@/shared/types/post";
+import { UNKNOWN_DEADLINE_DAYS, enforceTopicTaxonomy } from "@/shared/types/post";
 import { supabaseServer } from "@/shared/db/supabase-server";
 import { markDone, markFailed } from "@/modules/ingestion/queue/repository";
 import { isAdminRequest } from "@/shared/utils/admin-session";
@@ -56,6 +57,7 @@ interface ImportItem {
   kind?: "recruiting" | "group_buy";
   stage_categories?: string[];
   type_tags?: string[];
+  item_categories?: string[];
   topic?: "parenting" | "living";
   deadline?: string | null;
   thumbnail_url?: string | null;
@@ -197,27 +199,46 @@ export async function POST(request: Request) {
           .slice(0, 200)
       : null;
 
-    const { data: inserted, error: insertError } = await supabaseServer
+    // 리빙이면 시기=전연령 단독·품목=리빙 5종 (RULES.md 출력이 룰을 어겨도 서버가 최종 보정)
+    const topic = item.topic === "living" ? "living" : "parenting";
+    const taxonomy = enforceTopicTaxonomy({
+      topic,
+      stage_categories: item.stage_categories,
+      item_categories: item.item_categories,
+    });
+    const row = {
+      kind: item.kind === "group_buy" ? "group_buy" : "recruiting", // 공구 명시 시 group_buy, 기본 recruiting
+      title: item.title.slice(0, 120),
+      brand_name: item.brand_name ?? null,
+      thumbnail_url: item.thumbnail_url ?? null,
+      source_url: queueRow.url,
+      body: item.body?.slice(0, 2000) ?? null,
+      search_keywords: searchKeywords,
+      deadline: effectiveDeadline,
+      deadline_unknown: deadlineUnknown,
+      stage_categories: taxonomy.stage_categories,
+      type_tags: item.type_tags ?? [],
+      item_categories: taxonomy.item_categories,
+      topic,
+      is_sponsored: false,
+      status: "pending" as const,
+      source_type: "ingestion" as const,
+    };
+    let { data: inserted, error: insertError } = await supabaseServer
       .from("posts")
-      .insert({
-        kind: item.kind === "group_buy" ? "group_buy" : "recruiting", // 공구 명시 시 group_buy, 기본 recruiting
-        title: item.title.slice(0, 120),
-        brand_name: item.brand_name ?? null,
-        thumbnail_url: item.thumbnail_url ?? null,
-        source_url: queueRow.url,
-        body: item.body?.slice(0, 2000) ?? null,
-        search_keywords: searchKeywords,
-        deadline: effectiveDeadline,
-        deadline_unknown: deadlineUnknown,
-        stage_categories: item.stage_categories ?? [],
-        type_tags: item.type_tags ?? [],
-        topic: item.topic === "living" ? "living" : "parenting",
-        is_sponsored: false,
-        status: "pending" as const,
-        source_type: "ingestion" as const,
-      })
+      .insert(row)
       .select("id")
       .single();
+    // 마이그레이션 022 미적용 DB — 품목만 빼고 재시도 (classify 라우트와 동일 패턴)
+    if (insertError && insertError.message.includes("item_categories")) {
+      const { item_categories: _drop, ...rest } = row;
+      void _drop;
+      ({ data: inserted, error: insertError } = await supabaseServer
+        .from("posts")
+        .insert(rest)
+        .select("id")
+        .single());
+    }
 
     if (insertError) {
       failed++;

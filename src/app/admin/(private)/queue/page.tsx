@@ -12,6 +12,7 @@ import {
 import {
   STAGE_LABELS,
   TYPE_LABELS,
+  ITEM_CATEGORY_LABELS,
   SOURCE_TYPE_LABELS,
   UNKNOWN_DEADLINE_DAYS,
   UNKNOWN_DEADLINE_DAY_OPTIONS,
@@ -191,6 +192,12 @@ export default async function AdminQueuePage({ searchParams }: PageProps) {
                   </a>
 
                   <div className="mt-2 flex flex-wrap gap-1">
+                    {/* 주제 — 리빙이면 눈에 띄게 (리빙=전연령 단독·리빙 5품목 룰 검수용) */}
+                    {p.topic === "living" && (
+                      <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700">
+                        🏠 리빙
+                      </span>
+                    )}
                     {p.stage_categories.map((s) => (
                       <span
                         key={s}
@@ -205,6 +212,14 @@ export default async function AdminQueuePage({ searchParams }: PageProps) {
                         className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] text-slate-600"
                       >
                         {TYPE_LABELS[t] ?? t}
+                      </span>
+                    ))}
+                    {(p.item_categories ?? []).map((c) => (
+                      <span
+                        key={c}
+                        className="rounded-full bg-amber-50 px-2 py-0.5 text-[10px] text-amber-700"
+                      >
+                        {ITEM_CATEGORY_LABELS[c] ?? c}
                       </span>
                     ))}
                   </div>
