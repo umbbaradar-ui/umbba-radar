@@ -47,7 +47,8 @@ export const TUTORIAL_STEPS: TutorialStep[] = [
     selector: '[data-tutorial="filter-pills"]',
     title: "시기별로 골라보기",
     body: "우리 아이 시기를 누르면 그 시기 혜택만 모아 볼 수 있어요. 탐색 화면의 ‘필터’에서 시기·유형을 여러 개 겹쳐 고를 수도 있어요.",
-    placement: "above",
+    // 2026-09-12: 허브가 검색바 바로 아래로 올라와(상단 사본) 앵커도 그쪽 → 말풍선은 아래로
+    placement: "below",
     optional: true,
   },
   {

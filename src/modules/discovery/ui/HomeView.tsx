@@ -6,7 +6,7 @@
 // 전체 그리드·검색·필터는 /explore 로 분리.
 //
 // 구조 (위→아래):
-//   [검색바(→/explore)] [AdSlot top_banner]
+//   [검색바(→/explore)] [0. 시기 허브(컴팩트, 7번과 같은 컴포넌트)] [AdSlot top_banner]
 //   존 A 📡 마이레이더 (rose 그라데이션, 로그인 상태별 분기)
 //     1. 오늘의 레이더 브리핑 — 히어로 + 스탯 칩(앵커 스크롤)
 //     2. 마감 레이더 — 관심→내 아이→전체 3단 폴백, 컴팩트 리스트 3장 + "더보기"로 3일 내 전체 펼침
@@ -443,6 +443,17 @@ export function HomeView({
         <span aria-hidden>🔍</span> 브랜드·키워드 검색
       </Link>
 
+      {/* 0. 시기 허브 (상단) — 검색바 바로 아래 같은 허브를 한 번 더 (2026-09-12 은재).
+          맨 아래 7번과 동일 컴포넌트. 튜토리얼 앵커는 위쪽(먼저 보이는 곳)에만. */}
+      <div className="mb-4">
+        <StageHub
+          counts={stageCounts}
+          myChildStages={myChildStages}
+          hasChildren={hasChildren}
+          tutorialAnchor="filter-pills"
+        />
+      </div>
+
       <AdSlot id="top_banner" />
 
       {/* ═══════ 존 A: 마이레이더 ═══════ */}
@@ -766,45 +777,14 @@ export function HomeView({
           </Shelf>
         )}
 
-        {/* 7. 시기별로 둘러보기 */}
+        {/* 7. 시기별로 둘러보기 (검색바 아래 것과 같은 허브) */}
         <div className="mb-6">
           <SectionHeader title="🧭 시기별로 둘러보기" />
-          <div
-            data-tutorial="filter-pills"
-            className="grid grid-cols-3 gap-2 md:grid-cols-6"
-          >
-            {HUB_STAGES.map((s) => {
-              const n = stageCounts.get(s) ?? 0;
-              const mine =
-                hasChildren && s !== "all_ages" && myChildStages.includes(s);
-              return (
-                <Link
-                  key={s}
-                  href={`/explore?stage=${s}`}
-                  className={`relative flex min-h-16 flex-col items-center justify-center gap-0.5 rounded-2xl border px-2 py-3 transition ${
-                    n === 0
-                      ? "border-slate-100 bg-slate-50 opacity-50"
-                      : mine
-                        ? "border-rose-300 bg-rose-50"
-                        : "border-slate-200 bg-white hover:bg-slate-50"
-                  }`}
-                >
-                  {mine && (
-                    <span className="absolute right-1.5 top-1.5 text-[9px] font-bold text-rose-500">
-                      💛 내 아이
-                    </span>
-                  )}
-                  <span aria-hidden className="text-xl leading-none">
-                    {STAGE_ICONS[s]}
-                  </span>
-                  <span className="text-xs font-bold text-slate-800">
-                    {STAGE_LABELS[s]}
-                  </span>
-                  <span className="text-[10px] text-slate-400">{n}건</span>
-                </Link>
-              );
-            })}
-          </div>
+          <StageHub
+            counts={stageCounts}
+            myChildStages={myChildStages}
+            hasChildren={hasChildren}
+          />
         </div>
       </section>
 
@@ -905,6 +885,64 @@ function SectionHeader({
         {title}
       </h3>
       {right}
+    </div>
+  );
+}
+
+/** 시기 허브 — 검색바 아래(0)와 맨 아래(7)에서 같이 씀.
+ *  모바일(375px)은 한 줄 6칸 컴팩트(아이콘+라벨, 건수 생략 — 2026-09-12 은재 "칸 구조 줄이기"),
+ *  md 이상은 기존처럼 건수까지. "💛 내 아이"는 모바일에선 하트만. */
+function StageHub({
+  counts,
+  myChildStages,
+  hasChildren,
+  tutorialAnchor,
+}: {
+  counts: Map<StageCategory, number>;
+  myChildStages: StageCategory[];
+  hasChildren: boolean;
+  /** 온보딩 튜토리얼 앵커(data-tutorial) — 한 곳에만 지정 */
+  tutorialAnchor?: string;
+}) {
+  return (
+    <div
+      data-tutorial={tutorialAnchor}
+      className="grid grid-cols-6 gap-1.5 md:gap-2"
+    >
+      {HUB_STAGES.map((s) => {
+        const n = counts.get(s) ?? 0;
+        const mine =
+          hasChildren && s !== "all_ages" && myChildStages.includes(s);
+        return (
+          <Link
+            key={s}
+            href={`/explore?stage=${s}`}
+            className={`relative flex flex-col items-center justify-center gap-0.5 rounded-xl border px-1 py-2 transition md:min-h-16 md:rounded-2xl md:px-2 md:py-3 ${
+              n === 0
+                ? "border-slate-100 bg-slate-50 opacity-50"
+                : mine
+                  ? "border-rose-300 bg-rose-50"
+                  : "border-slate-200 bg-white hover:bg-slate-50"
+            }`}
+          >
+            {mine && (
+              <span className="absolute right-1 top-1 text-[8px] font-bold text-rose-500 md:right-1.5 md:top-1.5 md:text-[9px]">
+                <span className="md:hidden">💛</span>
+                <span className="hidden md:inline">💛 내 아이</span>
+              </span>
+            )}
+            <span aria-hidden className="text-base leading-none md:text-xl">
+              {STAGE_ICONS[s]}
+            </span>
+            <span className="text-[10px] font-bold leading-tight text-slate-800 md:text-xs">
+              {STAGE_LABELS[s]}
+            </span>
+            <span className="hidden text-[10px] text-slate-400 md:block">
+              {n}건
+            </span>
+          </Link>
+        );
+      })}
     </div>
   );
 }
