@@ -4,7 +4,9 @@
 // 2026-07 홈 개편으로 신설: 홈은 섹션형 요약, 탐색은 전체 카드.
 // 필터 바텀시트(다중선택 + N건 보기) + 전 상태 URL 동기화.
 //
-// URL 파라미터: q, stage(콤마 다중), type(콤마 다중), topic, sort, today=1
+// URL 파라미터(q, stage, type, topic, sort, today, focus)는 ExploreView가
+// useSearchParams로 직접 읽는다 — 서버 props로 넘기면 상세→뒤로가기 때
+// Next 라우터 캐시의 옛 페이로드(필터 없음)가 재사용돼 필터가 풀린다.
 // ============================================
 
 import type { Metadata } from "next";
@@ -28,23 +30,9 @@ export const metadata: Metadata = {
 
 interface PageProps {
   searchParams: Promise<{
-    q?: string;
-    stage?: string;
-    type?: string;
-    topic?: string;
-    sort?: string;
-    today?: string;
-    focus?: string;
     /** dev 전용: "parent" = 로그인+자녀(영아·유아) 상태 강제 (내 아이 필터 검수용) */
     preview?: string;
   }>;
-}
-
-function parseCsv(v: string | undefined): string[] {
-  return (v ?? "")
-    .split(",")
-    .map((s) => s.trim())
-    .filter(Boolean);
 }
 
 export default async function ExplorePage({ searchParams }: PageProps) {
@@ -77,13 +65,6 @@ export default async function ExplorePage({ searchParams }: PageProps) {
       myChildStages={myChildStages}
       statusMap={statusMap}
       todayStartIso={kstTodayStartIso()}
-      initialQ={sp.q ?? ""}
-      initialStages={parseCsv(sp.stage)}
-      initialTypes={parseCsv(sp.type)}
-      initialTopic={sp.topic ?? "all"}
-      initialSort={sp.sort === "created_desc" ? "created_desc" : "deadline_asc"}
-      initialToday={sp.today === "1"}
-      autoFocusSearch={sp.focus === "1"}
     />
   );
 }

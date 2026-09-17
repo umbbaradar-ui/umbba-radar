@@ -7,12 +7,17 @@
 // - 필터 pill 4행 → sticky 컨트롤바 1행(필터 버튼 + 활성 칩 + 정렬)
 // - 필터 바텀시트: 시기·유형 다중선택 + 주제 + "N건 보기" 실시간 건수 CTA
 // - 전 필터 상태 URL 동기화(history.replaceState) → 상세 복귀·새로고침·공유 보존
+//   초기 필터는 서버 props가 아니라 useSearchParams(현재 URL)에서 읽는다 —
+//   replaceState는 Next 라우터 캐시의 RSC 페이로드를 갱신하지 않아서, 상세에서
+//   router.back()으로 돌아오면 필터 없는 옛 페이로드가 재사용돼 필터가 전부
+//   풀리는 버그가 있었다(2026-09-17 테스터 피드백 "육아 필터가 사라짐").
 // - 그리드 24장 청크 렌더 + 무한스크롤(IntersectionObserver, '더 보기' 폴백)
 // - 0건 빈 상태: 어떤 필터를 풀지 원탭 제안
 // - 검색·필터 전부 인메모리(현 규모 ≤300건) — 발행 1,000건 도달 시 서버 keyset 전환
 // ============================================
 
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import type { Post, StageCategory } from "@/shared/types/post";
 import {
@@ -44,13 +49,6 @@ interface Props {
   myChildStages: StageCategory[];
   statusMap: Record<string, UserPostStatusValue>;
   todayStartIso: string;
-  initialQ: string;
-  initialStages: string[];
-  initialTypes: string[];
-  initialTopic: string;
-  initialSort: SortMode;
-  initialToday: boolean;
-  autoFocusSearch?: boolean;
 }
 
 interface FilterState {
@@ -76,6 +74,31 @@ function normText(s: string): string {
   return s.toLowerCase().normalize("NFKC");
 }
 
+function parseCsv(v: string | null): string[] {
+  return (v ?? "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
+
+// URL 파라미터 → 필터 상태 (아래 URL 동기화 effect의 역방향. 둘이 짝이어야 한다)
+// q, stage(콤마 다중), type(콤마 다중), topic, sort, today=1
+function readFiltersFromUrl(sp: URLSearchParams): {
+  filters: FilterState;
+  sort: SortMode;
+} {
+  return {
+    filters: {
+      q: sp.get("q") ?? "",
+      stages: parseCsv(sp.get("stage")),
+      types: parseCsv(sp.get("type")),
+      topic: sp.get("topic") ?? "all",
+      today: sp.get("today") === "1",
+    },
+    sort: sp.get("sort") === "created_desc" ? "created_desc" : "deadline_asc",
+  };
+}
+
 export function ExploreView({
   posts,
   loggedIn,
@@ -83,22 +106,17 @@ export function ExploreView({
   myChildStages,
   statusMap: serverStatusMap,
   todayStartIso,
-  initialQ,
-  initialStages,
-  initialTypes,
-  initialTopic,
-  initialSort,
-  initialToday,
-  autoFocusSearch,
 }: Props) {
-  const [filters, setFilters] = useState<FilterState>({
-    q: initialQ,
-    stages: initialStages,
-    types: initialTypes,
-    topic: initialTopic,
-    today: initialToday,
-  });
-  const [sort, setSort] = useState<SortMode>(initialSort);
+  // 현재 URL이 필터의 단일 진실원. 첫 SSR·새로고침·공유 링크는 물론, 상세에서
+  // 뒤로가기로 복귀할 때도(라우터 캐시 재사용) 브라우저가 복원한 URL을 그대로 읽는다.
+  // 마운트 시 1회만 읽고 이후엔 로컬 state가 이끈다(아래 effect가 URL로 되쓴다).
+  const searchParams = useSearchParams();
+  const [initial] = useState(() => ({
+    ...readFiltersFromUrl(searchParams),
+    autoFocusSearch: searchParams.get("focus") === "1",
+  }));
+  const [filters, setFilters] = useState<FilterState>(initial.filters);
+  const [sort, setSort] = useState<SortMode>(initial.sort);
   const [sheetOpen, setSheetOpen] = useState(false);
   // 비로그인 소프트 게이트 — 첫 24장은 자유, 그 이후는 가입 시트 (30일 데이터 근거)
   const [gateOpen, setGateOpen] = useState(false);
@@ -123,8 +141,8 @@ export function ExploreView({
   }, [loggedIn]);
 
   useEffect(() => {
-    if (autoFocusSearch) searchRef.current?.focus();
-  }, [autoFocusSearch]);
+    if (initial.autoFocusSearch) searchRef.current?.focus();
+  }, [initial.autoFocusSearch]);
 
   // URL 동기화 — 서버 왕복 없이 주소만 갱신 (뒤로가기·공유·새로고침 보존)
   useEffect(() => {
