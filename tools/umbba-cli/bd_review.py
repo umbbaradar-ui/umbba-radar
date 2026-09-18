@@ -118,8 +118,7 @@ def review_batch(bin_path: str, items: list[dict], tkst: str,
         encoding="utf-8",
     )
     if bd_local.CLASSIFIER == "codex":
-        cmd = [bin_path, "exec", "-C", str(workdir), "-s", "workspace-write",
-               "--skip-git-repo-check", REVIEW_PROMPT]
+        cmd = bd_local.codex_exec_cmd(bin_path, workdir, REVIEW_PROMPT)  # 모델 sol 고정(bd_local.CODEX_MODEL)
         stdin_text, timeout_s = None, 300
     else:
         cmd = [bin_path, "-p", "--permission-mode", "bypassPermissions", "--model", "sonnet"]

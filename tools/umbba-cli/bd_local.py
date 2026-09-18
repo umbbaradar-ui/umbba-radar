@@ -73,6 +73,16 @@ def find_claude() -> str | None:
 
 # 분류 백엔드: UMBBA_CLASSIFIER=codex 면 Codex(ChatGPT 구독, Claude와 쿼터 분리), 그 외 claude(기본)
 CLASSIFIER = os.getenv("UMBBA_CLASSIFIER", "claude").strip().lower()
+# codex 백엔드 모델·추론량 — ~/.codex/config.toml 기본값(gpt-6-astra, effort high)은 배치당 토큰 소모가 커
+# 2026-09-18 실측 13배치(65건)만에 ChatGPT 사용 한도 도달. 분류/검수엔 sol(저비용)로 충분하므로 강제 지정.
+CODEX_MODEL = os.getenv("UMBBA_CODEX_MODEL", "gpt-5.6-sol").strip()
+CODEX_EFFORT = os.getenv("UMBBA_CODEX_EFFORT", "medium").strip()
+
+
+def codex_exec_cmd(bin_path: str, workdir, prompt: str) -> list[str]:
+    """codex exec 공통 커맨드 (분류·검수 공용). 모델/추론량을 명시해 config.toml 기본값에 끌려가지 않게 한다."""
+    return [bin_path, "exec", "-C", str(workdir), "-s", "workspace-write", "--skip-git-repo-check",
+            "-m", CODEX_MODEL, "-c", f'model_reasoning_effort="{CODEX_EFFORT}"', prompt]
 
 
 def is_binary_missing(err: str | None) -> bool:
@@ -117,9 +127,8 @@ def classify_batch(bin_path: str, items: list[dict], tkst: str, workdir: Path) -
         encoding="utf-8",
     )
     if CLASSIFIER == "codex":
-        # codex exec: 프롬프트를 인자로, workdir 에 쓰기 허용(workspace-write)
-        cmd = [bin_path, "exec", "-C", str(workdir), "-s", "workspace-write",
-               "--skip-git-repo-check", CLASSIFY_PROMPT]
+        # codex exec: 프롬프트를 인자로, workdir 에 쓰기 허용(workspace-write). 모델은 CODEX_MODEL(sol) 고정
+        cmd = codex_exec_cmd(bin_path, workdir, CLASSIFY_PROMPT)
         stdin_text, timeout_s = None, 300
     else:
         cmd = [bin_path, "-p", "--permission-mode", "bypassPermissions", "--model", "sonnet"]
