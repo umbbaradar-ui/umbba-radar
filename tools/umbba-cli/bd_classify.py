@@ -94,12 +94,17 @@ def main() -> int:
     ap.add_argument("--retries", type=int, default=2, help="배치가 막히면(타임아웃) 기다렸다 재시도할 횟수")
     ap.add_argument("--retry-wait", type=int, default=120, help="재시도 전 대기 초(다른 작업과 겹칠 때 양보)")
     ap.add_argument("--dry-run", action="store_true", help="분류만, 확정/삭제 안 함")
+    ap.add_argument("--ids", default="", help="이 카드 id들만 분류(쉼표 구분) — bd-queue.sh 가 그 회차 draft 만 넘길 때")
     args = ap.parse_args()
 
     if not ingest.API_TOKEN:
         print("❌ .env ADMIN_CLI_TOKEN 미설정"); return 1
 
-    drafts = fetch_drafts(args.limit)
+    only_ids = {s.strip() for s in args.ids.split(",") if s.strip()}
+    # --ids 면 새벽 루틴이 남긴 draft 와 섞이지 않게 넉넉히 받아 그 id 만 남김 (drafts 는 created_at 오름차순)
+    drafts = fetch_drafts(500 if only_ids else args.limit)
+    if only_ids:
+        drafts = [d for d in drafts if d.get("id") in only_ids]
     if not drafts:
         print("미분류 카드 0건 — 할 일 없음"); return 0
     items = [{"queue_id": d["id"], "url": d.get("source_url"),

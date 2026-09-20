@@ -72,10 +72,10 @@ export function LocalModePanel({ todoCount }: { todoCount: number }) {
       <div className="mb-3 flex items-center justify-between">
         <div>
           <h2 className="text-sm font-bold text-slate-900">
-            🆓 로컬 분석 모드 (API 비용 0원)
+            🆓 로컬 분석 모드 (수동 백업 · 평소엔 안 써도 됨)
           </h2>
           <p className="mt-0.5 text-[11px] text-slate-600">
-            Claude Code 구독 안에서 분류·정리 → 결과만 업로드. API 호출 X.
+            맥 자동 루틴이 못 돌 때만. Claude Code 구독 안에서 분류 → 결과만 업로드.
           </p>
         </div>
         <div className="text-right text-[11px] text-slate-500">

@@ -126,8 +126,9 @@ export function BulkIngestForm() {
             )}
 
             <p className="pt-1 text-[11px] text-slate-500">
-              💡 CLI가 다음 폴링(최대 1시간 후)에 자동으로 가져가 처리합니다.
-              아래 큐 리스트에서 상태 추적 가능.
+              💡 맥 자동 루틴이 <strong>매시 정각</strong>에 가져가 수집·분류·검수까지
+              끝냅니다 (등록 후 최대 1시간). 결과는 /admin/queue 승인대기에, 상태는
+              아래 큐 리스트에서.
             </p>
           </div>
         </section>

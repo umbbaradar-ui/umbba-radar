@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  수동 URL 큐(/admin/bulk-ingest) 1시간 러너 — bd-queue.sh (BD 직접 수집 + 로컬 Claude 분류·검수).
+  큐가 비면 아무것도 안 함(비용 0). 새벽 bd-run 과 겹치면 그 회차 건너뜀.
+  설치:  chmod +x bd-queue.sh
+         cp com.umbba.bdqueue.plist ~/Library/LaunchAgents/
+         launchctl load ~/Library/LaunchAgents/com.umbba.bdqueue.plist
+  해제:  launchctl unload ~/Library/LaunchAgents/com.umbba.bdqueue.plist
+  즉시 1회: launchctl start com.umbba.bdqueue   (또는 직접 ./bd-queue.sh)
+  로그:  bd-queue-log.txt
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.umbba.bdqueue</string>
+
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key>
+    <string>/Users/eunjae/.npm-global/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+  </dict>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/bash</string>
+    <string>/Users/eunjae/umbba-radar/tools/umbba-cli/bd-queue.sh</string>
+  </array>
+
+  <!-- 1시간(3600초)마다. RunAtLoad=로드 직후 1회(검증용). -->
+  <key>StartInterval</key>
+  <integer>3600</integer>
+  <key>RunAtLoad</key>
+  <true/>
+
+  <key>StandardOutPath</key>
+  <string>/Users/eunjae/umbba-radar/tools/umbba-cli/bd-queue-launchd.log</string>
+  <key>StandardErrorPath</key>
+  <string>/Users/eunjae/umbba-radar/tools/umbba-cli/bd-queue-launchd.err</string>
+</dict>
+</plist>

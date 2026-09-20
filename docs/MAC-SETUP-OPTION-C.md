@@ -43,6 +43,24 @@ launchctl load ~/Library/LaunchAgents/com.umbba.bdrun.plist
 ```
 → 매일 새벽 3시(기본) **수집+분류 자동**. 검수 큐에 깨끗한 카드만 쌓임 → 발행만 사람이.
 
+## 5. 수동 URL 큐 1시간 러너 (2026-09-20, `com.umbba.bdqueue`)
+어드민 `/admin/bulk-ingest` 에 사람이 넣은 게시물 URL(ingest_queue todo)은 새벽 `bd-run.sh` 가 **안 본다**
+(bd_ingest 는 계정 스캔만). 그래서 별도 1시간 잡이 큐를 비운다:
+`bd-queue.sh` = `bd_urls.py --from-queue`(BD 게시물 URL 직접 수집, 넣은 건수만 과금 → draft)
+→ `bd_classify.py --ids <그 회차 draft>` → `bd_review.py --limit 30`. 큐 비면 API 1회 조회 후 종료(비용 0),
+새벽 루틴 실행 중이면 그 회차 건너뜀(그쪽 분류가 draft 를 어차피 다 집어감).
+```bash
+cd ~/umbba-radar/tools/umbba-cli && git pull
+chmod +x bd-queue.sh
+cp com.umbba.bdqueue.plist ~/Library/LaunchAgents/
+launchctl load ~/Library/LaunchAgents/com.umbba.bdqueue.plist     # RunAtLoad=즉시 1회 + 이후 매시
+launchctl list | grep umbba                                        # com.umbba.bdqueue 보이면 OK
+tail -20 bd-queue-log.txt                                          # "큐 비어있음" 또는 수집→분류→검수 로그
+```
+- plist 경로는 `/Users/eunjae/umbba-radar/tools/umbba-cli` 고정 (bdcheck 와 동일). 다르면 plist 안 경로 수정.
+- 실패 항목(비공개·삭제·프로필 URL·이미지 없음)은 큐에 status=failed + 사유 → 웹 재시도 버튼으로 다시 todo.
+- BD 트리거·스냅샷 자체가 실패하면 텔레그램 알림(bd_notify) + 큐는 todo 유지 → 다음 회차 재시도.
+
 ## 운영 메모
 - **비용**: BD ~월 2.6만 + 분류=Claude 구독(추가 $0). 유료 Vision API 안 씀.
 - **대부분 노이즈는 자동 삭제** → 검수 큐엔 진짜 모집만.
