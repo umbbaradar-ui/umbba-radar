@@ -47,7 +47,9 @@ launchctl load ~/Library/LaunchAgents/com.umbba.bdrun.plist
 어드민 `/admin/bulk-ingest` 에 사람이 넣은 게시물 URL(ingest_queue todo)은 새벽 `bd-run.sh` 가 **안 본다**
 (bd_ingest 는 계정 스캔만). 그래서 별도 1시간 잡이 큐를 비운다:
 `bd-queue.sh` = `bd_urls.py --from-queue`(BD 게시물 URL 직접 수집, 넣은 건수만 과금 → draft)
-→ `bd_classify.py --ids <그 회차 draft>` → `bd_review.py --limit 30`. 큐 비면 API 1회 조회 후 종료(비용 0),
+→ `bd_classify.py --ids <그 회차 draft>` → `bd_review.py --limit 30` → `POST /api/admin/cards/auto-publish`
+(pass 85+ **즉시 발행**, 09:00 cron 안 기다림 — 수동 큐는 올릴 것만 넣는 큐라서. warn/fail 은 /admin/queue).
+큐 비면 API 1회 조회 후 종료(비용 0),
 새벽 루틴 실행 중이면 그 회차 건너뜀(그쪽 분류가 draft 를 어차피 다 집어감).
 ```bash
 cd ~/umbba-radar/tools/umbba-cli && git pull
