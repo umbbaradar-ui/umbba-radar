@@ -22,8 +22,11 @@ DIR = Path(__file__).resolve().parent / "image_hints"
 MAX_CHARS = 400
 KEEP_DAYS = 14
 
-# alt_text 끝의 인용부 — 언어별 접두("texto que dice", "text that says", "텍스트")는 무시하고 따옴표 안만 뽑는다
-_QUOTED = re.compile(r'"([^"]{4,})"')
+# alt_text 끝의 인용부 — 언어별 접두("texto que dice", "text that says", "texte qui dit")는 무시하고 따옴표 안만 뽑는다.
+# 인스타는 언어에 따라 "…" / '…' / ‘…’ / “…” 를 섞어 쓴다.
+_QUOTED = re.compile(r'["“”\'‘’]([^"“”\'‘’]{4,})["“”\'‘’]')
+# 인용부가 없을 때 앞머리 "Photo by X on September 20, 2026." 류 상용구 제거
+_PREFIX = re.compile(r"^(?:Photo|Video|Reel)\s+by\s+.*?\b\d{4}\.\s*", re.S)
 # 날짜·기간 단서 — 이게 하나도 없으면 힌트로 취급하지 않는다
 _DATEISH = re.compile(
     r"(\d{1,2}\s*월\s*\d{1,2}\s*일|\d{1,2}\s*[/.]\s*\d{1,2}\s*(?:\(|일|~|-|까지)|마감|발표|모집\s*기간|이벤트\s*기간|참여\s*기간|응모\s*기간|선착순|D-\d)"
@@ -38,7 +41,8 @@ def extract_texts(rec: dict) -> list[str]:
         if not alt:
             continue
         m = _QUOTED.findall(alt)
-        txt = " ".join(m) if m else alt
+        txt = " ".join(m) if m else _PREFIX.sub("", alt)
+        txt = re.sub(r"[\u200e\u200f\u2066-\u2069]", "", txt)   # 인스타 alt 의 방향 제어문자 제거
         txt = re.sub(r"\s+", " ", txt).strip()
         if txt:
             out.append(txt)
@@ -46,7 +50,8 @@ def extract_texts(rec: dict) -> list[str]:
         alt = (rec.get("alt_text") or "").strip()
         if alt:
             m = _QUOTED.findall(alt)
-            out.append(re.sub(r"\s+", " ", " ".join(m) if m else alt).strip())
+            txt = " ".join(m) if m else _PREFIX.sub("", alt)
+            out.append(re.sub(r"\s+", " ", txt).strip())
     return out
 
 
