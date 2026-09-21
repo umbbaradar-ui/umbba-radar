@@ -24,6 +24,7 @@ import requests
 from PIL import Image
 
 import bd_client
+import bd_hints
 import bd_ingest
 import ingest
 from bd_notify import alert
@@ -173,6 +174,9 @@ def main() -> int:
             n_created += 1
             if res.get("post_id"): created_ids.append(res["post_id"])
             if q: ingest.report_complete(q, "done", post_id=res.get("post_id")); print(f"  queue → {q[:8]} done")
+            # 캐러셀 이미지 속 마감·기간 글자(BD alt_text) → 검수 note 힌트 (캡션에 마감 없는 카드뉴스 대응)
+            h = bd_hints.save(res.get("post_id") or "", rec)
+            if h: print(f"  📷 이미지 텍스트 힌트: {h[:100]}")
 
     # ---- 3) 결과에 안 나온 URL — BD 가 아예 못 찾은 게시물 ----
     missing = [u for c, u in requested.items() if c not in handled]

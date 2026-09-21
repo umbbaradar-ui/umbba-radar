@@ -24,6 +24,7 @@ import {
   enforceTopicTaxonomy,
   ACTIVE_STAGE_CATEGORIES,
   ACTIVE_TYPE_TAGS,
+  UNKNOWN_DEADLINE_DAYS,
   type ItemCategory,
   type StageCategory,
   type TopicCategory,
@@ -264,7 +265,20 @@ export async function POST(request: Request) {
         upd.brand_name = f.brand_name.trim().slice(0, 60);
         touched = true;
       }
-      if (typeof f.deadline === "string" && f.deadline.trim()) {
+      if (typeof f.deadline === "string" && f.deadline.trim().toLowerCase() === "unknown") {
+        // 검수가 "캡션에 근거 없는 마감"(분류가 오픈일·발송일 등을 마감으로 오인)을 되돌리는 경로 —
+        // 마감미정으로 표시하고 게시일+UNKNOWN_DEADLINE_DAYS 로 다시 걸어 사람이 본다. (2026-09-21)
+        const cap = captions.get(it.id);
+        const baseMs = cap?.postedAt ? new Date(cap.postedAt).getTime() : Date.now();
+        upd.deadline = new Date(baseMs + UNKNOWN_DEADLINE_DAYS * 86400000).toISOString();
+        upd.deadline_unknown = true;
+        if (status === "pass") {
+          upd.ai_review_status = "warn";
+          upd.ai_review_score = Math.min(score, 84);
+        }
+        deadlineFixes++;
+        touched = true;
+      } else if (typeof f.deadline === "string" && f.deadline.trim()) {
         const cap = captions.get(it.id);
         const v = verifyDeadline(f.deadline.trim(), cap?.body ?? "", cap?.postedAt ?? null);
         if (v.ok) {

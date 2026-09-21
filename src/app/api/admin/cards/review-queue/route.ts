@@ -90,6 +90,20 @@ export async function GET(request: Request) {
 
   const todayKst = new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 10);
 
+  // 수동 큐(/admin/bulk-ingest) 출신 카드 표시 — ingest_queue.post_id 로 판별.
+  // 2026-09-21 와이프 요청: 직접 올린 URL은 바로 발행해도 되지만 마감이 캡션에 없으면(카드뉴스 이미지에만 있는 경우)
+  // 승인 큐에 남겨 이미지 보고 마감을 직접 입력하게 — 검수가 note 를 그 기준으로 쓰도록 플래그를 준다.
+  const manualIds = new Set<string>();
+  if (scope === "pending" && cards.length > 0) {
+    const { data: qrows } = await supabaseServer
+      .from("ingest_queue")
+      .select("post_id")
+      .in("post_id", cards.map((c) => c.id));
+    for (const q of (qrows ?? []) as Array<{ post_id: string | null }>) {
+      if (q.post_id) manualIds.add(q.post_id);
+    }
+  }
+
   const items = cards.map((p) => {
     const myBrand = normBrand(p.brand_name);
     const myTokens = titleTokens(p.title);
@@ -128,6 +142,8 @@ export async function GET(request: Request) {
       source_url: p.source_url,
       created_at: p.created_at,
       ai_confidence: p.ai_confidence ?? null,
+      /** 운영자가 /admin/bulk-ingest 에 직접 올린 URL 에서 만들어진 카드 (ingest_queue 매핑) */
+      from_manual_queue: manualIds.has(p.id),
       dup_candidates: dups.slice(0, 3).map(({ score: _s, ...rest }) => rest),
     };
   });

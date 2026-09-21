@@ -30,6 +30,7 @@ if hasattr(sys.stdout, "reconfigure"):
 
 import requests
 import bd_client
+import bd_hints
 import ingest  # 재사용(무수정): fetch_active_usernames, report_account_scan, API_URL/API_TOKEN/REQUEST_TIMEOUT
 from bd_notify import alert  # 수집 실패를 텔레그램으로 (조용한 0건 종료 방지)
 
@@ -70,10 +71,10 @@ def process_records(records: list[dict], raw: bool, dry_run: bool) -> tuple[dict
     """ready 스냅샷 records를 카드로 적재. (counts, per_user_new) 반환.
     counts = {created, dup, failed, noimg}. per_user_new = {author: 생성수}.
     리셰어 글은 author(user_posted)가 요청 계정과 다를 수 있음 — 버리지 않고 그대로 적재(dedup은 서버)."""
-    mapped = [m for m in (bd_client.map_record(r) for r in records) if m and m.get("url")]
+    pairs = [(m, r) for m, r in ((bd_client.map_record(r), r) for r in records) if m and m.get("url")]
     created = dup = failed = noimg = 0
     per_user_new: dict[str, int] = {}
-    for it in mapped:
+    for it, rec in pairs:
         author = it.get("source_username") or "?"
         img_url = it.get("image_url")
         if not img_url:
@@ -94,6 +95,8 @@ def process_records(records: list[dict], raw: bool, dry_run: bool) -> tuple[dict
             tag = "draft(미분류)" if raw else f'pending "{(ai.get("title") or "")[:30]}"'
             print(f"  ✅ @{author} {tag}"); created += 1
             per_user_new[author] = per_user_new.get(author, 0) + 1
+            # 캐러셀 이미지 속 마감·기간 글자(alt_text) 사이드카 — 검수 note 힌트용 (bd_hints)
+            bd_hints.save(res.get("post_id") or "", rec)
         elif st == "duplicate":
             dup += 1
         elif st == "skipped":

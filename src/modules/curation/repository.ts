@@ -626,6 +626,8 @@ export interface AutoPublishResult {
   skippedNoThumb: number;
   /** 마감미정이라 사람 검수로 넘긴 건수 (점수 무관) */
   skippedUnknownDeadline: number;
+  /** 수동 큐(운영자 직접 등록) 출신으로 점수와 무관하게 후보에 든 건수 (pass/warn, 마감 확정) */
+  manualCandidates: number;
   titles?: string[];
   error?: string;
 }
@@ -646,9 +648,17 @@ export async function autoPublishReviewedPosts(
     archived: 0,
     skippedNoThumb: 0,
     skippedUnknownDeadline: 0,
+    manualCandidates: 0,
   };
   if (!enabled) return result;
 
+  type Row = {
+    id: string;
+    title: string;
+    deadline: string | null;
+    deadline_unknown: boolean | null;
+    thumbnail_url: string | null;
+  };
   const { data, error } = await supabaseServer
     .from("posts")
     .select("id, title, deadline, deadline_unknown, thumbnail_url")
@@ -662,14 +672,41 @@ export async function autoPublishReviewedPosts(
       : error.message;
     return result;
   }
+  const rows = (data ?? []) as Row[];
 
-  const rows = (data ?? []) as Array<{
-    id: string;
-    title: string;
-    deadline: string | null;
-    deadline_unknown: boolean | null;
-    thumbnail_url: string | null;
-  }>;
+  // 수동 큐(/admin/bulk-ingest) 출신 카드 — 운영자가 직접 고른 URL이라 검수 점수와 무관하게 발행한다
+  // (pass/warn 모두. fail 은 "모집 아님" 류 결격이라 사람이 본다). 단 마감이 캡션에서 확정된 것만 —
+  // 카드뉴스 이미지에만 마감이 적힌 게시물은 마감미정으로 남아 아래 skippedUnknownDeadline 으로 빠지고,
+  // 운영자가 이미지 보고 마감을 직접 입력해 발행한다. (2026-09-21 와이프 요청)
+  const seen = new Set(rows.map((r) => r.id));
+  const { data: qrows } = await supabaseServer
+    .from("ingest_queue")
+    .select("post_id")
+    .not("post_id", "is", null)
+    .order("created_at", { ascending: false })
+    .limit(1000);
+  const manualIds = Array.from(
+    new Set(
+      ((qrows ?? []) as Array<{ post_id: string | null }>)
+        .map((q) => q.post_id)
+        .filter((v): v is string => Boolean(v))
+    )
+  );
+  for (let off = 0; off < manualIds.length; off += 200) {
+    const { data: mdata } = await supabaseServer
+      .from("posts")
+      .select("id, title, deadline, deadline_unknown, thumbnail_url")
+      .eq("status", "pending")
+      .in("ai_review_status", ["pass", "warn"])
+      .in("id", manualIds.slice(off, off + 200));
+    for (const r of (mdata ?? []) as Row[]) {
+      if (seen.has(r.id)) continue;
+      seen.add(r.id);
+      rows.push(r);
+      result.manualCandidates++;
+    }
+  }
+
   result.candidates = rows.length;
   if (rows.length === 0) return result;
 

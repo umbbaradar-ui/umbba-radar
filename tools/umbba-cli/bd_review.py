@@ -35,6 +35,7 @@ if hasattr(sys.stdout, "reconfigure"):
 
 import requests
 import ingest
+import bd_hints
 import bd_local  # 재사용: find_classifier, today_kst, _salvage_result_items, CLASSIFIER
 from bd_notify import alert  # 무인 실행 장애를 텔레그램으로 (분류와 동일한 침묵 방지 정책)
 
@@ -206,6 +207,15 @@ def main() -> int:
 
     scope = "enrich" if args.enrich_published else "pending"
     cards, tkst = fetch_review_queue(args.limit, scope)
+    # 카드뉴스 이미지 속 마감 글자 힌트(수집 단계 사이드카) — 있으면 검수 입력에 실어 note 에 인용하게 한다
+    n_hint = 0
+    for c in cards:
+        h = bd_hints.load(c.get("id") or "")
+        if h:
+            c["image_text_hint"] = h; n_hint += 1
+    bd_hints.sweep()
+    if n_hint:
+        print(f"   📷 이미지 텍스트 힌트 {n_hint}건 주입")
     if not cards:
         print(f"검수 대상({scope}) 0건 — 할 일 없음"); return 0
 
