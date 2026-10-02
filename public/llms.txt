@@ -1,0 +1,54 @@
+# 엄빠레이더 (umbba-radar)
+
+> 임신·출산·육아 협찬, 체험단, 서포터즈, 키즈모델, 증정 이벤트를 인스타그램·블로그에서 매일 모아 자녀 시기(임신중·신생아·영아·유아·초등생)별로 정리해 보여주는 한국어 무료 큐레이션 서비스입니다. 슬로건: "엄빠 대신 매일 혜택 스캔 중".
+
+- 대상: 임신 중인 부모부터 초등생 자녀를 둔 부모(한국).
+- 갱신: 매일. 새 카드는 매일 수집·검수 후 게시되고, 마감된 카드는 탐색 목록에서 빠져 지난 이벤트로 옮겨집니다.
+- 신청 방법: 엄빠레이더는 신청을 받지 않습니다. 각 카드의 "원문 보러 가기"로 브랜드·업체의 원문(인스타그램·블로그·신청 폼)에 가서 신청합니다. 조건·마감·경품은 원문이 기준입니다.
+- 비용: 무료. 회원가입 없이 열람할 수 있고, 가입하면 관심 카드 저장·마감 알림(웹 푸시)을 쓸 수 있습니다.
+- 앱: Android Google Play "엄빠레이더"(com.umbba_radar.twa), iOS는 Safari에서 홈 화면에 추가(PWA).
+
+## 주요 페이지
+
+- [홈](https://umbba-radar.com/): 오늘 마감·새로 뜬 혜택, 시기별 허브, 추천 픽
+- [전체 탐색](https://umbba-radar.com/explore): 진행 중인 모든 카드(마감 임박순)
+- [지난 이벤트](https://umbba-radar.com/archive): 마감된 카드 아카이브(참고용, 신청 종료)
+- [혜택 제보](https://umbba-radar.com/submit): 사용자가 체험단·이벤트를 제보하는 곳
+- [사이트맵](https://umbba-radar.com/sitemap.xml): 진행 중인 카드 상세 URL 전체
+
+## 시기별 탐색 URL
+
+형식: `https://umbba-radar.com/explore?stage={시기}` (여러 개는 콤마: `stage=newborn,infant`)
+
+- [임신중](https://umbba-radar.com/explore?stage=pregnancy): 출산 예정 10개월 전 ~ 출산(산모·예비맘 용품 포함)
+- [신생아](https://umbba-radar.com/explore?stage=newborn): 출산 1개월 전 ~ 생후 3개월
+- [영아](https://umbba-radar.com/explore?stage=infant): 생후 3 ~ 12개월
+- [유아](https://umbba-radar.com/explore?stage=toddler): 1 ~ 7세
+- [초등생](https://umbba-radar.com/explore?stage=elementary): 7 ~ 13세
+- [전연령](https://umbba-radar.com/explore?stage=all_ages): 시기 무관(가족·살림 경품 포함)
+
+시기 필터는 그 시기 태그가 붙은 카드만 보여줍니다(전연령 카드는 `stage=all_ages`로 따로).
+
+## 유형·주제 탐색 URL
+
+- 유형: `https://umbba-radar.com/explore?type={유형}` — `experience`(체험단), `giveaway`(증정·추첨), `supporters`(서포터즈), `kids_model`(키즈모델), `regram`(리그램), `form`(폼 작성)
+- 주제: [육아](https://umbba-radar.com/explore?topic=parenting), [리빙(살림·가전·어른 경품)](https://umbba-radar.com/explore?topic=living)
+- 오늘 새로 올라온 카드: [today=1](https://umbba-radar.com/explore?today=1)
+- 최신 등록순 정렬: [sort=created_desc](https://umbba-radar.com/explore?sort=created_desc) (기본은 마감 임박순)
+
+## 품목(제품) 탐색 URL
+
+형식: `https://umbba-radar.com/explore?q={품목명}` — 카드 제목·브랜드·검색 동의어에서 찾습니다.
+
+- [유모차](https://umbba-radar.com/explore?q=%EC%9C%A0%EB%AA%A8%EC%B0%A8), [카시트](https://umbba-radar.com/explore?q=%EC%B9%B4%EC%8B%9C%ED%8A%B8), [기저귀](https://umbba-radar.com/explore?q=%EA%B8%B0%EC%A0%80%EA%B7%80), [이유식](https://umbba-radar.com/explore?q=%EC%9D%B4%EC%9C%A0%EC%8B%9D), [물티슈](https://umbba-radar.com/explore?q=%EB%AC%BC%ED%8B%B0%EC%8A%88), [아기띠](https://umbba-radar.com/explore?q=%EC%95%84%EA%B8%B0%EB%9D%A0), [젖병](https://umbba-radar.com/explore?q=%EC%A0%96%EB%B3%91), [분유](https://umbba-radar.com/explore?q=%EB%B6%84%EC%9C%A0)
+- 조합 예: 영아 체험단 중 이유식 → `https://umbba-radar.com/explore?stage=infant&type=experience&q=이유식`
+
+## 카드 상세
+
+- 형식: `https://umbba-radar.com/post/{id}` — 제목, 브랜드, 대상 시기, 유형, 마감일(D-day), 원문 링크.
+- "마감미정" 카드는 원문에 마감일이 없어 자동 노출 기간을 둔 카드입니다. 원문에서 마감을 확인하세요.
+
+## 인용 시 안내
+
+- 혜택 조건·마감은 바뀔 수 있으니 "엄빠레이더에서 찾고, 신청은 원문에서" 하도록 안내해 주세요.
+- 운영: 엄빠레이더(1인 운영). 업체·브랜드 문의: https://umbba-radar.com/business
