@@ -11,6 +11,12 @@ import {
 } from "../service";
 import { markStatusAction, unmarkStatusAction } from "../actions";
 import { track } from "@/modules/analytics/service";
+import {
+  PushPromptSheet,
+  consumePushPromptResume,
+  shouldOfferPushPrompt,
+  type PushPromptVariant,
+} from "@/modules/notification/ui/PushPromptSheet";
 
 interface Props {
   postId: string;
@@ -26,6 +32,21 @@ export function StatusButtons({ postId, loggedIn, initialStatus }: Props) {
   );
   const [hydrated, setHydrated] = useState(Boolean(loggedIn));
   const [pending, setPending] = useState(false);
+  // 관심 직후 푸시 권유 시트 (null = 닫힘)
+  const [pushPrompt, setPushPrompt] = useState<PushPromptVariant | null>(null);
+
+  // 비로그인 → 권유 시트에서 가입 흐름으로 갔다가 이 카드로 돌아온 경우 시트 재개
+  useEffect(() => {
+    if (!loggedIn) return;
+    if (!consumePushPromptResume(postId)) return;
+    let cancelled = false;
+    shouldOfferPushPrompt(true, true).then((v) => {
+      if (!cancelled && v) setPushPrompt(v);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [postId, loggedIn]);
 
   useEffect(() => {
     if (loggedIn) {
@@ -80,6 +101,13 @@ export function StatusButtons({ postId, loggedIn, initialStatus }: Props) {
       track("status_unmark", { post_id: postId, previous: target });
     } else {
       track("status_mark", { post_id: postId, status: target });
+      // ☆관심을 켠 직후에만 푸시 권유 (신청함·해제는 X). 노출 여부는 시트 모듈이 판정
+      // (구독 중·권한 거부·7일 내 거절·세션 내 노출이면 null)
+      if (target === "interested") {
+        shouldOfferPushPrompt(Boolean(loggedIn)).then((v) => {
+          if (v) setPushPrompt(v);
+        });
+      }
     }
   }
 
@@ -120,6 +148,13 @@ export function StatusButtons({ postId, loggedIn, initialStatus }: Props) {
         <p className="text-center text-[11px] text-slate-400">
           이 기기에만 저장돼요 · 로그인하면 모든 기기에 동기화 ♥
         </p>
+      )}
+      {pushPrompt && (
+        <PushPromptSheet
+          postId={postId}
+          variant={pushPrompt}
+          onClose={() => setPushPrompt(null)}
+        />
       )}
     </div>
   );

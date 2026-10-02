@@ -13,10 +13,15 @@
 
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { subscribePushAction, unsubscribePushAction } from "../actions";
+import { unsubscribePushAction } from "../actions";
+import {
+  detectPushStatus as detectStatus,
+  enablePushOnThisDevice,
+  loadPushPref as loadPref,
+  savePushPref as savePref,
+  type PushStatus as Status,
+} from "../push-client";
 
-const VAPID_PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ?? "";
-const PREF_KEY = "umbba-radar:push-categories";
 const PROMO_DISMISS_KEY = "umbba-radar:push-promo-dismissed";
 
 const CATEGORIES = [
@@ -27,15 +32,6 @@ const CATEGORIES = [
 ] as const;
 
 const ALL_IDS = CATEGORIES.map((c) => c.id);
-
-type Status =
-  | "loading"
-  | "unsupported"
-  | "ios-not-installed"
-  | "permission-denied"
-  | "ready" // 지원됨 · 아직 꺼짐
-  | "on" // 구독 중
-  | "working";
 
 // ============================================
 // 진입 버튼 (더보기 시트 안)
@@ -161,30 +157,11 @@ function PushSettingsModal({ onClose }: { onClose: () => void }) {
     setError(null);
     setStatus("working");
     try {
-      const permission = await Notification.requestPermission();
+      // 권한 요청 → 선호 저장 → 구독·서버 저장 (push-client 공용 로직)
+      const { permission } = await enablePushOnThisDevice(categories);
       if (permission !== "granted") {
         setStatus(permission === "denied" ? "permission-denied" : "ready");
         return;
-      }
-      savePref(categories);
-      try {
-        if (VAPID_PUBLIC_KEY) {
-          const reg = await navigator.serviceWorker.ready;
-          const sub =
-            (await reg.pushManager.getSubscription()) ??
-            (await reg.pushManager.subscribe({
-              userVisibleOnly: true,
-              applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
-            }));
-          const p = serializeSubscription(sub);
-          await subscribePushAction({
-            ...p,
-            userAgent:
-              typeof navigator !== "undefined" ? navigator.userAgent : null,
-          });
-        }
-      } catch {
-        // 구독 단계 실패(VAPID 미설정·미로그인) — 권한·선호는 이미 저장됨.
       }
       setStatus("on");
     } catch (e) {
@@ -420,83 +397,4 @@ function Toggle({
       />
     </button>
   );
-}
-
-// ============================================
-// 선호(항목) 저장 — localStorage (서버 동기화는 발송 도입 시 후속)
-// ============================================
-function loadPref(): string[] {
-  if (typeof window === "undefined") return ALL_IDS;
-  try {
-    const raw = window.localStorage.getItem(PREF_KEY);
-    if (!raw) return ALL_IDS;
-    const parsed = JSON.parse(raw);
-    if (Array.isArray(parsed)) return parsed.filter((x) => typeof x === "string");
-    return ALL_IDS;
-  } catch {
-    return ALL_IDS;
-  }
-}
-
-function savePref(categories: string[]): void {
-  if (typeof window === "undefined") return;
-  try {
-    window.localStorage.setItem(PREF_KEY, JSON.stringify(categories));
-  } catch {
-    // 무시
-  }
-}
-
-// ============================================
-// 상태 감지 (PushToggle과 동일 로직)
-// ============================================
-async function detectStatus(): Promise<Status> {
-  if (typeof window === "undefined") return "loading";
-  if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
-    if (isIosSafari()) return "ios-not-installed";
-    return "unsupported";
-  }
-  const permission = Notification.permission;
-  if (permission === "denied") return "permission-denied";
-  try {
-    const reg = await navigator.serviceWorker.ready;
-    const sub = await reg.pushManager.getSubscription();
-    if (sub && permission === "granted") return "on";
-    return "ready";
-  } catch {
-    return "ready";
-  }
-}
-
-function isIosSafari(): boolean {
-  if (typeof navigator === "undefined") return false;
-  const ua = navigator.userAgent;
-  const isIos = /iPad|iPhone|iPod/.test(ua);
-  const isSafari = /Safari/.test(ua) && !/CriOS|FxiOS/.test(ua);
-  return isIos && isSafari;
-}
-
-function urlBase64ToUint8Array(base64String: string): BufferSource {
-  const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
-  const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
-  const rawData = atob(base64);
-  const buffer = new ArrayBuffer(rawData.length);
-  const view = new Uint8Array(buffer);
-  for (let i = 0; i < rawData.length; ++i) {
-    view[i] = rawData.charCodeAt(i);
-  }
-  return view;
-}
-
-function serializeSubscription(sub: PushSubscription): {
-  endpoint: string;
-  p256dh: string;
-  auth: string;
-} {
-  const json = sub.toJSON();
-  return {
-    endpoint: json.endpoint ?? sub.endpoint,
-    p256dh: json.keys?.p256dh ?? "",
-    auth: json.keys?.auth ?? "",
-  };
 }

@@ -74,3 +74,12 @@
 - ✅ 구독 UI: 더보기 → 푸시 알림 설정(전체/항목), `/notifications`·`/my` 유도 배너.
 - ✅ 구독 저장·발송 함수: 구현됨(미가동).
 - ⬜ VAPID(Vercel)·발송 cron·서버 선호 동기화: **미구현** → 위 7번.
+
+## 권유(옵트인) 지점 — 2026-10-02 추가
+
+- **관심 직후 바텀시트** (`notification/ui/PushPromptSheet.tsx`, `StatusButtons`에서 ☆관심을 켠 직후). prime-then-permission: 시트에서 [알림 받기]를 눌렀을 때만 브라우저 권한 요청. 구독 로직은 `notification/push-client.ts`(PushSettings와 공용).
+- 안 띄움: 이미 구독(on) · 권한 거부(denied) · 미지원 브라우저(인앱 웹뷰 등 → 인앱 배너가 담당) · [다음에 할게요] 후 **7일** · 같은 세션 2회째. 신청함 체크·관심 해제엔 안 뜸. 온보딩(`/signup/profile`)·튜토리얼(`/`)엔 관심 버튼이 없어 겹치지 않음.
+- 비로그인: [알림 받기] → 기존 가입 시트(`SignupSheet`, surface `push_prompt`). 가입 후 같은 카드로 돌아오면 시트 재개(권한 단계).
+- iOS + 홈 화면 미설치: 권한 요청 대신 "홈 화면에 추가하면 알림" 안내.
+- 이벤트: `push_prompt_impression` / `push_prompt_accept`(result: granted·denied·default·signup·ios_guide) / `push_prompt_dismiss` — properties `variant`(standard·signup·ios_install), `post_id`.
+
