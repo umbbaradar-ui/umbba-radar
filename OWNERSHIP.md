@@ -222,6 +222,7 @@
 - 알림 방식: **Web Push만**. 이메일·SMS 영구 X (BUSINESS_MODEL.md)
 - 진행 시점: MAU 100+ 검증 후
 - 필요 작업: VAPID 키 생성, sw.js 확장, 구독 UI, 발송 cron/trigger
+- 2026-10-02 **관심 직후 푸시 권유 바텀시트** (`PushPromptSheet`, 옵트인 3%→ 개선 목적). 노출·거절 7일·비로그인 가입 연결·iOS 문구 규칙은 docs/PUSH-POLICY.md "권유(옵트인) 지점". 구독 로직은 `push-client.ts`로 추출해 PushSettings와 공유
 
 ---
 
@@ -295,6 +296,7 @@
 - Android Chrome `beforeinstallprompt` 이벤트 캐시 + fallback 안내
 - 진입점 4곳: 자동 배너 + GNB 데스크탑 + 모바일 헤더 + 더보기 시트
 - 2026-09-07 **안드로이드는 4곳 모두 구글 플레이(TWA `com.umbba_radar.twa`)로 일원화**: 인스타·카톡·네이버 인앱 웹뷰에선 `beforeinstallprompt`가 안 떠 PWA 안내가 막다른 길이었음 → https 플레이 링크는 어느 웹뷰에서든 열림. iOS 가이드·데스크탑 PWA 프롬프트는 유지. 매니페스트 `related_applications`+`prefer_related_applications`로 Chrome 자체 배너도 플레이로 유도·플레이 설치 기기엔 미노출. 클릭은 `install_click` 이벤트(platform/target). 인스타 프로필 링크는 스토어 URL이 아니라 홈페이지 유지(아이폰 유입·무료 열람 퍼널 보존)
+- 2026-10-02 **인앱 브라우저 탈출 배너** (`(web)/_components/InAppBrowserBanner.tsx`, 감지 `shared/utils/inapp.ts`): 인스타·네이버·카톡 UA에서 상단 한 줄 "알림·관심 저장은 앱에서 돼요". Android 인스타·네이버 = `intent://` TWA(미설치면 플레이 fallback), 카톡 = `kakaotalk://web/openExternal`, iOS 인스타·네이버 = "··· → Safari로 열기" 안내. 강제 리다이렉트 X, 닫으면 세션 동안 숨김. 이벤트 `inapp_banner_impression`·`inapp_escape_click`(target)·`inapp_banner_dismiss`
 
 ---
 

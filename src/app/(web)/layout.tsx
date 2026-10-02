@@ -10,6 +10,7 @@ import { BottomTabNav } from "./_components/BottomTabNav";
 import { SplashScreen } from "./_components/SplashScreen";
 import { ServiceWorkerRegister } from "./_components/ServiceWorkerRegister";
 import { InstallBanner } from "./_components/InstallBanner";
+import { InAppBrowserBanner } from "./_components/InAppBrowserBanner";
 import { InstallNavChip } from "@/modules/user/ui/InstallActions";
 import { MigrationOnLogin } from "@/modules/personalization/ui/MigrationOnLogin";
 import { TutorialGate } from "@/modules/onboarding/ui/TutorialGate";
@@ -39,6 +40,9 @@ export default async function WebLayout({
       {/* 본문 wrapper — sticky footer 패턴 (이전엔 body가 flex였으나
           fixed 자식 호환성 위해 wrapper로 분리) */}
       <div className="flex min-h-dvh flex-col">
+
+      {/* 인앱 웹뷰(인스타·네이버·카톡) 탈출 배너 — 해당 UA에서만, 닫으면 세션 동안 숨김 */}
+      <InAppBrowserBanner />
 
       {/* 데스크탑 상단 네비 (md+에서만 보임) */}
       <nav className="sticky top-0 z-20 hidden border-b border-amber-100 bg-white/85 backdrop-blur md:block">
