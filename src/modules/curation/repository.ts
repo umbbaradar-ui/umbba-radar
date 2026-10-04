@@ -15,6 +15,7 @@ import type {
 } from "@/shared/types/post";
 import { isPastDeadline, kstTodayStartIso, kstEndOfDayIso } from "@/shared/utils/dday";
 
+import { detectOfflinePrize, prizeTextOf } from "./offline-prize";
 /** 활성 카드(초안·승인대기·발행) 전량 — 어드민 메인 목록용. 마감 카드는 selectExpiredPostsPage로 지연 로드 */
 export async function selectActivePostsAdmin(): Promise<Post[]> {
   return fetchAllRows<Post>("selectActivePostsAdmin", (from, to) =>
@@ -628,6 +629,8 @@ export interface AutoPublishResult {
   skippedUnknownDeadline: number;
   /** 수동 큐(운영자 직접 등록) 출신으로 점수와 무관하게 후보에 든 건수 (pass/warn, 마감 확정) */
   manualCandidates: number;
+  /** 현장형 경품 가드(예매·관람·초대권·오프라인 참석)로 막은 건수 — 2026-10-04 */
+  skippedOfflinePrize: number;
   titles?: string[];
   error?: string;
 }
@@ -649,19 +652,23 @@ export async function autoPublishReviewedPosts(
     skippedNoThumb: 0,
     skippedUnknownDeadline: 0,
     manualCandidates: 0,
+    skippedOfflinePrize: 0,
   };
   if (!enabled) return result;
 
   type Row = {
     id: string;
     title: string;
+    body: string | null;
+    search_keywords: string[] | null;
+    item_categories: string[] | null;
     deadline: string | null;
     deadline_unknown: boolean | null;
     thumbnail_url: string | null;
   };
   const { data, error } = await supabaseServer
     .from("posts")
-    .select("id, title, deadline, deadline_unknown, thumbnail_url")
+    .select("id, title, body, search_keywords, item_categories, deadline, deadline_unknown, thumbnail_url")
     .eq("status", "pending")
     .eq("ai_review_status", "pass")
     .gte("ai_review_score", minScore)
@@ -672,7 +679,7 @@ export async function autoPublishReviewedPosts(
       : error.message;
     return result;
   }
-  const rows = (data ?? []) as Row[];
+  let rows = (data ?? []) as Row[];
 
   // 수동 큐(/admin/bulk-ingest) 출신 카드 — 운영자가 직접 고른 URL이라 검수 점수와 무관하게 발행한다
   // (pass/warn 모두. fail 은 "모집 아님" 류 결격이라 사람이 본다). 단 마감이 캡션에서 확정된 것만 —
@@ -695,7 +702,7 @@ export async function autoPublishReviewedPosts(
   for (let off = 0; off < manualIds.length; off += 200) {
     const { data: mdata } = await supabaseServer
       .from("posts")
-      .select("id, title, deadline, deadline_unknown, thumbnail_url")
+      .select("id, title, body, search_keywords, item_categories, deadline, deadline_unknown, thumbnail_url")
       .eq("status", "pending")
       .in("ai_review_status", ["pass", "warn"])
       .in("id", manualIds.slice(off, off + 200));
@@ -708,6 +715,23 @@ export async function autoPublishReviewedPosts(
   }
 
   result.candidates = rows.length;
+  if (rows.length === 0) return result;
+
+  // 현장형 경품 가드 (2026-10-04) — 예매·관람·초대권, 오프라인 참석 혜택, 방문 조건 카드는
+  // 점수·경로(auto/수동 큐)와 무관하게 자동 발행에서 제외하고 사람 큐에 남긴다.
+  const offlineBlocked = rows.filter((r) => detectOfflinePrize(prizeTextOf(r)).blocked);
+  if (offlineBlocked.length) {
+    result.skippedOfflinePrize = offlineBlocked.length;
+    const blockedIds = new Set(offlineBlocked.map((r) => r.id));
+    rows = rows.filter((r) => !blockedIds.has(r.id));
+    if (execute) {
+      // 사람이 바로 알아보게 검수 상태를 fail 로 내린다 (status 는 pending 유지 — 발행 안 됨)
+      await supabaseServer
+        .from("posts")
+        .update({ ai_review_status: "fail", ai_review_note: "현장형 경품 가드 (자동 발행 차단)" })
+        .in("id", offlineBlocked.map((r) => r.id));
+    }
+  }
   if (rows.length === 0) return result;
 
   const toArchive = rows.filter((r) => isPastDeadline(r.deadline));

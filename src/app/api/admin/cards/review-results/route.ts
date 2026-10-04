@@ -19,6 +19,7 @@
 import { NextResponse } from "next/server";
 import { supabaseServer } from "@/shared/db/supabase-server";
 import { isAdminRequest } from "@/shared/utils/admin-session";
+import { detectOfflinePrize, prizeTextOf } from "@/modules/curation/offline-prize";
 import {
   sanitizeItemCategories,
   enforceTopicTaxonomy,
@@ -173,10 +174,23 @@ export async function POST(request: Request) {
     string,
     { body: string; postedAt: string | null; wasUnknown: boolean }
   >();
+  // 현장형 경품 가드용 원문 (2026-10-04) — 이번 요청의 모든 카드
+  type GuardRow = { id: string; title: string | null; body: string | null; search_keywords: string[] | null; item_categories: string[] | null };
+  const bodyById = new Map<string, GuardRow>();
+  {
+    const ids = items.map((it) => it?.id).filter((v): v is string => Boolean(v)).slice(0, 200);
+    if (ids.length) {
+      const { data: gRows } = await supabaseServer
+        .from("posts")
+        .select("id, title, body, search_keywords, item_categories")
+        .in("id", ids);
+      for (const r of (gRows ?? []) as GuardRow[]) bodyById.set(r.id, r);
+    }
+  }
   if (wantDeadline.length > 0) {
     const { data: capRows } = await supabaseServer
       .from("posts")
-      .select("id, body, source_post_date, created_at, deadline_unknown")
+      .select("id, title, body, search_keywords, item_categories, source_post_date, created_at, deadline_unknown")
       .in("id", wantDeadline.slice(0, 200));
     for (const r of (capRows ?? []) as Array<{
       id: string;
@@ -317,12 +331,26 @@ export async function POST(request: Request) {
       }
     }
 
+    // 현장형 경품 가드 (2026-10-04) — 검수 점수와 무관하게 fail 로 내리고, 이미 발행됐으면 보관(expired)으로 내린다.
+    //   검수는 원래 상태를 바꾸지 않지만(아래 .in 조건), 이 가드만은 "발행된 채로 두면 안 되는" 건이라 예외.
+    const guard = detectOfflinePrize(prizeTextOf(bodyById.get(it.id) ?? { title: null, body: null, search_keywords: null, item_categories: null }));
+    if (guard.blocked) {
+      upd.ai_review_status = "fail";
+      upd.ai_review_score = Math.min(typeof upd.ai_review_score === "number" ? upd.ai_review_score : 0, 30);
+      upd.ai_review_note = `${guard.reason} [${guard.matched.slice(0, 3).join(", ")}]`;
+      await supabaseServer
+        .from("posts")
+        .update({ status: "expired" })
+        .eq("id", it.id)
+        .eq("status", "published");
+    }
+
     try {
       const { error } = await supabaseServer
         .from("posts")
         .update(upd)
         .eq("id", it.id)
-        .in("status", ["pending", "published"]); // 검수는 상태를 바꾸지 않는다
+        .in("status", ["pending", "published", "expired"]); // 검수는 상태를 바꾸지 않는다 (가드로 내려간 건은 expired 도 갱신)
       if (error) {
         if (error.message.includes("ai_review")) {
           return NextResponse.json(
