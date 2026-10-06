@@ -93,7 +93,9 @@ export function detectOfflinePrize(raw: string | null | undefined): OfflinePrize
 
 /** posts 레코드에서 판정용 텍스트를 만든다 */
 export function prizeTextOf(p: {
-  title?: string | null; body?: string | null; search_keywords?: string[] | null; item_categories?: string[] | null;
+  title?: string | null; body?: string | null; search_keywords?: string | string[] | null; item_categories?: string | string[] | null;
 }): string {
-  return [p.title ?? "", p.body ?? "", (p.search_keywords ?? []).join(" "), (p.item_categories ?? []).join(" ")].join(" ");
+  // search_keywords 는 DB 에서 TEXT(콤마 구분, migration 015)라 문자열로 온다 — 배열 가정으로 .join 하면 TypeError
+  const flat = (v: string | string[] | null | undefined) => (Array.isArray(v) ? v.join(" ") : (v ?? ""));
+  return [p.title ?? "", p.body ?? "", flat(p.search_keywords), flat(p.item_categories)].join(" ");
 }

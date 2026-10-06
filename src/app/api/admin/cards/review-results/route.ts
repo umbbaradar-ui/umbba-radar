@@ -175,7 +175,7 @@ export async function POST(request: Request) {
     { body: string; postedAt: string | null; wasUnknown: boolean }
   >();
   // 현장형 경품 가드용 원문 (2026-10-04) — 이번 요청의 모든 카드
-  type GuardRow = { id: string; title: string | null; body: string | null; search_keywords: string[] | null; item_categories: string[] | null };
+  type GuardRow = { id: string; title: string | null; body: string | null; search_keywords: string | null; item_categories: string[] | null };
   const bodyById = new Map<string, GuardRow>();
   {
     const ids = items.map((it) => it?.id).filter((v): v is string => Boolean(v)).slice(0, 200);
