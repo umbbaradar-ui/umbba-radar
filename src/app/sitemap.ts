@@ -5,12 +5,14 @@ import { listPosts } from "@/modules/content/service";
 // Google·Naver 크롤러가 1회 호출로 전 페이지 발견
 // 결과물: https://umbba-radar.com/sitemap.xml
 //
-// 새 카드 published 되면 다음 revalidate(60s) 후 sitemap에 자동 반영.
+// 매 요청마다 DB에서 새로 만든다(force-dynamic) — 새 카드가 발행되는 즉시 반영.
 
 const BASE_URL = "https://umbba-radar.com";
 
-// 60초마다 재생성 (메인 페이지와 동일 정책)
-export const revalidate = 60;
+// ISR(revalidate = 60)은 2026-10-07 08:08 KST 이후 재생성이 멈춰 Vercel 캐시가 36시간 넘게
+// 옛 목록(카드 184)을 내보냈다(x-vercel-cache: HIT, age 129,543s). 같은 시각 /·/explore는 정상.
+// 사이트맵은 크롤러만 가끔 부르고 카드가 수백 건이라 매 요청 조회 비용이 작다 → 캐시를 쓰지 않는다.
+export const dynamic = "force-dynamic";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const staticPages: MetadataRoute.Sitemap = [
