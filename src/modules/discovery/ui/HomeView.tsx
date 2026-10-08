@@ -13,10 +13,11 @@
 //     3. 요즘 키워드 모아보기 — 프리셋 키워드 실시간 매칭 레일
 //     4. 우리 아이 시기, 새로 뜬 혜택 — 캐러셀 (미등록자는 유도/티저)
 //   존 B 🐻 엄빠레이더 추천 (전 상태 동일)
-//     5. 추천 픽 — 앞 2장 육아(기저귀·유모차·분유·젖병·장난감 품목 우선, 최신순)
-//                 + 뒤 2장 리빙(침구·가구/리빙·가전 우선, 최신 아니어도 됨). pinned_until 은 버킷 안 최우선
+//     5. 추천 픽 — 앞 2장 육아(마감 명확·선발형·지정 상품만, 댓글/퀴즈/랜덤/소문내기 제외,
+//                 기저귀·유모차·분유·젖병·장난감 품목 우선, 최신순)
+//                 + 뒤 2장 리빙(가구·가전·이불·매트리스·카페트만, 최신 아니어도 됨). pinned_until 은 버킷 안 최우선
 //     6. 마감미정 혜택 — deadline NULL 전용 선반 (0건이면 숨김)
-//     6-2. 리빙 — topic=living 선반 (2026-09-10 은재: UI 개편 때 리빙 탭이 빠져 복구. 0건이면 숨김)
+//     6-2. 리빙 — topic=living 선반, 오늘 마감(D-0) 제외 (2026-09-10 은재: UI 개편 때 리빙 탭이 빠져 복구. 0건이면 숨김)
 //     7. 시기별로 둘러보기 — 허브 칩 그리드
 //   [전체 탐색 CTA]
 //
@@ -32,7 +33,7 @@ import type {
   ItemCategory,
   Post,
   StageCategory,
-  TopicCategory,
+  TypeTag,
 } from "@/shared/types/post";
 import { STAGE_LABELS } from "@/shared/types/post";
 import { PostCard } from "@/modules/content/ui/PostCard";
@@ -104,11 +105,55 @@ const PICK_PARENTING_ITEMS: readonly ItemCategory[] = [
   "feeding",
   "toys_edu",
 ];
-// 리빙 2장: 침대·테이블·협탁·세탁세제·밀폐용기 같은 큰 가구·가전 느낌 선행
-const PICK_LIVING_ITEMS: readonly ItemCategory[] = [
-  "bedding_furniture",
-  "home_living",
+
+// ── 추천 픽 자격 (2026-10-08 은재) ──────────────
+// 육아 2장은 "마감 명확 + 지원 방식 명확 + 지정된 상품"인 카드만.
+//   - 댓글·퀴즈·랜덤 증정·소문내기(리그램) 이벤트 제외 → giveaway 태그 제외 + 제목 키워드 차단
+//   - 지원 방식 명확 = 체험단·서포터즈·키즈모델 모집(선발형)
+//   - 지정 상품 = 품목이 '기타'(랜덤박스·현금성 경품)만인 카드 제외
+//   - 마감 명확 = deadline 있음 + 추정(deadline_unknown) 아님
+const PICK_APPLY_TAGS: readonly TypeTag[] = ["experience", "supporters", "kids_model"];
+const PICK_EXCLUDE_TITLE = /댓글|퀴즈|랜덤|소문내기|공유\s*이벤트|추첨|친구\s*태그/;
+
+function isSpecificProduct(p: Post): boolean {
+  const cats = p.item_categories ?? [];
+  return cats.length > 0 && cats.some((c) => c !== "etc");
+}
+function isClearDeadline(p: Post): boolean {
+  return Boolean(p.deadline) && !p.deadline_unknown;
+}
+function isParentingPickEligible(p: Post): boolean {
+  if (!isClearDeadline(p) || !isSpecificProduct(p)) return false;
+  if (p.type_tags.includes("giveaway")) return false;
+  if (!p.type_tags.some((t) => PICK_APPLY_TAGS.includes(t))) return false;
+  return !PICK_EXCLUDE_TITLE.test(p.title);
+}
+
+// 리빙 2장: 가구·가전·이불·매트리스·카페트 만 (최신 아니어도 됨).
+//   품목 침구·가구(bedding_furniture)는 통째로 인정, 리빙·가전(home_living)은 세제·텀블러·디퓨저가
+//   섞여 있어 가전 키워드가 있어야 인정. 아래 키워드는 제목·브랜드·검색키워드에서 찾는다.
+const LIVING_PICK_KEYWORDS = [
+  // 가구
+  "가구", "소파", "침대", "테이블", "식탁", "책상", "데스크", "의자", "체어", "서랍", "수납장", "옷장", "협탁", "선반",
+  // 이불·매트리스·카페트
+  "이불", "차렵", "구스", "토퍼", "매트리스", "카페트", "카펫", "러그",
+  // 가전
+  "가전", "가습기", "제습기", "청소기", "세탁기", "건조기", "냉장고", "에어프라이어", "공기청정기",
+  "식기세척기", "밥솥", "전기포트", "블렌더", "믹서기", "정수기", "인덕션", "전자레인지", "오븐", "토스터",
+  "커피머신", "선풍기", "히터", "온풍기", "전기요", "전기매트", "웜매트", "온수매트", "안마", "스피커",
+  "티비", "tv", "보풀제거기", "찜기", "쿡플레이트", "음식물처리기", "의류관리기", "다리미",
+  "드라이어", "드라이기", "고데기",
 ];
+// 키워드에 걸리지만 가구·가전이 아닌 소모품·소품 (식탁보≠식탁, 가습기 세정제≠가습기, 헤어스타일러≠의류관리기)
+const LIVING_PICK_NEGATIVE = /식탁보|세정제|세제|필터|청소포|탈취|헤어스타일러|방향제|디퓨저/;
+function livingPickRank(p: Post): 0 | 1 | null {
+  const raw = [p.title, p.brand_name ?? "", p.search_keywords ?? ""].join(" ");
+  const text = normKw(raw);
+  if (!LIVING_PICK_NEGATIVE.test(raw) && LIVING_PICK_KEYWORDS.some((k) => text.includes(normKw(k))))
+    return 0;
+  if ((p.item_categories ?? []).includes("bedding_furniture")) return 1;
+  return null;
+}
 
 // ── 시기 허브 아이콘 ───────────────────────────
 
@@ -342,38 +387,46 @@ export function HomeView({
     return s;
   }, [usedIds, myChildNew, guestStageTeaser]);
 
-  // 5. 추천 픽 — 앞 2장 육아 + 뒤 2장 리빙 (2026-09-12 은재)
-  //    육아: 기저귀·유모차·분유·젖병·장난감 품목(PICK_PARENTING_ITEMS) 우선, 등록일 최신순.
-  //    리빙: 침구·가구 / 리빙·가전 같은 큰 물건(PICK_LIVING_ITEMS) 우선 — 최신이 아니어도 됨.
+  // 5. 추천 픽 — 앞 2장 육아 + 뒤 2장 리빙 (2026-09-12 은재, 자격 강화 2026-10-08 은재)
+  //    육아: isParentingPickEligible(마감 명확·선발형·지정 상품, 댓글/퀴즈/랜덤/소문내기 제외) 통과분만.
+  //          기저귀·유모차·분유·젖병·장난감 품목(PICK_PARENTING_ITEMS) 우선, 등록일 최신순.
+  //    리빙: 가구·가전·이불·매트리스·카페트(livingPickRank)만 — 최신이 아니어도 됨. 키워드 직격 > 침구·가구 품목.
   //    각 버킷 안에서 pinned_until(🐻 PICK) → 우선 품목 → 마감 여유(D-4+) → 최신 순.
-  //    한쪽이 2장을 못 채우면 다른 쪽이 채워 항상 4장.
+  //    한쪽이 2장을 못 채우면 다른 쪽(같은 자격 기준)이 채운다. 둘 다 모자라면 4장 미만.
   const radarPick = useMemo(() => {
     const nowIso = new Date(now).toISOString();
     const isPinned = (p: Post) => Boolean(p.pinned_until && p.pinned_until >= nowIso);
-    const rank = (p: Post, prefer: readonly ItemCategory[]) => {
-      const cats = p.item_categories ?? [];
+    const order = (a: { p: Post; r: readonly number[] }, b: { p: Post; r: readonly number[] }) =>
+      a.r[0] - b.r[0] ||
+      a.r[1] - b.r[1] ||
+      a.r[2] - b.r[2] ||
+      b.p.created_at.localeCompare(a.p.created_at);
+    const slack = (p: Post) => {
       const d = calcDDay(p.deadline);
-      return [
-        isPinned(p) ? 0 : 1,
-        cats.some((c) => prefer.includes(c)) ? 0 : 1,
-        d === null || d.days >= 4 ? 0 : 1,
-      ] as const;
+      return d === null || d.days >= 4 ? 0 : 1;
     };
-    const bucket = (topic: TopicCategory, prefer: readonly ItemCategory[]) =>
-      posts
-        .filter((p) => p.topic === topic && !usedIds2.has(p.id))
-        .map((p) => ({ p, r: rank(p, prefer) }))
-        .sort(
-          (a, b) =>
-            a.r[0] - b.r[0] ||
-            a.r[1] - b.r[1] ||
-            a.r[2] - b.r[2] ||
-            b.p.created_at.localeCompare(a.p.created_at)
-        )
-        .map((x) => x.p);
 
-    const parenting = bucket("parenting", PICK_PARENTING_ITEMS);
-    const living = bucket("living", PICK_LIVING_ITEMS);
+    const parenting = posts
+      .filter((p) => p.topic === "parenting" && !usedIds2.has(p.id) && isParentingPickEligible(p))
+      .map((p) => ({
+        p,
+        r: [
+          isPinned(p) ? 0 : 1,
+          (p.item_categories ?? []).some((c) => PICK_PARENTING_ITEMS.includes(c)) ? 0 : 1,
+          slack(p),
+        ] as const,
+      }))
+      .sort(order)
+      .map((x) => x.p);
+
+    const living = posts
+      .filter((p) => p.topic === "living" && !usedIds2.has(p.id))
+      .map((p) => ({ p, lr: livingPickRank(p) }))
+      .filter((x): x is { p: Post; lr: 0 | 1 } => x.lr !== null)
+      .map(({ p, lr }) => ({ p, r: [isPinned(p) ? 0 : 1, lr, slack(p)] as const }))
+      .sort(order)
+      .map((x) => x.p);
+
     const front = parenting.slice(0, 2);
     const back = living.slice(0, 2);
     // 부족분 보충 — 육아가 모자라면 리빙 3번째부터, 리빙이 모자라면 육아 3번째부터
@@ -406,11 +459,14 @@ export function HomeView({
   // 6-2. 리빙 선반 — 어른·살림 제품(topic=living)만. 마감 임박 순 → 최신 순.
   //      카테고리 선반이라 존 A(키워드 레일 등)와는 중복 허용하되, 바로 위 추천 픽의 리빙 2장은 뺀다
   //      (같은 존 안에서 같은 카드가 두 번 보이면 안 됨).
+  //      오늘 마감(D-0, "마감일!")인 카드는 뺀다 — 마감 레이더 몫이고 선반 맨 앞을 차지해 묻힘 (2026-10-08 은재)
   const livingShelf = useMemo(() => {
     const dl = (p: Post) => (p.deadline ? new Date(p.deadline).getTime() : Number.MAX_SAFE_INTEGER);
     const picked = new Set(radarPick.items.map((p) => p.id));
     return posts
-      .filter((p) => p.topic === "living" && !picked.has(p.id))
+      .filter(
+        (p) => p.topic === "living" && !picked.has(p.id) && calcDDay(p.deadline)?.days !== 0
+      )
       .sort((a, b) => dl(a) - dl(b) || b.created_at.localeCompare(a.created_at))
       .slice(0, 4);
   }, [posts, radarPick]);
