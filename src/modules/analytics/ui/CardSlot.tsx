@@ -29,7 +29,8 @@ export type CardZone =
   | "deadline_unknown" // 홈 6. 마감미정 혜택
   | "living_shelf" // 홈 6-2. 리빙 선반 (topic=living)
   | "explore_grid" // /explore 전체 그리드
-  | "my_radar"; // /my 내 레이더
+  | "my_radar" // /my 내 레이더
+  | "guide_benefits"; // /guide/[slug] 하단 "이 시기 진행 중인 혜택"
 
 interface Props {
   postId: string;

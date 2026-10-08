@@ -31,6 +31,7 @@ const ZONE_LABELS: Record<string, string> = {
   living_shelf: "홈 · 리빙 선반",
   explore_grid: "탐색 · 전체 그리드",
   my_radar: "내 레이더",
+  guide_benefits: "가이드 · 이 시기 혜택",
 };
 
 function parsePeriod(s?: string): number {
