@@ -36,6 +36,7 @@ import { VISITED_LIST_KEY } from "@/modules/content/ui/BackToListLink";
 import { sortPosts } from "@/modules/discovery/service";
 import type { SortMode } from "@/modules/content/service";
 import { track } from "@/modules/analytics/service";
+import { GuideStageLinks } from "@/modules/guide/ui/GuideStageLinks";
 import {
   listUserPostStatuses,
   subscribe,
@@ -507,6 +508,13 @@ export function ExploreView({
           )}
         </div>
       </div>
+
+      {/* 시기 필터가 하나면 그 시기 가이드로 가는 링크 줄 (2026-10 시기별 가이드) */}
+      {filters.stages.length === 1 &&
+        filters.stages[0] !== "my_child" &&
+        filters.stages[0] in STAGE_LABELS && (
+          <GuideStageLinks stage={filters.stages[0] as StageCategory} />
+        )}
 
       {/* 결과 헤더 */}
       <p className="mb-3 text-xs text-slate-500">

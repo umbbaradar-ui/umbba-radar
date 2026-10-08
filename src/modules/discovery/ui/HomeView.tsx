@@ -37,6 +37,7 @@ import type {
 } from "@/shared/types/post";
 import { STAGE_LABELS } from "@/shared/types/post";
 import { PostCard } from "@/modules/content/ui/PostCard";
+import { GuideHubLink } from "@/modules/guide/ui/GuideStageLinks";
 import { CardSlot } from "@/modules/analytics/ui/CardSlot";
 import { AdSlot } from "@/modules/advertising/ui/AdSlot";
 import { VISITED_LIST_KEY } from "@/modules/content/ui/BackToListLink";
@@ -844,6 +845,8 @@ export function HomeView({
             myChildStages={myChildStages}
             hasChildren={hasChildren}
           />
+          {/* 시기별 가이드(상설 글) 진입 — 맨 아래 허브에만 둔다(상단은 카드 탐색 우선) */}
+          <GuideHubLink />
         </div>
       </section>
 

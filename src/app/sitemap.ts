@@ -1,5 +1,6 @@
 import type { MetadataRoute } from "next";
 import { listPosts } from "@/modules/content/service";
+import { listGuideLinks } from "@/modules/guide/service";
 
 // 사이트맵 — 정적 페이지 + DB의 모든 published 카드
 // Google·Naver 크롤러가 1회 호출로 전 페이지 발견
@@ -41,6 +42,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.5,
     },
     {
+      url: `${BASE_URL}/guide`,
+      lastModified: new Date(),
+      changeFrequency: "weekly",
+      priority: 0.8,
+    },
+    {
       url: `${BASE_URL}/terms`,
       lastModified: new Date(),
       changeFrequency: "yearly",
@@ -53,6 +60,17 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.3,
     },
   ];
+
+  // 시기별 가이드 — 코드에 들어 있는 정적 글이라 DB 실패와 무관하게 항상 포함.
+  // lastModified = 원고의 최종 확인일(내용을 다시 확인한 날).
+  for (const g of listGuideLinks()) {
+    staticPages.push({
+      url: `${BASE_URL}/guide/${g.slug}`,
+      lastModified: new Date(`${g.checkedAt}T00:00:00+09:00`),
+      changeFrequency: "monthly",
+      priority: 0.8,
+    });
+  }
 
   // published 카드. listPosts는 limit 미지정 시 전량 로드 — 사이트맵은 1000개 상한 유지.
   try {
