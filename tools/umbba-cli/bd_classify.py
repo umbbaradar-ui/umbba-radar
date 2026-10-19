@@ -17,6 +17,7 @@ bd_classify.py — 분류 루틴 (옵션 C): DB 미분류(draft) 카드 → 로�
 from __future__ import annotations
 
 import argparse
+import re
 import sys
 import tempfile
 import time
@@ -51,6 +52,38 @@ def fetch_drafts(limit: int) -> list[dict]:
     if r.status_code != 200:
         print(f"❌ drafts HTTP {r.status_code}: {r.text[:200]}"); return []
     return r.json().get("items", [])
+
+
+def fetch_drafts_by_ids(ids: set[str]) -> list[dict] | None:
+    """--ids 전용: Supabase REST 로 그 id 들만 직접 조회.
+    drafts API 는 created_at 오름차순 최대 500 이라 적체가 500 을 넘으면 방금 만든 draft 가 목록 밖으로 밀림
+    (2026-10-19 적체 562건 때 113 id 중 51건만 잡힘). .env.storage 가 없거나 조회 실패면 None → 호출부가 API 경로로 폴백."""
+    p = Path(__file__).with_name(".env.storage")
+    if not p.exists():
+        return None
+    env = {}
+    for ln in p.read_text(encoding="utf-8").splitlines():
+        if "=" in ln and not ln.lstrip().startswith("#"):
+            k, v = ln.split("=", 1); env[k.strip()] = v.strip().strip("\"'")
+    url, key = env.get("SUPABASE_URL"), env.get("SUPABASE_SERVICE_ROLE_KEY")
+    if not url or not key:
+        return None
+    ids = sorted(i for i in ids if re.fullmatch(r"[0-9a-fA-F-]{36}", i))  # uuid 만 (in.(...) 필터에 그대로 들어감)
+    out: list[dict] = []
+    for off in range(0, len(ids), 100):
+        try:
+            r = requests.get(
+                f"{url.rstrip('/')}/rest/v1/posts",
+                params={"select": "id,source_url,body,thumbnail_url,created_at", "status": "eq.draft",
+                        "id": f"in.({','.join(ids[off:off + 100])})", "order": "created_at.asc"},
+                headers={"apikey": key, "Authorization": f"Bearer {key}"}, timeout=60,
+            )
+        except requests.RequestException as e:
+            print(f"   ⚠ drafts(ids) REST 오류: {e} — API 경로로 폴백"); return None
+        if r.status_code != 200:
+            print(f"   ⚠ drafts(ids) REST HTTP {r.status_code} — API 경로로 폴백"); return None
+        out += r.json()
+    return out
 
 
 def post_classify(items: list[dict]) -> dict:
@@ -101,10 +134,13 @@ def main() -> int:
         print("❌ .env ADMIN_CLI_TOKEN 미설정"); return 1
 
     only_ids = {s.strip() for s in args.ids.split(",") if s.strip()}
-    # --ids 면 새벽 루틴이 남긴 draft 와 섞이지 않게 넉넉히 받아 그 id 만 남김 (drafts 는 created_at 오름차순)
-    drafts = fetch_drafts(500 if only_ids else args.limit)
     if only_ids:
-        drafts = [d for d in drafts if d.get("id") in only_ids]
+        # --ids 면 그 id 만 직접 조회 (적체와 무관). 실패 시 예전 방식: API 500건 안에서 필터 — 적체 500 초과면 누락 가능
+        drafts = fetch_drafts_by_ids(only_ids)
+        if drafts is None:
+            drafts = [d for d in fetch_drafts(500) if d.get("id") in only_ids]
+    else:
+        drafts = fetch_drafts(args.limit)
     if not drafts:
         print("미분류 카드 0건 — 할 일 없음"); return 0
     items = [{"queue_id": d["id"], "url": d.get("source_url"),
