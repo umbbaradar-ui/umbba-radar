@@ -39,9 +39,9 @@ def send_telegram(text: str) -> bool:
         return False
 
 
-def alert(title: str, lines: list[str], action: str = "") -> bool:
+def alert(title: str, lines: list[str], action: str = "", icon: str = "🚨") -> bool:
     """장애 경고 한 건. title=한 줄 요약, lines=근거, action=사람이 할 일."""
-    body = [f"🚨 <b>{title}</b>", ""] + lines
+    body = [f"{icon} <b>{title}</b>", ""] + lines
     if action:
         body += ["", f"👉 {action}"]
     return send_telegram("\n".join(body))

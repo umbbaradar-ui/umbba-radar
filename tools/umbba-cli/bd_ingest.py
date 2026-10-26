@@ -21,6 +21,7 @@ from __future__ import annotations
 import argparse
 import base64
 import datetime
+import html
 import sys
 import time
 
@@ -127,6 +128,11 @@ def scan_chunk(chunk: list[str], recent: int, start_date: str,
     counts, per_user_new = process_records(records, raw, dry_run)
     counts["billed"] = billed or 0
     counts["per_user_new"] = per_user_new
+    # 수신량 급감 판정용(main) — 평소 800계정 → 800~900건, BD 크롤러 고장 땐 10~20건(2026-10-22~)
+    counts["received"] = len(records)
+    counts["error_codes"] = prog.get("error_codes") or {}
+    counts["error_sample"] = next((r["error"] for r in records if r.get("error")), "")
+    counts["sid"] = sid
     return counts
 
 
@@ -220,6 +226,9 @@ def main() -> int:
 
     tot = {"created": 0, "dup": 0, "failed": 0, "noimg": 0, "billed": 0}
     failed_chunks = 0
+    ok_accounts = received = 0
+    err_codes: dict[str, int] = {}
+    err_sample, sids = "", []
     for ci, chunk in enumerate(chunks):
         if ci > 0 and args.chunk_sleep > 0:
             print(f"   ⏳ 청크 간 대기 {args.chunk_sleep}s (BD 부하 분산)")
@@ -232,6 +241,10 @@ def main() -> int:
             continue
         for k in ("created", "dup", "failed", "noimg", "billed"):
             tot[k] += c[k]
+        ok_accounts += len(chunk); received += c["received"]; sids.append(c["sid"])
+        for code, n in c["error_codes"].items():
+            err_codes[code] = err_codes.get(code, 0) + n
+        err_sample = err_sample or c["error_sample"]
         # 이 청크 계정만 즉시 last_scanned 갱신 → 중간에 끊겨도 진행분 보존·회전 유지.
         if not args.dry_run:
             pun = c["per_user_new"]
@@ -257,6 +270,19 @@ def main() -> int:
              if all_dead else "일부 계정이 이번 회차에서 누락됐습니다.",
              "", f"과금 {tot['billed']} records ≈ {cost_won:.0f}원"],
             "BD 대시보드에서 계정 상태·잔여 크레딧 확인 필요",
+        )
+    # 스냅샷은 성공인데 BD 가 거의 아무것도 안 돌려주는 경우(10-22~ crawl_error 'pk': 5일간 생성 0, 경보 0).
+    # 정상은 계정수 이상 수신(게시물+무과금 오류 행). 소량 수동 테스트(--accounts 몇 개)는 판정 안 함.
+    if not args.dry_run and ok_accounts >= 50 and received < ok_accounts * 0.1:
+        codes = ", ".join(f"{k} {v}" for k, v in sorted(err_codes.items(), key=lambda kv: -kv[1])) or "없음"
+        alert(
+            "엄빠레이더 수집 급감 — BD 응답 이상",
+            [f"요청 {ok_accounts}계정 → 수신 {received}건 (평소 계정수 이상, 기준 10% = {int(ok_accounts * 0.1)}건)",
+             f"신규 카드 {tot['created']}건 · 오류 코드: {codes}",
+             f"오류 예: {html.escape(err_sample[:120], quote=False)}" if err_sample else "오류 행도 없음(빈 응답)",  # parse_mode=HTML
+             f"snapshot: {', '.join(sids)}"],
+            "BD 지원 문의(snapshot id 첨부) · 복구 전엔 /admin/bulk-ingest 수동 큐로 보충",
+            icon="🔴",
         )
     return 0 if failed_chunks < len(chunks) else 1
 
