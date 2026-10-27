@@ -26,3 +26,5 @@ urls.txt
 output/
 downloads/
 image_hints/
+.source-map.json
+.hiker-pk-cache.json
