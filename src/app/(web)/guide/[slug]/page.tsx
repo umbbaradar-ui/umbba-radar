@@ -55,6 +55,13 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   }
   const title = `${guide.title} · 엄빠레이더`;
   const url = `/guide/${guide.slug}`;
+  // 시기가이드 전용 공유 카드(1200×630) — public/guide-og/{slug}.jpg (X15, R-20261102-9)
+  const ogImage = {
+    url: `/guide-og/${guide.slug}.jpg`,
+    width: 1200,
+    height: 630,
+    alt: guide.title,
+  };
   return {
     title,
     description: guide.description,
@@ -69,11 +76,13 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       type: "article",
       publishedTime: guideDateIso(guide.publishedAt),
       modifiedTime: guideDateIso(guide.checkedAt),
+      images: [ogImage],
     },
     twitter: {
       card: "summary_large_image",
       title,
       description: guide.description,
+      images: [ogImage.url],
     },
   };
 }
