@@ -116,6 +116,36 @@ def process_records(records: list[dict], raw: bool, dry_run: bool) -> tuple[dict
     return ({"created": created, "dup": dup, "failed": failed, "noimg": noimg}, per_user_new)
 
 
+def fill_sidecars(records: list[dict]) -> tuple[int, int]:
+    """서버(/api/cron/bd-trigger)가 적재한 스냅샷의 맥 로컬 사이드카만 채운다 — 카드 생성·과금 없음.
+    bd_hints(검수 note용 이미지 글자) + source_map(예비 수집 우선순위). (찾은 카드 수, 힌트 수) 반환."""
+    pairs = [(m, r) for m, r in ((bd_client.map_record(r), r) for r in records) if m and m.get("url")]
+    s = source_map._supa()
+    if not s:
+        print("   ⚠ .env.storage 없음 — 사이드카 건너뜀"); return 0, 0
+    base, headers = s
+    ids: dict[str, str] = {}
+    for i in range(0, len(pairs), 100):
+        urls = ",".join('"' + m["url"].replace('"', "") + '"' for m, _ in pairs[i:i + 100])
+        r = requests.get(f"{base}/rest/v1/posts", headers=headers, timeout=60,
+                         params={"select": "id,source_url", "source_url": f"in.({urls})"})
+        if r.status_code != 200:
+            print(f"   ⚠ 카드 조회 HTTP {r.status_code}"); return len(ids), 0
+        ids.update({x["source_url"]: x["id"] for x in r.json()})
+    smap = source_map.load()
+    found = hints = 0
+    for m, rec in pairs:
+        pid = ids.get(m["url"])
+        if not pid:
+            continue
+        found += 1
+        if bd_hints.save(pid, rec):
+            hints += 1
+        source_map.add(m["url"], m.get("source_username"), m.get("source_post_date"), smap)
+    source_map.save(smap)
+    return found, hints
+
+
 def scan_chunk(chunk: list[str], recent: int, start_date: str,
                start_dates: dict | None, raw: bool, dry_run: bool) -> dict | None:
     """한 청크: trigger→wait→fetch→적재. 실패면 None(복구용 snapshot_id 로그).
@@ -210,6 +240,8 @@ def main() -> int:
                     help="계정 직접 지정(테스트용, 서버 fetch 대신)")
     ap.add_argument("--snapshot",
                     help="기존 스냅샷 id 재처리(재스캔/재과금 없음). 실패 복구·수동용")
+    ap.add_argument("--sidecar-only", action="store_true",
+                    help="--snapshot 과 함께: 카드 생성 없이 이미지 힌트·계정 원장만 채움(서버 수집분, 무과금)")
     ap.add_argument("--raw", action="store_true",
                     help="수집 루틴: Vision 안 부르고 draft(미분류) 카드 생성(유료 API 0). 분류는 bd_classify.py가 별도로.")
     ap.add_argument("--dry-run", action="store_true",
@@ -241,6 +273,10 @@ def main() -> int:
         records, ferr = bd_client.fetch_snapshot(sid)
         if ferr:
             print(f"❌ {ferr}"); return 1
+        if args.sidecar_only:
+            found, hints = fill_sidecars(records)
+            print(f"   사이드카: 수신 {len(records)}건 → 카드 {found}개 · 힌트 {hints}개")
+            return 0
         billed, errc = prog.get("records"), prog.get("errors")
         print(f"\n📦 records(과금) {billed} / errors(무과금) {errc} / 수신 {len(records)}건\n")
         counts, _ = process_records(records, args.raw, args.dry_run)

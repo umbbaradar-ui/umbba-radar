@@ -20,8 +20,22 @@ TOK=$(grep '^CLAUDE_CODE_OAUTH_TOKEN=' .env 2>/dev/null | cut -d= -f2-)
 export PYTHONUTF8=1 PYTHONUNBUFFERED=1
 
 echo "===== $(date '+%Y-%m-%d %H:%M:%S') 수집(--raw) =====" >> "$LOG"
-ING=$("$PY" bd_ingest.py --raw --scan-days "${1:-1}" --max-accounts "${2:-800}" 2>&1)
+# 서버 새벽 수집(R-20261105-3)을 먼저 본다. 꺼져 있거나 status 실패면 collect = 예전과 같음.
+GATE=$("$PY" bd_server_gate.py 2>>"$LOG")
+ACTION=$(echo "$GATE" | sed -n 1p)
+SIDECARS=$(echo "$GATE" | sed -n 2p | sed 's/^sidecar *//')
+echo "서버 수집 관문: ${ACTION:-collect}" >> "$LOG"
+case "$ACTION" in
+  skip*)     ING="" ;;   # 서버가 끝냄 — BD 호출 안 함
+  resume*)   ING="" ; "$PY" bd_ingest.py --snapshot "${ACTION#resume }" --raw >> "$LOG" 2>&1 ;;  # 재과금 0
+  fallback*) ING=$("$PY" bd_ingest.py --raw --provider fallback --scan-days "${1:-1}" --max-accounts "${2:-800}" 2>&1) ;;  # BD 재호출 안 함
+  *)         ING=$("$PY" bd_ingest.py --raw --scan-days "${1:-1}" --max-accounts "${2:-800}" 2>&1) ;;
+esac
 echo "$ING" >> "$LOG"
+# 서버가 적재한 카드의 맥 로컬 사이드카(이미지 힌트·계정 원장) — 스냅샷 재조회 무과금
+for SNAP in $SIDECARS; do
+  "$PY" bd_ingest.py --snapshot "$SNAP" --sidecar-only >> "$LOG" 2>&1
+done
 # 폴링 타임아웃으로 클라가 0건 리턴했어도 스냅샷은 서버에서 완성되는 경우가 있음(재과금 없음).
 # 로그의 "--snapshot sd_..." 복구 힌트를 잡아 자동 재처리. building이면 fetch_snapshot이 알아서 대기.
 for SNAP in $(echo "$ING" | grep -oE '\-\-snapshot sd_[a-z0-9]+' | awk '{print $2}' | sort -u); do
