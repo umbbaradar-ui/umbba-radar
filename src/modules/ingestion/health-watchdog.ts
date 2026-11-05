@@ -10,6 +10,7 @@
 
 import { supabaseServer } from "@/shared/db/supabase-server";
 import type { AutoPublishResult } from "@/modules/curation/repository";
+import { normalReportLine, reportTodoLine } from "@/modules/ingestion/heartbeat-rules";
 
 export interface WatchdogResult {
   collected24: number; // 최근 24h BrightData 수집 카드 수
@@ -80,7 +81,16 @@ export async function runHealthWatchdog(
   // 문제 = 수집 0건(BD/3시 작업 죽음) 또는 분류가 크게 밀림(분류 미실행/한도 초과).
   const collectFail = collected24 === 0;
   const backlogStuck = draftBacklog >= BACKLOG_WARN;
-  const problem = collectFail || backlogStuck;
+  const publishError = Boolean(opts.autoPublish?.error);
+  const problem = collectFail || backlogStuck || publishError;
+
+  // 정상이면 한 줄만 (R-20261105-3 2단계). 테스트 발송은 경로 점검용이라 상세를 그대로 보낸다.
+  if (!problem && !opts.force) {
+    const sent = await sendTelegram(
+      normalReportLine(collected24, opts.autoPublish?.published ?? 0, pending)
+    );
+    return { collected24, draftBacklog, pending, problem, sent, reviewSummary: review };
+  }
 
   const todayKst = new Date(Date.now() + 9 * 3600 * 1000)
     .toISOString()
@@ -139,6 +149,7 @@ export async function runHealthWatchdog(
     lines.push(`✅ 검수 대기 없음`);
   }
   lines.push(``);
+  if (problem) lines.push(reportTodoLine({ collectFail, backlogStuck, publishError }));
   lines.push(`👉 https://umbba-radar.com/admin/queue`);
 
   const sent = await sendTelegram(lines.join("\n"));
@@ -146,7 +157,7 @@ export async function runHealthWatchdog(
   return { collected24, draftBacklog, pending, problem, sent, reviewSummary: review };
 }
 
-async function sendTelegram(text: string): Promise<boolean> {
+export async function sendTelegram(text: string): Promise<boolean> {
   const token = process.env.TELEGRAM_BOT_TOKEN;
   const chatId = process.env.TELEGRAM_CHAT_ID;
   if (!token || !chatId) return false;

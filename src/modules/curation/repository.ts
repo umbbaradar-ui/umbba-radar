@@ -263,6 +263,7 @@ export async function selectAdminStats(periodDays: number = 7): Promise<AdminSta
     supabaseServer
       .from("events")
       .select("event_name, post_id, anon_id, user_id, created_at, properties")
+      .neq("event_name", "ops_heartbeat") // 운영 점검 상태 행 — 사용자 행동 통계 아님
       .gte("created_at", since)
       .order("id", { ascending: true })
       .range(from, to)
