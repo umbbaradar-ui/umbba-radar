@@ -19,8 +19,8 @@ export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 export const alt = "엄빠레이더 카드 상세";
 
-// 60초마다 재생성 (카드 정보 변경 시 OG 이미지도 자동 갱신)
-export const revalidate = 60;
+// 하루 1회 재생성 — 서버 렌더 CPU 절약, 카드 내용은 발행 후 거의 안 바뀜 (R-20261105-2)
+export const revalidate = 86400;
 
 // 모듈 로드 시 한 번만 읽고 base64 data URL로 인코딩 (모든 카드 OG가 공유)
 const bearMascotDataUrl = `data:image/png;base64,${readFileSync(
