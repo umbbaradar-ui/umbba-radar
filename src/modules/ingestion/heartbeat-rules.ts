@@ -11,9 +11,10 @@ export const ALERT_INTERVAL_MS = 6 * 3600 * 1000;
 const INTERVAL_SLACK_MS = 10 * 60 * 1000;
 export const DRAFT_STUCK = 100;
 const INGEST_DUE_HOUR_KST = 6;
+const BD_DUE_HOUR_KST = 5;
 const CONSECUTIVE = 2;
 
-export type AlertKey = "no_ingest" | "draft_stuck" | "publish_stuck";
+export type AlertKey = "no_ingest" | "draft_stuck" | "publish_stuck" | "bd_late";
 
 export interface HeartbeatInput {
   nowMs: number;
@@ -21,6 +22,7 @@ export interface HeartbeatInput {
   draftBacklog: number; // 미분류(draft)
   publishable: number; // 지금 자동 발행 가능한 후보(pass·85+ 등, 미리보기 기준)
   publishError?: string; // 후보 조회 실패 사유
+  bdLate?: boolean; // 서버 수집이 05:00까지 안 끝남 (bd-run-rules.isBdLate). 시각 판정은 거기서 한다.
 }
 
 export interface HeartbeatState {
@@ -42,6 +44,7 @@ const LABEL: Record<AlertKey, string> = {
   no_ingest: "새벽 수집",
   draft_stuck: "분류",
   publish_stuck: "자동 발행",
+  bd_late: "서버 수집",
 };
 
 export function kstHour(nowMs: number): number {
@@ -62,6 +65,9 @@ function alertLine(key: AlertKey, input: HeartbeatInput): string {
   if (key === "draft_stuck") {
     return `🟡 <b>분류 멈춤</b> (미분류 ${input.draftBacklog}건, 2회 연속) — 할 일: M4 claude 토큰/로그인 확인`;
   }
+  if (key === "bd_late") {
+    return "🟡 <b>BD 웹훅 미도착</b> (서버 수집 05:00까지 안 끝남) — 할 일: 맥 폴백 동작 확인";
+  }
   const why = input.publishError
     ? `후보 조회 오류 ${input.publishError.slice(0, 80)}`
     : `후보 ${input.publishable}건 남음, 2회 연속`;
@@ -77,6 +83,7 @@ export function evaluateHeartbeat(
     no_ingest: input.todayIngested === 0,
     draft_stuck: input.draftBacklog >= DRAFT_STUCK,
     publish_stuck: input.publishable > 0 || Boolean(input.publishError),
+    bd_late: Boolean(input.bdLate),
   };
   for (const k of Object.keys(conditions) as AlertKey[]) {
     streak[k] = conditions[k] ? (prev.streak[k] ?? 0) + 1 : 0;
@@ -91,9 +98,13 @@ export function evaluateHeartbeat(
   }
   if ((streak.draft_stuck ?? 0) >= CONSECUTIVE) active.push("draft_stuck");
   if ((streak.publish_stuck ?? 0) >= CONSECUTIVE) active.push("publish_stuck");
+  // 05:00 전엔 isBdLate가 항상 거짓이다 — 자정에 어제 알림을 복구로 착각하지 않게 그대로 둔다.
+  const bdDue = kstHour(input.nowMs) >= BD_DUE_HOUR_KST;
+  if (bdDue ? conditions.bd_late : prev.active.includes("bd_late")) active.push("bd_late");
 
   const send = active.filter((k) => {
     if (k === "no_ingest" && !ingestDue) return false;
+    if (k === "bd_late" && !bdDue) return false;
     const last = prev.lastSent[k];
     if (!last) return true;
     return input.nowMs - Date.parse(last) >= ALERT_INTERVAL_MS - INTERVAL_SLACK_MS;

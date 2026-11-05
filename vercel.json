@@ -17,6 +17,10 @@
     {
       "path": "/api/cron/heartbeat",
       "schedule": "35 * * * *"
+    },
+    {
+      "path": "/api/cron/bd-trigger",
+      "schedule": "0 18 * * *"
     }
   ]
 }

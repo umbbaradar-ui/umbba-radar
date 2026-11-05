@@ -18,6 +18,8 @@ import {
   type HeartbeatState,
 } from "@/modules/ingestion/heartbeat-rules";
 import { sendTelegram } from "@/modules/ingestion/health-watchdog";
+import { isBdLate, kstDate } from "@/modules/ingestion/bd-run-rules";
+import { bdServerEnabled, loadRun } from "@/modules/ingestion/bd-server";
 
 export const maxDuration = 60;
 export const dynamic = "force-dynamic";
@@ -74,6 +76,9 @@ export async function GET(request: Request) {
     // 미리보기(execute=false) — 쓰기 0. 매시 5분 publish 뒤에도 남아 있으면 발행이 안 되는 것.
     const preview = await autoPublishReviewedPosts(false);
 
+    const enabled = bdServerEnabled();
+    const bdRun = enabled ? await loadRun(kstDate(nowMs)) : null;
+
     const decision = evaluateHeartbeat(
       {
         nowMs,
@@ -81,6 +86,7 @@ export async function GET(request: Request) {
         draftBacklog: draftRes.count ?? 0,
         publishable: preview.enabled ? preview.published : 0,
         publishError: preview.error,
+        bdLate: isBdLate({ enabled, nowMs, stage: bdRun?.state.stage ?? null }),
       },
       prev
     );

@@ -4,6 +4,7 @@
 // 로직:
 //   1. autoPublishReviewedPosts — 2차 검수 pass·85점+ pending 카드 자동 발행
 //   2. expireOverduePosts — 마감 지난 카드 만료
+//   3. advanceBdRun — 서버 새벽 수집 폴링·이어서 적재 (R-20261105-3 3단계, env 없으면 건너뜀)
 //
 // 정책:
 //   - 발행 기준은 09:00 cron과 같은 함수를 그대로 쓴다(기준 변경 없음).
@@ -16,6 +17,9 @@ import {
   autoPublishReviewedPosts,
   expireOverduePosts,
 } from "@/modules/curation/repository";
+import { advanceBdRun } from "@/modules/ingestion/bd-server";
+
+const BD_BUDGET_MS = 200_000;
 
 export const maxDuration = 300;
 export const dynamic = "force-dynamic";
@@ -45,7 +49,13 @@ export async function GET(request: Request) {
     console.error("[cron/publish] expire failed:", e);
   }
 
-  console.log("[cron/publish]", JSON.stringify({ autoPublish, expired, expireError }));
+  // 수집 적재 실패는 발행 결과와 분리한다 — 맥 폴백과 heartbeat가 따로 잡는다.
+  const bdRun = await advanceBdRun(BD_BUDGET_MS).catch((e) => {
+    console.error("[cron/publish] bd advance failed:", e);
+    return { status: "error", detail: e instanceof Error ? e.message : String(e) };
+  });
+
+  console.log("[cron/publish]", JSON.stringify({ autoPublish, expired, expireError, bdRun }));
   const ok = !("error" in autoPublish && autoPublish.error) && !expireError;
-  return NextResponse.json({ ok, autoPublish, expired, expireError }, { status: ok ? 200 : 500 });
+  return NextResponse.json({ ok, autoPublish, expired, expireError, bdRun }, { status: ok ? 200 : 500 });
 }
