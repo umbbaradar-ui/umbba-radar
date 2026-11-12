@@ -94,7 +94,7 @@ const guide: Guide = {
     },
     {
       "type": "p",
-      "text": "자세히 보기: [임신 확인 후 할 일](/guide/pregnancy-confirmed-todo), [보건소 임산부 등록](/guide/health-center-registration), [출산 한 달 전 할 일](/guide/before-birth-todo)"
+      "text": "자세히 보기: [임신 확인 후 할 일](/guide/pregnancy-confirmed-todo), [보건소 임산부 등록](/guide/health-center-registration), [출산 한 달 전 할 일](/guide/before-birth-todo), [출산 준비물 리스트](/guide/birth-prep-list)"
     },
     {
       "type": "h2",

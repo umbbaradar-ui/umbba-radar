@@ -17,6 +17,7 @@ import {
 } from "@/modules/personalization/service-server";
 import { getCurrentUser } from "@/modules/user/service";
 import { getStagesForChildren } from "@/shared/utils/stages";
+import { isInBirthPrepWindow } from "@/modules/guide/prep";
 import { kstTodayStartIso } from "@/shared/utils/dday";
 
 export const revalidate = 60;
@@ -54,6 +55,8 @@ export default async function HomePage({ searchParams }: PageProps) {
 
   const hasChildren = childrenBirths.length > 0;
   const myChildStages = hasChildren ? getStagesForChildren(childrenBirths) : [];
+  // 출산 예정일로 등록한 자녀가 임신 32주~예정일 전날이면 홈에 출산 준비물 한 줄 (C219)
+  const prepDue = hasChildren && isInBirthPrepWindow(childrenBirths);
 
   return (
     <HomeView
@@ -61,6 +64,7 @@ export default async function HomePage({ searchParams }: PageProps) {
       loggedIn={Boolean(user)}
       hasChildren={hasChildren}
       myChildStages={myChildStages}
+      prepDue={prepDue}
       statusMap={statusMap}
       todayStartIso={kstTodayStartIso()}
     />

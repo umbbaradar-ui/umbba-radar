@@ -3,7 +3,7 @@
 // 직렬화 시 "<" 를 \u003c 로 바꿔 <script> 조기 종료(XSS)를 막는다 (Next json-ld 가이드 권고).
 // ============================================
 
-import { GUIDE_SITE_URL, guideDateIso } from "./constants";
+import { GUIDE_SITE_URL, guideDateIso, guideModifiedAt } from "./constants";
 import { plainText } from "./inline";
 import type { Guide, GuideLink } from "./types";
 
@@ -33,7 +33,7 @@ export function guideArticleJsonLd(guide: Guide) {
     mainEntityOfPage: url,
     image: [`${GUIDE_SITE_URL}/feature-graphic.png`],
     datePublished: guideDateIso(guide.publishedAt),
-    dateModified: guideDateIso(guide.checkedAt),
+    dateModified: guideDateIso(guideModifiedAt(guide)),
     author: PUBLISHER,
     publisher: PUBLISHER,
     isAccessibleForFree: true,

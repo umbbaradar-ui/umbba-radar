@@ -139,6 +139,10 @@ const guide: Guide = {
     },
     {
       "type": "p",
+      "text": "아기침대를 고를 때 재는 바 간격·매트리스 틈 기준은 [출산 준비물 편의 안전인증 확인법](/guide/birth-prep-list)에 있어요."
+    },
+    {
+      "type": "p",
       "text": "영유아 건강검진의 건강교육 항목에도 '영아돌연사증후군 예방'이 들어 있어요. 검진 시기는 [영유아 건강검진](/guide/infant-checkup)에, 접종 시기는 [예방접종 일정](/guide/vaccination-schedule)에 모았어요. 우리 아이에게 맞는 판단은 소아청소년과 의사와 상담하세요."
     }
   ],

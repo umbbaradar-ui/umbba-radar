@@ -146,6 +146,10 @@ const guide: Guide = {
       "text": "부모급여·아동수당은 **출생일을 포함해 60일 안에** 신청하면 태어난 달 몫부터 받아요. 지자체 출산지원금은 지역마다 내용이 달라서 주민센터에서 확인해요. 금액과 사용 기간은 [부모급여](/guide/parent-pay), [아동수당](/guide/child-allowance), [첫만남이용권](/guide/first-meeting-voucher) 편에 정리했어요."
     },
     {
+      "type": "p",
+      "text": "첫만남이용권으로 살 아기용품은 [신생아 준비물 리스트](/guide/birth-prep-list)에 범주별로 모아 두었어요."
+    },
+    {
       "type": "h2",
       "id": "sec-4",
       "text": "건강보험·검진·휴가도 기한이 있어요"

@@ -42,6 +42,7 @@ import { CardSlot } from "@/modules/analytics/ui/CardSlot";
 import { AdSlot } from "@/modules/advertising/ui/AdSlot";
 import { VISITED_LIST_KEY } from "@/modules/content/ui/BackToListLink";
 import { calcDDay } from "@/shared/utils/dday";
+import { track } from "@/modules/analytics/service";
 import {
   listUserPostStatuses,
   subscribe,
@@ -53,6 +54,8 @@ interface Props {
   loggedIn: boolean;
   hasChildren: boolean;
   myChildStages: StageCategory[];
+  /** 출산 예정일 기준 임신 32주~예정일 전날인 자녀가 있음 → 출산 준비물 체크리스트 한 줄 (C219) */
+  prepDue?: boolean;
   statusMap: Record<string, UserPostStatusValue>;
   todayStartIso: string;
   /** /test 미리보기 페이지에서만 지정 — 상태 스위처 노출 */
@@ -182,6 +185,7 @@ export function HomeView({
   loggedIn,
   hasChildren,
   myChildStages,
+  prepDue = false,
   statusMap: serverStatusMap,
   todayStartIso,
   previewMode,
@@ -530,6 +534,23 @@ export function HomeView({
           loggedIn={loggedIn}
           keywordTotal={keywordData.total}
         />
+
+        {/* 1-b. 막달 준비(임신 32주~예정일 전날) — 출산 준비물 체크리스트 한 줄 (C219) */}
+        {prepDue && (
+          <Link
+            href="/guide/birth-prep-list"
+            data-track-zone="home_prep"
+            onClick={() =>
+              track("prep_inlink_click", { from: "home", zone: "home_prep" })
+            }
+            className="mb-4 flex items-center justify-between gap-2 rounded-xl bg-white px-3.5 py-2.5 text-xs ring-1 ring-rose-200 hover:bg-rose-50"
+          >
+            <span className="font-bold text-slate-800">
+              출산이 가까워요 · 출산준비물 체크리스트(공식 수량)
+            </span>
+            <span className="shrink-0 font-bold text-rose-600">보기 →</span>
+          </Link>
+        )}
 
         {/* 2. 마감 레이더 */}
         {deadlineRadar.items.length > 0 && (

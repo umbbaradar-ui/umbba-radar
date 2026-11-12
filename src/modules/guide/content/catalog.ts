@@ -312,14 +312,15 @@ export const GUIDE_CATALOG: GuideLink[] = [
   },
   {
     "slug": "birth-prep-list",
-    "title": "출산 준비물, 언제 무엇부터 준비하나요?",
+    "title": "출산준비물 리스트, 언제 무엇을 몇 개 준비하나요?",
     "label": "출산 준비물",
     "category": "todo",
     "stages": [
       "pregnancy",
       "newborn"
     ],
-    "checkedAt": "2026-10-08"
+    "checkedAt": "2026-10-08",
+    "updatedAt": "2026-11-13"
   },
   {
     "slug": "vaccination-schedule",

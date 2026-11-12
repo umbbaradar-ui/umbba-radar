@@ -145,6 +145,10 @@ const guide: Guide = {
       ]
     },
     {
+      "type": "p",
+      "text": "배냇저고리·기저귀처럼 처음 필요한 물건의 공식 수량은 [출산준비물 체크리스트](/guide/birth-prep-list)에서 확인할 수 있어요."
+    },
+    {
       "type": "h2",
       "id": "sec-4",
       "text": "신청은 이렇게 해요"

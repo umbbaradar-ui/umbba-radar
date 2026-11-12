@@ -1,5 +1,6 @@
 import type { MetadataRoute } from "next";
 import { listPosts } from "@/modules/content/service";
+import { guideModifiedAt } from "@/modules/guide/constants";
 import { listGuideLinks } from "@/modules/guide/service";
 
 // 사이트맵 — 정적 페이지 + DB의 모든 published 카드
@@ -62,11 +63,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   ];
 
   // 시기별 가이드 — 코드에 들어 있는 정적 글이라 DB 실패와 무관하게 항상 포함.
-  // lastModified = 원고의 최종 확인일(내용을 다시 확인한 날).
+  // lastModified = 원고의 최종 확인일(내용을 다시 확인한 날) — 수정일(문장·링크만 고친 날)이 더 늦으면 그 날.
   for (const g of listGuideLinks()) {
     staticPages.push({
       url: `${BASE_URL}/guide/${g.slug}`,
-      lastModified: new Date(`${g.checkedAt}T00:00:00+09:00`),
+      lastModified: new Date(`${guideModifiedAt(g)}T00:00:00+09:00`),
       changeFrequency: "monthly",
       priority: 0.8,
     });

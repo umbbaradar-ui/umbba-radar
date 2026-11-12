@@ -17,6 +17,7 @@ import {
   GUIDE_CATEGORY_LABELS,
   formatGuideDate,
   guideDateIso,
+  guideModifiedAt,
 } from "@/modules/guide/constants";
 import { plainText } from "@/modules/guide/inline";
 import {
@@ -38,6 +39,7 @@ import {
   GuideBenefitsSkeleton,
 } from "@/modules/guide/ui/GuideBenefits";
 import { Inline } from "@/modules/guide/ui/Inline";
+import { PrepInlinkTracker } from "@/modules/guide/ui/PrepInlinkTracker";
 
 export const dynamicParams = false;
 
@@ -77,7 +79,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       locale: "ko_KR",
       type: "article",
       publishedTime: guideDateIso(guide.publishedAt),
-      modifiedTime: guideDateIso(guide.checkedAt),
+      modifiedTime: guideDateIso(guideModifiedAt(guide)),
       images: [ogImage],
     },
     twitter: {
@@ -93,6 +95,7 @@ export default async function GuideDetailPage({ params }: PageProps) {
   const { slug } = await params;
   const guide = getGuide(slug);
   if (!guide) notFound();
+  const modifiedAt = guideModifiedAt(guide); // 최종 확인일과 수정일 중 늦은 날
 
   const sections = guide.body.filter(
     (b): b is Extract<typeof b, { type: "h2" }> => b.type === "h2"
@@ -143,7 +146,8 @@ export default async function GuideDetailPage({ params }: PageProps) {
         </ol>
       </nav>
 
-      <article className="break-keep">
+      <PrepInlinkTracker fromSlug={guide.slug} />
+      <article className="break-keep" data-track-zone="guide_body">
         <header className="mb-5">
           <div className="mb-2 flex flex-wrap gap-1">
             <span className="rounded-full bg-slate-900 px-2.5 py-0.5 text-[11px] font-bold text-white">
@@ -166,6 +170,12 @@ export default async function GuideDetailPage({ params }: PageProps) {
             최종 확인{" "}
             <time dateTime={guide.checkedAt}>{formatGuideDate(guide.checkedAt)}</time> · 공식
             출처 {guide.sources.length}곳
+            {modifiedAt !== guide.checkedAt && (
+              <span className="whitespace-nowrap">
+                {" "}· 최종 수정{" "}
+                <time dateTime={modifiedAt}>{formatGuideDate(modifiedAt)}</time>
+              </span>
+            )}
           </p>
         </header>
 
@@ -286,7 +296,7 @@ export default async function GuideDetailPage({ params }: PageProps) {
       </section>
 
       {related.length > 0 && (
-        <section aria-labelledby="guide-related" className="mt-10">
+        <section aria-labelledby="guide-related" className="mt-10" data-track-zone="guide_related">
           <h2
             id="guide-related"
             className="mb-3 text-lg font-extrabold tracking-tight text-slate-900"

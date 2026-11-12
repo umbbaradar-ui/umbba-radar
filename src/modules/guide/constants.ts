@@ -40,6 +40,11 @@ export function formatGuideDate(ymd: string): string {
   return `${y}년 ${m}월 ${d}일`;
 }
 
+/** 최종 수정일 = 최종 확인일과 수정일(있으면) 중 늦은 날. YYYY-MM-DD 문자열 비교 */
+export function guideModifiedAt(g: { checkedAt: string; updatedAt?: string }): string {
+  return g.updatedAt && g.updatedAt > g.checkedAt ? g.updatedAt : g.checkedAt;
+}
+
 /** "2026-10-08" → KST 자정 ISO (JSON-LD·sitemap용) */
 export function guideDateIso(ymd: string): string {
   return `${ymd}T00:00:00+09:00`;

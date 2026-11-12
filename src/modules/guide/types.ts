@@ -51,8 +51,13 @@ export interface GuideLink {
   label: string;
   category: GuideCategory;
   stages: StageCategory[];
-  /** 최종 확인일 YYYY-MM-DD — 화면 표기·sitemap·JSON-LD dateModified */
+  /** 최종 확인일 YYYY-MM-DD — 공식 출처를 다시 확인한 날 */
   checkedAt: string;
+  /**
+   * 최종 수정일 YYYY-MM-DD (선택) — 출처 재확인 없이 문장·링크·FAQ만 고친 날.
+   * 있으면 화면 '최종 수정'·sitemap lastModified·JSON-LD dateModified 는 checkedAt 과 이 값 중 늦은 날을 쓴다.
+   */
+  updatedAt?: string;
 }
 
 export interface Guide extends GuideLink {
