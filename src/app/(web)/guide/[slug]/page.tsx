@@ -1,7 +1,7 @@
 // ============================================
 // /guide/[slug] — 시기별 가이드 상세
 //
-// 구성(GEO 순서): 질문형 H1 → 최종 확인일 → 3줄 답 → 본문 → 자주 묻는 질문
+// 구성(GEO 순서): 질문형 H1 → 최종 확인일 → 3줄 답 → 본문 → (준비물 체크·제휴 카드, 데이터 있는 편만) → 자주 묻는 질문
 //                → 공식 출처·확인일 → 이 시기 진행 중인 혜택(카드 위젯) → 함께 볼 가이드
 // 데이터: src/modules/guide/content (원고 md → guide_build.py 생성). DB 없음.
 // generateStaticParams 로 slug 목록을 고정하고(dynamicParams=false) 모르는 slug 는 404.
@@ -25,11 +25,13 @@ import {
   guideFaqJsonLd,
   serializeJsonLd,
 } from "@/modules/guide/jsonld";
+import { getGuideAffiliate } from "@/modules/guide/affiliate";
 import {
   getGuide,
   getRelatedGuides,
   listGuideLinks,
 } from "@/modules/guide/service";
+import { GuideAffiliateCard } from "@/modules/guide/ui/GuideAffiliateCard";
 import { GuideBody } from "@/modules/guide/ui/GuideBody";
 import {
   GuideBenefits,
@@ -97,6 +99,7 @@ export default async function GuideDetailPage({ params }: PageProps) {
   );
   const related = getRelatedGuides(guide);
   const faqLd = guideFaqJsonLd(guide);
+  const affiliate = getGuideAffiliate(guide.slug);
 
   return (
     <main className="mx-auto max-w-3xl px-4 pb-10 pt-4">
@@ -204,6 +207,8 @@ export default async function GuideDetailPage({ params }: PageProps) {
         )}
 
         <GuideBody blocks={guide.body} />
+
+        {affiliate && <GuideAffiliateCard data={affiliate} />}
 
         {guide.faq.length > 0 && (
           <section aria-labelledby="guide-faq" className="mt-10">
