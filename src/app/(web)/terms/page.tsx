@@ -141,8 +141,11 @@ export default function TermsPage() {
       <Section title="제10조 (광고 표시 및 수익화)">
         <ol className="list-decimal space-y-1 pl-5">
           <li>
-            <strong>현재 서비스는 광고를 표시하지 않습니다.</strong> 다만 운영 비용
-            충당 및 지속 가능성을 위해 향후 다음 형태의 광고가 도입될 수 있습니다.
+            <strong>현재 배너·디스플레이 광고는 표시하지 않습니다.</strong> 시기별
+            가이드의 준비물 체크 카드에는 &lsquo;광고&rsquo; 표시와 함께 제휴(판매
+            수수료) 링크가 붙을 수 있으며, 그 내용은 /about/partners(광고·제휴
+            안내)에 따릅니다. 운영 비용 충당 및 지속 가능성을 위해 향후 다음 형태의
+            광고가 도입될 수 있습니다.
           </li>
           <li className="list-none">
             <ul className="ml-4 list-disc space-y-0.5">

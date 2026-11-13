@@ -4,6 +4,12 @@
 // ============================================
 
 import type { Metadata } from "next";
+import Link from "next/link";
+import {
+  PARTNER_NOTICE_POSTED,
+  PRIVACY_PARTNER_COOKIE_LINE,
+  formatKoreanDate,
+} from "@/modules/guide/disclosure";
 
 export const metadata: Metadata = {
   title: "개인정보처리방침 — 엄빠레이더",
@@ -18,7 +24,8 @@ export default function PrivacyPage() {
           개인정보처리방침
         </h1>
         <p className="mt-2 text-xs text-slate-500">
-          시행일: 2026년 5월 22일 · 최종 업데이트: 2026년 5월 25일
+          시행일: 2026년 5월 22일 · 최종 업데이트:{" "}
+          {formatKoreanDate(PARTNER_NOTICE_POSTED)}
         </p>
         <div className="mt-4 rounded-xl bg-amber-50 px-4 py-3 text-xs text-amber-700">
           ⚠️ 본 방침은 <strong>초안(draft)</strong>입니다. 정식 출시 전
@@ -138,6 +145,13 @@ export default function PrivacyPage() {
           <li>관리자 인증 (umbba-admin 쿠키)</li>
           <li>익명 식별자 보존 (umbba-radar:anon-id, 로컬스토리지)</li>
           <li>신청함/관심 체크 상태 (umbba-radar:user-post-status, 로컬스토리지)</li>
+          <li data-testid="privacy-partner-cookie">
+            {PRIVACY_PARTNER_COOKIE_LINE} (
+            <Link href="/about/partners" className="underline">
+              광고·제휴 안내
+            </Link>
+            )
+          </li>
         </ul>
         <p className="mt-2">
           브라우저 설정에서 쿠키·로컬스토리지를 거부할 수 있으나, 일부 기능이 제한될
@@ -162,10 +176,16 @@ export default function PrivacyPage() {
         </p>
       </Section>
 
-      <Section title="10. 광고 및 수익화 (향후 도입 예정)">
+      <Section title="10. 광고 및 수익화">
         <p className="mb-2">
-          <strong>현재 서비스는 광고를 표시하지 않습니다.</strong> 다만 운영 비용
-          충당 및 지속 가능성을 위해 향후 다음 형태의 광고가 도입될 수 있습니다.
+          <strong>현재 배너·디스플레이 광고는 표시하지 않습니다.</strong> 시기별
+          가이드의 준비물 체크 카드에는 &lsquo;광고&rsquo; 표시와 함께 제휴(판매
+          수수료) 링크가 붙을 수 있으며, 그 내용은{" "}
+          <Link href="/about/partners" className="font-semibold text-rose-600 underline">
+            광고·제휴 안내
+          </Link>
+          에 따릅니다. 운영 비용 충당 및 지속 가능성을 위해 향후 다음 형태의
+          광고가 도입될 수 있습니다.
         </p>
         <ul className="list-disc space-y-1 pl-5">
           <li>카드 사이에 표시되는 배너·디스플레이 광고</li>

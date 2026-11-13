@@ -138,6 +138,10 @@ export default async function WebLayout({
             업체·브랜드 문의
           </Link>
           <span aria-hidden="true">·</span>
+          <Link href="/about/partners" className="hover:text-slate-600 hover:underline">
+            광고·제휴 안내
+          </Link>
+          <span aria-hidden="true">·</span>
           <Link href="/terms" className="hover:text-slate-600 hover:underline">
             이용약관
           </Link>

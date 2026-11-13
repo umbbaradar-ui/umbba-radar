@@ -16,6 +16,7 @@ const EXEMPT_PREFIXES = [
   "/business", // 업체(B2B) 문의 — 업체는 로그인·자녀정보 없이 제출
   "/terms",
   "/privacy",
+  "/about", // 광고·제휴 안내 — 제휴 심사 담당자·비회원도 그대로 보게
 ];
 
 export async function proxy(request: NextRequest) {

@@ -163,6 +163,12 @@ export function BottomTabNav({ user }: Props) {
               onClick={() => setMoreOpen(false)}
             />
             <SheetLink
+              href="/about/partners"
+              icon="🏷️"
+              label="광고·제휴 안내"
+              onClick={() => setMoreOpen(false)}
+            />
+            <SheetLink
               href="/terms"
               icon="📄"
               label="이용약관"
