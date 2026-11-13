@@ -459,5 +459,202 @@ export const GUIDE_CATALOG: GuideLink[] = [
       "toddler"
     ],
     "checkedAt": "2026-10-08"
+  },
+  {
+    "slug": "baby-account-gift-tax",
+    "title": "아기 통장에 부모급여 넣으면 증여세 내나요?",
+    "label": "아기 통장 증여세",
+    "category": "money",
+    "stages": [
+      "newborn",
+      "infant",
+      "toddler"
+    ],
+    "checkedAt": "2026-10-30"
+  },
+  {
+    "slug": "bcg-vaccine",
+    "title": "아기 BCG 접종, 언제 맞고 피내용과 경피용은 뭐가 다른가요?",
+    "label": "아기 BCG 접종",
+    "category": "health",
+    "stages": [
+      "newborn"
+    ],
+    "checkedAt": "2026-10-31"
+  },
+  {
+    "slug": "child-care-service",
+    "title": "아이돌봄서비스, 정부지원 기준과 비용은 얼마인가요?",
+    "label": "아이돌봄서비스",
+    "category": "money",
+    "stages": [
+      "infant",
+      "toddler"
+    ],
+    "checkedAt": "2026-10-30"
+  },
+  {
+    "slug": "childcare-fee-card",
+    "title": "어린이집 보육료 지원, 아이행복카드로 어떻게 결제하나요?",
+    "label": "보육료·아이행복카드",
+    "category": "money",
+    "stages": [
+      "infant",
+      "toddler"
+    ],
+    "checkedAt": "2026-10-31"
+  },
+  {
+    "slug": "daycare-entry-prep",
+    "title": "어린이집 입소 준비, 서류는 무엇을 내나요?",
+    "label": "어린이집 입소 서류",
+    "category": "todo",
+    "stages": [
+      "infant",
+      "toddler"
+    ],
+    "checkedAt": "2026-10-30"
+  },
+  {
+    "slug": "first-birthday-todo",
+    "title": "돌 준비, 12개월 무렵 챙길 공식 일정은?",
+    "label": "돌 무렵 할 일",
+    "category": "todo",
+    "stages": [
+      "infant",
+      "toddler"
+    ],
+    "checkedAt": "2026-10-30"
+  },
+  {
+    "slug": "gestational-diabetes-test",
+    "title": "임신 당뇨 검사, 몇 주에 받고 금식은 해야 하나요?",
+    "label": "임신 당뇨 검사",
+    "category": "health",
+    "stages": [
+      "pregnancy"
+    ],
+    "checkedAt": "2026-10-30"
+  },
+  {
+    "slug": "high-risk-pregnancy-medical",
+    "title": "고위험 임산부 의료비 지원, 누가 얼마나 받나요?",
+    "label": "고위험 임산부 의료비",
+    "category": "money",
+    "stages": [
+      "pregnancy",
+      "newborn"
+    ],
+    "checkedAt": "2026-10-30"
+  },
+  {
+    "slug": "multi-child-benefits",
+    "title": "다자녀 기준, 둘째부터 무엇이 달라지나요?",
+    "label": "다자녀 기준",
+    "category": "money",
+    "stages": [
+      "pregnancy",
+      "newborn",
+      "infant",
+      "toddler"
+    ],
+    "checkedAt": "2026-10-30"
+  },
+  {
+    "slug": "newborn-health-insurance",
+    "title": "신생아 건강보험 피부양자 등록, 언제 어떻게 하나요?",
+    "label": "신생아 건강보험",
+    "category": "todo",
+    "stages": [
+      "newborn"
+    ],
+    "checkedAt": "2026-11-03"
+  },
+  {
+    "slug": "newborn-hearing-screening",
+    "title": "신생아 난청검사, 언제 받고 검사비 지원은 어떻게 받나요?",
+    "label": "신생아 난청검사",
+    "category": "health",
+    "stages": [
+      "newborn",
+      "infant"
+    ],
+    "checkedAt": "2026-10-30"
+  },
+  {
+    "slug": "newborn-metabolic-screening",
+    "title": "신생아 선천성대사이상 검사, 언제 받고 비용은 지원되나요?",
+    "label": "선천성대사이상 검사",
+    "category": "health",
+    "stages": [
+      "newborn"
+    ],
+    "checkedAt": "2026-10-30"
+  },
+  {
+    "slug": "night-clinic-moonlight",
+    "title": "밤·휴일에 아기가 아프면 어디로 가나요?",
+    "label": "달빛어린이병원",
+    "category": "health",
+    "stages": [
+      "newborn",
+      "infant",
+      "toddler"
+    ],
+    "checkedAt": "2026-10-30"
+  },
+  {
+    "slug": "preemie-medical-support",
+    "title": "미숙아 의료비 지원, 대상과 한도는 어떻게 되나요?",
+    "label": "미숙아 의료비 지원",
+    "category": "money",
+    "stages": [
+      "newborn",
+      "infant"
+    ],
+    "checkedAt": "2026-10-30"
+  },
+  {
+    "slug": "pregnancy-midterm-todo",
+    "title": "임신 중기 할 일, 몇 주에 무엇을 챙기나요?",
+    "label": "임신 중기 할 일",
+    "category": "todo",
+    "stages": [
+      "pregnancy"
+    ],
+    "checkedAt": "2026-10-30"
+  },
+  {
+    "slug": "pregnant-worker-rights",
+    "title": "임신 사실 회사에 알리면 무엇을 요청할 수 있나요?",
+    "label": "임신 중 회사 제도",
+    "category": "money",
+    "stages": [
+      "pregnancy"
+    ],
+    "checkedAt": "2026-10-30"
+  },
+  {
+    "slug": "prenatal-screening-test",
+    "title": "기형아 검사, 임신 몇 주에 어떤 검사를 받나요?",
+    "label": "기형아 검사 시기",
+    "category": "health",
+    "stages": [
+      "pregnancy"
+    ],
+    "checkedAt": "2026-10-30"
+  },
+  {
+    "slug": "review-ad-banned-words",
+    "title": "화장품 광고 금지 표현, 체험단 후기엔 뭘 피하나요?",
+    "label": "후기 금지 표현",
+    "category": "sponsor",
+    "stages": [
+      "pregnancy",
+      "newborn",
+      "infant",
+      "toddler"
+    ],
+    "checkedAt": "2026-10-30"
   }
 ];

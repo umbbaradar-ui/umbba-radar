@@ -45,6 +45,24 @@ import parentingExperienceApply from "./parenting-experience-apply";
 import sweepstakesTax from "./sweepstakes-tax";
 import kidsModelScam from "./kids-model-scam";
 import eventDmScam from "./event-dm-scam";
+import babyAccountGiftTax from "./baby-account-gift-tax";
+import bcgVaccine from "./bcg-vaccine";
+import childCareService from "./child-care-service";
+import childcareFeeCard from "./childcare-fee-card";
+import daycareEntryPrep from "./daycare-entry-prep";
+import firstBirthdayTodo from "./first-birthday-todo";
+import gestationalDiabetesTest from "./gestational-diabetes-test";
+import highRiskPregnancyMedical from "./high-risk-pregnancy-medical";
+import multiChildBenefits from "./multi-child-benefits";
+import newbornHealthInsurance from "./newborn-health-insurance";
+import newbornHearingScreening from "./newborn-hearing-screening";
+import newbornMetabolicScreening from "./newborn-metabolic-screening";
+import nightClinicMoonlight from "./night-clinic-moonlight";
+import preemieMedicalSupport from "./preemie-medical-support";
+import pregnancyMidtermTodo from "./pregnancy-midterm-todo";
+import pregnantWorkerRights from "./pregnant-worker-rights";
+import prenatalScreeningTest from "./prenatal-screening-test";
+import reviewAdBannedWords from "./review-ad-banned-words";
 
 /** 목차-40 순서 */
 export const GUIDES: Guide[] = [
@@ -88,4 +106,22 @@ export const GUIDES: Guide[] = [
   sweepstakesTax,
   kidsModelScam,
   eventDmScam,
+  babyAccountGiftTax,
+  bcgVaccine,
+  childCareService,
+  childcareFeeCard,
+  daycareEntryPrep,
+  firstBirthdayTodo,
+  gestationalDiabetesTest,
+  highRiskPregnancyMedical,
+  multiChildBenefits,
+  newbornHealthInsurance,
+  newbornHearingScreening,
+  newbornMetabolicScreening,
+  nightClinicMoonlight,
+  preemieMedicalSupport,
+  pregnancyMidtermTodo,
+  pregnantWorkerRights,
+  prenatalScreeningTest,
+  reviewAdBannedWords,
 ];
