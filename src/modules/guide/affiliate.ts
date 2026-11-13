@@ -3,8 +3,10 @@
 //
 // 정본 기획: work 30-umbba/엄빠레이더/수익화/수익후보-비교-20261111.md (C205)
 //          시안 시안-출산준비물-제휴카드.html · 패치 C214(0001) · C225(0003, 2·3번째 자리)
+//          · C263(0004, 4번째 자리 — 2027 배포분 daycare-entry-prep)
 // - 이 파일의 AFFILIATES 맵에 데이터가 있는 slug 에서만 /guide/[slug] 에 카드가 뜬다.
-//   지금 3편: birth-prep-list · before-birth-todo · weaning-start
+//   지금 4편: birth-prep-list · before-birth-todo · weaning-start · daycare-entry-prep
+//   (daycare-entry-prep 은 가이드 본문이 배포되기 전엔 /guide/daycare-entry-prep 이 없어 카드도 안 뜬다)
 // - content/ 는 guide_build.py 생성물이라 여기(content 밖)에 둔다 — 재생성해도 지워지지 않는다.
 // - url 이 null 인 품목은 '가격 보기' 버튼을 숨긴다. 그 편에 제휴 링크가 하나도 없으면
 //   카드는 '체크리스트 전용'(광고 배지·수수료 고지 없음)으로 렌더된다. 판단은 편마다 따로다.
@@ -12,7 +14,7 @@
 // - noLink=true 품목(먹는 것·서류 등)은 url 을 넣어도 링크가 생기지 않는다 — 체크만 한다.
 // - 품목은 그 편 본문(FAQ 포함)에 나오는 것만 쓴다. 수량·메모도 본문 문장 안에서만.
 //
-// ▶ 제휴 링크 넣는 곳: 아래 각 편 상수(BIRTH_PREP · BEFORE_BIRTH · WEANING_START)의
+// ▶ 제휴 링크 넣는 곳: 아래 각 편 상수(BIRTH_PREP · BEFORE_BIRTH · WEANING_START · DAYCARE_ENTRY)의
 //   partner 와 각 품목 url (https:// 만 허용)
 // ============================================
 
@@ -24,6 +26,8 @@ export type AffiliateGroup =
   | "baby"
   | "tools"
   | "food"
+  | "docs"
+  | "daycare"
   | "safety";
 
 export interface AffiliateItem {
@@ -65,6 +69,8 @@ export const AFFILIATE_GROUP_LABELS: Record<AffiliateGroup, string> = {
   baby: "아기에게 입힐 것",
   tools: "먹이는 도구",
   food: "첫 음식",
+  docs: "입소 서류",
+  daycare: "어린이집 준비물",
   safety: "안전인증 먼저",
 };
 
@@ -76,6 +82,8 @@ export const AFFILIATE_GROUP_ORDER: AffiliateGroup[] = [
   "baby",
   "tools",
   "food",
+  "docs",
+  "daycare",
   "safety",
 ];
 
@@ -151,10 +159,35 @@ const WEANING_START: GuideAffiliate = {
   ],
 };
 
+// daycare-entry-prep(2027 배포분 원고) 표 '입소가 정해지면 어떤 서류를 내나요?'의 서류 4가지와
+// 본문 '준비물과 적응 일정'의 이름표·여벌옷만. 서류는 체크만 한다(noLink).
+// 준비물은 어린이집마다 달라 공식 목록이 없다(본문 FAQ) → 본문에 나온 2개만 두고 안내문을 먼저 보라고 쓴다.
+// 안전 품목 없음(아기 몸을 받치는 제품·먹는 것이 본문에 없다).
+const DAYCARE_ENTRY: GuideAffiliate = {
+  slug: "daycare-entry-prep",
+  partner: null,
+  title: "어린이집 입소 준비 체크",
+  lead: "공식 안내로 확인되는 서류 4가지와 본문에 나온 준비물이에요. 챙긴 건 체크해 두세요. 이 기기에만 저장돼요.",
+  heroImage: null,
+  notes: {
+    docs: "어린이집마다 받는 양식이 더 있을 수 있어요. 자동으로 연계되는 자격은 서류를 따로 내지 않아도 돼요.",
+    daycare: "준비물은 어린이집마다 달라서 공식 목록이 없어요. 입소 전에 받는 어린이집 안내문을 기준으로 챙기세요.",
+  },
+  items: [
+    { id: "checkup_result", name: "건강검진결과통보서", qty: "건강보험공단 영유아 건강검진 결과조회", group: "docs", url: null, safety: false, noLink: true },
+    { id: "vaccine_cert", name: "예방접종증명서", qty: "어린이집이 따로 달라고 하면 예방접종도우미·정부24(무료)", group: "docs", url: null, safety: false, noLink: true },
+    { id: "priority_proof", name: "우선순위 증빙", qty: "재직·소득증명 등, 어린이집이나 아이사랑에 제출", group: "docs", url: null, safety: false, noLink: true },
+    { id: "fee_support", name: "보육료 지원 신청", qty: "주민센터·복지로 — 카드만 만들면 시작되지 않아요", group: "docs", url: null, safety: false, noLink: true },
+    { id: "name_label", name: "이름표", qty: "어린이집 안내문 기준", group: "daycare", url: null, safety: false },
+    { id: "spare_clothes", name: "여벌옷", qty: "어린이집 안내문 기준", group: "daycare", url: null, safety: false },
+  ],
+};
+
 const AFFILIATES: Record<string, GuideAffiliate> = {
   [BIRTH_PREP.slug]: BIRTH_PREP,
   [BEFORE_BIRTH.slug]: BEFORE_BIRTH,
   [WEANING_START.slug]: WEANING_START,
+  [DAYCARE_ENTRY.slug]: DAYCARE_ENTRY,
 };
 
 /** https 링크만 인정한다(오타·javascript: 방지). 안전·noLink 품목은 링크를 무시한다. */
