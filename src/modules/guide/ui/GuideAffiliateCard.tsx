@@ -13,6 +13,7 @@
 //   aff_click      {slug, item, partner} 가격 보기
 //   prep_check     {slug, item, checked} 체크/해제
 //   prep_safety_click {slug, item}      안전 품목 인증 조회
+// 카드가 붙는 편과 품목·제목·안내 문구는 affiliate.ts 의 slug 별 데이터(C225: 3편)가 정한다.
 // ============================================
 
 import { useEffect, useMemo, useRef, useSyncExternalStore } from "react";
@@ -20,6 +21,9 @@ import { track } from "@/modules/analytics/service";
 import {
   AFFILIATE_GROUP_LABELS,
   AFFILIATE_GROUP_ORDER,
+  DEFAULT_AFFILIATE_LEAD,
+  DEFAULT_AFFILIATE_TITLE,
+  DEFAULT_SAFETY_NOTE,
   SAFETY_CHECK_URL,
   affiliateHref,
   hasAffiliateLinks,
@@ -64,6 +68,8 @@ function subscribe(onChange: () => void) {
 
 export function GuideAffiliateCard({ data }: { data: GuideAffiliate }) {
   const { slug, partner, items } = data;
+  const title = data.title ?? DEFAULT_AFFILIATE_TITLE;
+  const lead = data.lead ?? DEFAULT_AFFILIATE_LEAD;
   const key = storageKey(slug);
   const sponsored = hasAffiliateLinks(data);
   const mode = sponsored ? "affiliate" : "checklist";
@@ -136,11 +142,9 @@ export function GuideAffiliateCard({ data }: { data: GuideAffiliate }) {
 
       <div className="px-4 pb-1.5 pt-3.5">
         <h2 id={titleId} className="text-[17px] font-extrabold tracking-tight text-slate-900">
-          출산 준비물 체크
+          {title}
         </h2>
-        <p className="mt-1 text-[13px] leading-normal text-slate-500">
-          아이사랑 공식 목록 기준 수량이에요. 챙긴 건 체크해 두세요. 이 기기에만 저장돼요.
-        </p>
+        <p className="mt-1 text-[13px] leading-normal text-slate-500">{lead}</p>
       </div>
 
       <div className="flex items-center gap-2.5 px-4 pb-1 pt-2" aria-live="polite">
@@ -167,11 +171,14 @@ export function GuideAffiliateCard({ data }: { data: GuideAffiliate }) {
         if (rows.length === 0) return null;
         const gid = `prep-${slug}-${group}`;
         const isSafety = group === "safety";
+        // 그룹 전체가 링크 없는 품목(안전·noLink)이면 제휴 모드에서 '광고 링크 없음'을 붙인다
+        const noAdGroup = rows.every((i) => i.safety || i.noLink);
+        const note = data.notes?.[group] ?? (isSafety ? DEFAULT_SAFETY_NOTE : null);
         return (
           <div key={group} role="group" aria-labelledby={gid} className="pb-0.5 pt-1.5">
             <div id={gid} className="px-4 pb-1 pt-2 text-xs font-extrabold text-slate-500">
               {AFFILIATE_GROUP_LABELS[group]}
-              {isSafety && sponsored && " — 광고 링크 없음"}
+              {noAdGroup && sponsored && " — 광고 링크 없음"}
             </div>
             {rows.map((item) => {
               const inputId = `prep-${slug}-${item.id}`;
@@ -230,10 +237,9 @@ export function GuideAffiliateCard({ data }: { data: GuideAffiliate }) {
                 </div>
               );
             })}
-            {isSafety && (
+            {note && (
               <p className="mx-4 mt-1 rounded-[10px] bg-slate-50 px-3 py-2.5 text-[12.5px] leading-normal text-slate-600">
-                아기 몸을 지키는 제품은 엄빠레이더가 고르지 않아요. 제품안전정보센터에서
-                인증번호를 확인하고, 빌리거나 중고로 살 때도 확인하세요.
+                {note}
               </p>
             )}
           </div>
