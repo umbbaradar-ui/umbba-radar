@@ -65,7 +65,7 @@ export const PRIVACY_PARTNER_COOKIE_LINE =
  * 개인정보처리방침 11절·이용약관 제11조는 '광고 도입' 같은 중대한 변경을 30일 전에 공지한다고 약속했다
  * → 제휴 링크는 게시일 + PARTNER_NOTICE_DAYS 일 이후에만 붙인다(/about/partners 상단에 날짜 표시).
  */
-export const PARTNER_NOTICE_POSTED = "2026-11-16";
+export const PARTNER_NOTICE_POSTED = "2026-11-17";
 export const PARTNER_NOTICE_DAYS = 30;
 
 /** 게시일 + 30일 (KST 날짜 문자열). */
