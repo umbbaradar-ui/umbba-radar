@@ -43,6 +43,83 @@
 - [유모차](https://umbba-radar.com/explore?q=%EC%9C%A0%EB%AA%A8%EC%B0%A8), [카시트](https://umbba-radar.com/explore?q=%EC%B9%B4%EC%8B%9C%ED%8A%B8), [기저귀](https://umbba-radar.com/explore?q=%EA%B8%B0%EC%A0%80%EA%B7%80), [이유식](https://umbba-radar.com/explore?q=%EC%9D%B4%EC%9C%A0%EC%8B%9D), [물티슈](https://umbba-radar.com/explore?q=%EB%AC%BC%ED%8B%B0%EC%8A%88), [아기띠](https://umbba-radar.com/explore?q=%EC%95%84%EA%B8%B0%EB%9D%A0), [젖병](https://umbba-radar.com/explore?q=%EC%A0%96%EB%B3%91), [분유](https://umbba-radar.com/explore?q=%EB%B6%84%EC%9C%A0)
 - 조합 예: 영아 체험단 중 이유식 → `https://umbba-radar.com/explore?stage=infant&type=experience&q=이유식`
 
+## 육아 가이드
+
+임신·출산·육아 제도와 준비를 공식 자료로 대조해 정리한 가이드 58편입니다. 형식: `https://umbba-radar.com/guide/{slug}` · 전체 목록: [가이드 허브](https://umbba-radar.com/guide)
+
+### 제도·지원금
+
+- [부모급여, 얼마를 언제까지 신청해야 받나요?](https://umbba-radar.com/guide/parent-pay)
+- [아동수당, 2026년엔 몇 살까지 얼마를 받나요?](https://umbba-radar.com/guide/child-allowance)
+- [첫만남이용권, 얼마를 언제까지 어디에 쓰나요?](https://umbba-radar.com/guide/first-meeting-voucher)
+- [가정양육수당, 두 돌부터 얼마이고 어린이집 가면요?](https://umbba-radar.com/guide/home-care-allowance)
+- [임신·출산 진료비 바우처 100만원, 언제까지 어디에 쓰나요?](https://umbba-radar.com/guide/pregnancy-medical-voucher)
+- [정부지원 산후도우미, 언제 신청하고 얼마나 지원되나요?](https://umbba-radar.com/guide/postpartum-care-service)
+- [2027년 7월 이후 태어나면 지원금이 어떻게 바뀌나요?](https://umbba-radar.com/guide/birth-support-2027)
+- [지자체 출산지원금, 우리 동네 금액은 어디서 확인하나요?](https://umbba-radar.com/guide/local-birth-grant)
+- [2026 육아휴직 급여, 매달 얼마이고 어떻게 신청하나요?](https://umbba-radar.com/guide/parental-leave-pay)
+- [6+6 부모육아휴직제, 부모가 함께 쓰면 얼마를 받나요?](https://umbba-radar.com/guide/parents-together-leave)
+- [배우자 출산휴가 20일, 언제부터 언제까지 나눠 쓰나요?](https://umbba-radar.com/guide/spouse-birth-leave)
+- [출산전후휴가 90일, 급여는 얼마이고 누가 주나요?](https://umbba-radar.com/guide/maternity-leave-pay)
+- [임신기 근로시간 단축, 몇 주에 하루 몇 시간 줄이나요?](https://umbba-radar.com/guide/pregnancy-reduced-hours)
+- [육아기 근로시간 단축, 대상·기간·급여는 어떻게 되나요?](https://umbba-radar.com/guide/childcare-reduced-hours)
+- [출산한 해 연말정산, 어떤 공제를 받나요?](https://umbba-radar.com/guide/tax-after-birth)
+- [회사 출산지원금, 세금 없이 얼마까지 받을 수 있나요?](https://umbba-radar.com/guide/company-birth-bonus-tax)
+- [임산부 혜택, KTX 할인·주차·에너지바우처는 어떻게 받나요?](https://umbba-radar.com/guide/pregnant-perks)
+- [아기 통장에 부모급여 넣으면 증여세 내나요?](https://umbba-radar.com/guide/baby-account-gift-tax)
+- [아이돌봄서비스, 정부지원 기준과 비용은 얼마인가요?](https://umbba-radar.com/guide/child-care-service)
+- [어린이집 보육료 지원, 아이행복카드로 어떻게 결제하나요?](https://umbba-radar.com/guide/childcare-fee-card)
+- [고위험 임산부 의료비 지원, 누가 얼마나 받나요?](https://umbba-radar.com/guide/high-risk-pregnancy-medical)
+- [다자녀 기준, 둘째부터 무엇이 달라지나요?](https://umbba-radar.com/guide/multi-child-benefits)
+- [미숙아 의료비 지원, 대상과 한도는 어떻게 되나요?](https://umbba-radar.com/guide/preemie-medical-support)
+- [임신 사실 회사에 알리면 무엇을 요청할 수 있나요?](https://umbba-radar.com/guide/pregnant-worker-rights)
+
+### 준비·체크리스트
+
+- [출산 후 해야 할 일, 기한 순서대로 정리하면?](https://umbba-radar.com/guide/after-birth-todo)
+- [임신부터 만 3세까지, 시기별로 무엇을 신청하나요?](https://umbba-radar.com/guide/stage-overview)
+- [임신 확인 후 할 일, 무엇부터 순서대로 하나요?](https://umbba-radar.com/guide/pregnancy-confirmed-todo)
+- [보건소 임산부 등록, 무엇을 받고 무엇을 챙겨 가나요?](https://umbba-radar.com/guide/health-center-registration)
+- [어린이집 입소대기, 언제부터 몇 곳까지 신청하나요?](https://umbba-radar.com/guide/daycare-waitlist)
+- [유치원 입학 신청, 처음학교로 일정과 순서는?](https://umbba-radar.com/guide/kindergarten-apply)
+- [출생신고, 언제까지 어디서 무엇을 들고 하나요?](https://umbba-radar.com/guide/birth-registration)
+- [아기 여권, 무엇을 준비해 어디서 만드나요?](https://umbba-radar.com/guide/baby-passport)
+- [출산 한 달 전, 미리 해둘 일은 무엇인가요?](https://umbba-radar.com/guide/before-birth-todo)
+- [출산준비물 리스트, 언제 무엇을 몇 개 준비하나요?](https://umbba-radar.com/guide/birth-prep-list)
+- [어린이집 입소 준비, 서류는 무엇을 내나요?](https://umbba-radar.com/guide/daycare-entry-prep)
+- [돌 준비, 12개월 무렵 챙길 공식 일정은?](https://umbba-radar.com/guide/first-birthday-todo)
+- [신생아 건강보험 피부양자 등록, 언제 어떻게 하나요?](https://umbba-radar.com/guide/newborn-health-insurance)
+- [임신 중기 할 일, 몇 주에 무엇을 챙기나요?](https://umbba-radar.com/guide/pregnancy-midterm-todo)
+
+### 접종·검진
+
+- [영유아 건강검진, 몇 개월에 몇 차를 받나요?](https://umbba-radar.com/guide/infant-checkup)
+- [아기 예방접종, 2026년 일정표로 언제 무엇을 맞나요?](https://umbba-radar.com/guide/vaccination-schedule)
+- [독감 무료접종 2026-27, 아기·임신부는 언제 맞나요?](https://umbba-radar.com/guide/flu-vaccine-2026)
+- [RSV 예방 항체주사, 우리 아기도 대상인가요?](https://umbba-radar.com/guide/rsv-prevention)
+- [임신부 백일해(Tdap) 접종, 몇 주에 맞나요?](https://umbba-radar.com/guide/pertussis-pregnant)
+- [아기 BCG 접종, 언제 맞고 피내용과 경피용은 뭐가 다른가요?](https://umbba-radar.com/guide/bcg-vaccine)
+- [임신 당뇨 검사, 몇 주에 받고 금식은 해야 하나요?](https://umbba-radar.com/guide/gestational-diabetes-test)
+- [신생아 난청검사, 언제 받고 검사비 지원은 어떻게 받나요?](https://umbba-radar.com/guide/newborn-hearing-screening)
+- [신생아 선천성대사이상 검사, 언제 받고 비용은 지원되나요?](https://umbba-radar.com/guide/newborn-metabolic-screening)
+- [밤·휴일에 아기가 아프면 어디로 가나요?](https://umbba-radar.com/guide/night-clinic-moonlight)
+- [기형아 검사, 임신 몇 주에 어떤 검사를 받나요?](https://umbba-radar.com/guide/prenatal-screening-test)
+
+### 생활·안전
+
+- [카시트 의무, 몇 살까지이고 안 하면 과태료는?](https://umbba-radar.com/guide/car-seat-law)
+- [영아돌연사 예방, 공식 안전수면 수칙은 무엇인가요?](https://umbba-radar.com/guide/safe-sleep)
+- [이유식 시작, 공식 권고는 몇 개월인가요?](https://umbba-radar.com/guide/weaning-start)
+
+### 체험단·협찬
+
+- [체험단·협찬 후기, [광고] 표시는 어디에 어떻게 하나요?](https://umbba-radar.com/guide/sponsorship-disclosure)
+- [육아 체험단, 어디서 찾고 어떻게 신청하나요?](https://umbba-radar.com/guide/parenting-experience-apply)
+- [이벤트 경품에 당첨되면 제세공과금 22%를 내나요?](https://umbba-radar.com/guide/sweepstakes-tax)
+- [아기·키즈모델 모집, 피해 없이 확인할 것은?](https://umbba-radar.com/guide/kids-model-scam)
+- [인스타 이벤트 당첨 DM, 진짜인지 어떻게 확인하나요?](https://umbba-radar.com/guide/event-dm-scam)
+- [화장품 광고 금지 표현, 체험단 후기엔 뭘 피하나요?](https://umbba-radar.com/guide/review-ad-banned-words)
+
 ## 카드 상세
 
 - 형식: `https://umbba-radar.com/post/{id}` — 제목, 브랜드, 대상 시기, 유형, 마감일(D-day), 원문 링크.
