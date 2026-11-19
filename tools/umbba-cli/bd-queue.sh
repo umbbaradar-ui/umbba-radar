@@ -7,7 +7,7 @@
 #                                 warn/fail 은 /admin/queue 에 남음
 # 큐가 비면 API 1회 조회 후 즉시 종료 (BD·claude 호출 0). 새벽 bd-run.sh 가 도는 중이면 이번 회차 건너뜀
 # (그쪽 bd_classify 가 draft 를 어차피 전부 집어가므로 손실 없음).
-# 요구: bd-run.sh 와 동일 (.env 의 BRIGHTDATA_API_TOKEN, ADMIN_CLI_TOKEN, UMBBA_API_URL, CLAUDE_CODE_OAUTH_TOKEN).
+# 요구: bd-run.sh 와 동일 (.env 의 BRIGHTDATA_API_TOKEN, ADMIN_CLI_TOKEN, UMBBA_API_URL).
 # 사용: ./bd-queue.sh [limit]   (기본 40 = 한 회차 BD 과금 상한)
 set -uo pipefail
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -19,6 +19,10 @@ TOK=$(grep '^CLAUDE_CODE_OAUTH_TOKEN=' .env 2>/dev/null | cut -d= -f2-)
 [ -n "$TOK" ] && export CLAUDE_CODE_OAUTH_TOKEN="$TOK"
 export PYTHONUTF8=1 PYTHONUNBUFFERED=1
 now() { date '+%Y-%m-%d %H:%M:%S'; }
+
+# 분류 인증 수명 예고(만료 3일 전, 08~22시에만 발송 — 하루 1회). 큐가 비어 바로 종료하는
+# 회차에도 돌도록 양보/락 검사보다 먼저 둔다. 평소엔 아무 것도 안 보내고 로그 한 줄.
+PYTHONWARNINGS=ignore "$PY" claude_auth_check.py >> "$LOG" 2>&1
 
 # 새벽 루틴과 겹치면 양보
 if pgrep -f "bd-run.sh|bd-local.sh|bd_ingest.py|bd_classify.py|bd_review.py" >/dev/null 2>&1; then

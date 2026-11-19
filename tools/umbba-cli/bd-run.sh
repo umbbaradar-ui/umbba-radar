@@ -5,7 +5,9 @@
 #   3) 검수: bd_review.py         → pending → 2차 검수(REVIEW-RULES.md) → 점수/판정/보정 기록
 #      (pass 고점수는 매일 09:00 KST 서버 cron 이 자동 발행 — warn/fail/미검수만 사람 검수)
 # 요구: python3, claude(Claude Code), .env 에:
-#   BRIGHTDATA_API_TOKEN, ADMIN_CLI_TOKEN, UMBBA_API_URL, CLAUDE_CODE_OAUTH_TOKEN(claude setup-token)
+#   BRIGHTDATA_API_TOKEN, ADMIN_CLI_TOKEN, UMBBA_API_URL
+#   (분류 인증은 맥 터미널 `claude` 대화형 로그인 = 키체인. setup-token 토큰 방식은 두 번
+#    폐기돼 .env 에 '활성화 금지'. 대신 claude_auth_check.py 가 만료 3일 전에 예고한다.)
 # 사용: ./bd-run.sh [scan_days] [max_accounts] [classify_limit] [batch] [review_limit] [review_batch]
 #       (기본 1 / 800 / 320 / 3 / 200 / 8)
 set -uo pipefail
@@ -18,6 +20,10 @@ LOG="$DIR/bd-run-log.txt"
 TOK=$(grep '^CLAUDE_CODE_OAUTH_TOKEN=' .env 2>/dev/null | cut -d= -f2-)
 [ -n "$TOK" ] && export CLAUDE_CODE_OAUTH_TOKEN="$TOK"
 export PYTHONUTF8=1 PYTHONUNBUFFERED=1
+
+# 분류 인증 수명 점검: refresh token 30일 만료가 매달 분류를 멈춰 왔다(9/18·10/17·11/18).
+# 만료 3일 전부터 텔레그램 예고 → 만료 전에 재로그인하면 정지 0. 평소엔 로그 한 줄만.
+PYTHONWARNINGS=ignore "$PY" claude_auth_check.py >> "$LOG" 2>&1
 
 echo "===== $(date '+%Y-%m-%d %H:%M:%S') 수집(--raw) =====" >> "$LOG"
 # 서버 새벽 수집(R-20261105-3)을 먼저 본다. 꺼져 있거나 status 실패면 collect = 예전과 같음.
