@@ -28,3 +28,4 @@ downloads/
 image_hints/
 .source-map.json
 .hiker-pk-cache.json
+*-log.txt
